@@ -1,5 +1,20 @@
 using MaxwellFD3D
+using StaticArrays
 using Base.Test
 
-# write your own tests here
-@test 1 == 2
+Base.isapprox(a::Tuple, b::Tuple; kws...) = all(p -> isapprox(p...; kws...), zip(a,b))
+
+# @testset "MaxwellFD3D" begin
+
+# include("enumtype.jl")
+# include("base.jl")
+# include("phys.jl")
+# include("grid.jl")
+# include("shape.jl")
+# include("gridgen.jl")
+# include("material.jl")
+# include("smoothing.jl")
+# include("field.jl")
+include("diff.jl")
+
+# end  # @testset "MaxwellFD3D"
