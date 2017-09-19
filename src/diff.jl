@@ -159,15 +159,20 @@ function create_curl(gt::GridType,
     Vtot = Vector{T}()
 
     for nv = nXYZ  # Cartesian compotent of output vector
-        ioff, istr = reorder ? (nv-3, 3) : (M*(nv-1), 1)  # (row offset, row stride)
+        istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
         parity = 1
         for nw = next2(nv)  # direction of differentiation
             nw′ = 6 - nv - nw  # Cantesian component of input vector; 6 = nX + nY + nZ
-            joff, jstr = reorder ? (nw′-3, 3) : (M*(nw′-1), 1)  # (column offset, column stride)
+            jstr, joff = reorder ? (3, nw′-3) : (1, M*(nw′-1))  # (column stride, column offset)
             I, J, V = create_∂info(nw, ns, N, ∆l[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
-            append!(Itot, istr*I + ioff)
-            append!(Jtot, jstr*J + joff)
-            append!(Vtot, parity*V)
+
+            @. I = istr * I + ioff
+            @. J = jstr * J + joff
+            V .*= parity
+
+            append!(Itot, I)
+            append!(Jtot, J)
+            append!(Vtot, V)
 
             parity = -1
         end

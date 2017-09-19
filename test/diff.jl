@@ -45,30 +45,30 @@ N = SVector(3,4,5)
 M = prod(N)
 r = reshape(collect(1:3M), M, 3)'[:]  # index mapping from block matrix to narrowly banded matrix
 
-@testset "create_curlU" begin
-    # Construct curlU for a uniform grid and BLOCH boundaries.
+@testset "create_curl for U" begin
+    # Construct Cu for a uniform grid and BLOCH boundaries.
     ∆ldual = ones.(N.data)
     ebc =  @SVector fill(BLOCH, 3)
     e⁻ⁱᵏᴸ = @SVector ones(3)
 
-    curlU = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
 
     # Examine the overall coefficients.
-    @test all(any(curlU.≠0, 1))  # no zero columns
-    @test all(any(curlU.≠0, 2))  # no zero rows
-    @test all(sum(curlU, 2) .== 0)  # all row sums are zero, because curlU * ones(M) = 0
+    @test all(any(Cu.≠0, 1))  # no zero columns
+    @test all(any(Cu.≠0, 2))  # no zero rows
+    @test all(sum(Cu, 2) .== 0)  # all row sums are zero, because Cu * ones(M) = 0
 
-    # Construct curlU for a nonuniform grid and general boundaries.
+    # Construct Cu for a nonuniform grid and general boundaries.
     ∆ldual = rand.(N.data)
     ebc = SVector(BLOCH, PPC, PDC)
     e⁻ⁱᵏᴸ = @SVector rand(Complex128, 3)
 
-    curlU = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
 
     # Examine diagonal blocks.
-    @test all(curlU[1:M, 1:M] .== 0)  # (1,1) block
-    @test all(curlU[M+1:2M, M+1:2M] .== 0)  # (2,2) block
-    @test all(curlU[2M+1:3M, 2M+1:3M] .== 0)  # (3,3) block
+    @test all(Cu[1:M, 1:M] .== 0)  # (1,1) block
+    @test all(Cu[M+1:2M, M+1:2M] .== 0)  # (2,2) block
+    @test all(Cu[2M+1:3M, 2M+1:3M] .== 0)  # (3,3) block
 
     # Examine off-diagonal blocks.
     for nv = nXYZ  # Cartesian component of output vector
@@ -77,41 +77,41 @@ r = reshape(collect(1:3M), M, 3)'[:]  # index mapping from block matrix to narro
             nw′ = 6 - nv - nw  # Cartesian component of input vector
             ∂w = create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
 
-            @test curlU[M*(nv-1)+1:M*nv, M*(nw′-1)+1:M*nw′] == parity * ∂w
+            @test Cu[M*(nv-1)+1:M*nv, M*(nw′-1)+1:M*nw′] == parity * ∂w
 
             parity = -1
         end
     end
 
     # Examine reordering.
-    curlU_reorder = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=true)
-    @test curlU_reorder == curlU[r,r]
-end  # @testset "create_curlU"
+    Cu_reorder = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=true)
+    @test Cu_reorder == Cu[r,r]
+end  # @testset "create_curl for U"
 
-@testset "create_curlV" begin
-    # Construct curlV for a uniform grid and BLOCH boundaries.
+@testset "create_curl for V" begin
+    # Construct Cv for a uniform grid and BLOCH boundaries.
     ∆lprim = ones.(N.data)
     ebc =  @SVector fill(BLOCH, 3)
     e⁻ⁱᵏᴸ = @SVector ones(3)
 
-    curlV = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cv = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
 
     # Examine the overall coefficients.
-    @test all(any(curlV.≠0, 1))  # no zero columns
-    @test all(any(curlV.≠0, 2))  # no zero rows
-    @test all(sum(curlV, 2) .== 0)  # all row sums are zero, because curlU * ones(sum(Min)) = 0
+    @test all(any(Cv.≠0, 1))  # no zero columns
+    @test all(any(Cv.≠0, 2))  # no zero rows
+    @test all(sum(Cv, 2) .== 0)  # all row sums are zero, because Cv * ones(sum(Min)) = 0
 
-    # Construct curlU for a nonuniform grid and general boundaries.
+    # Construct Cv for a nonuniform grid and general boundaries.
     ∆lprim = rand.(N.data)
     ebc = SVector(BLOCH, PPC, PDC)
     e⁻ⁱᵏᴸ = @SVector rand(Complex128, 3)
 
-    curlV = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cv = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
 
     # Examine diagonal blocks.
-    @test all(curlV[1:M, 1:M] .== 0)  # (1,1) block
-    @test all(curlV[M+1:2M, M+1:2M] .== 0)  # (2,2) block
-    @test all(curlV[2M+1:3M, 2M+1:3M] .== 0)  # (3,3) block
+    @test all(Cv[1:M, 1:M] .== 0)  # (1,1) block
+    @test all(Cv[M+1:2M, M+1:2M] .== 0)  # (2,2) block
+    @test all(Cv[2M+1:3M, 2M+1:3M] .== 0)  # (3,3) block
 
     # Examine off-diagonal blocks.
     for nv = nXYZ  # Cartesian component of output vector
@@ -120,36 +120,36 @@ end  # @testset "create_curlU"
             nw′ = 6 - nv - nw  # Cartesian component of input vector
             ∂w = create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
 
-            @test curlV[M*(nv-1)+1:M*nv, M*(nw′-1)+1:M*nw′] == parity * ∂w
+            @test Cv[M*(nv-1)+1:M*nv, M*(nw′-1)+1:M*nw′] == parity * ∂w
 
             parity = -1
         end
     end
 
     # Examine reordering
-    curlV_reorder = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=true)
-    @test curlV_reorder == curlV[r,r]
-end  # @testset "create_curlV"
+    Cv_reorder = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=true)
+    @test Cv_reorder == Cv[r,r]
+end  # @testset "create_curl for V"
 
 @testset "curl of curl" begin
-    # Construct curlU and curlV for a uniform grid and BLOCH boundaries.
+    # Construct Cu and Cv for a uniform grid and BLOCH boundaries.
     ∆ldual = ones.(N.data)
     ∆lprim = ones.(N.data)
     ebc =  @SVector fill(BLOCH, 3)
     e⁻ⁱᵏᴸ = @SVector ones(3)
 
-    curlU = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
-    curlV = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cv = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
 
     # Test symmetry of each block.
     for i = nXYZ
         for j = next2(i)
-            -curlV[(i-1)*M+1:i*M,(j-1)*M+1:j*M]' == curlU[(i-1)*M+1:i*M,(j-1)*M+1:j*M]
+            -Cv[(i-1)*M+1:i*M,(j-1)*M+1:j*M]' == Cu[(i-1)*M+1:i*M,(j-1)*M+1:j*M]
         end
     end
 
-    # Construct curlV * curlU
-    A = curlV * curlU
+    # Construct Cv * Cu
+    A = Cv * Cu
 
     # Test curl of curl.
     @test all(diag(A) .== 4)  # all diagonal entries are 4
