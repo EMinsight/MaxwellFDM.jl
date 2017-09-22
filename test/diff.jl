@@ -1,4 +1,4 @@
-@testset "differential" begin
+@testset "diff" begin
 
 @testset "create_∂" begin
     Nmax = 10
@@ -44,6 +44,7 @@ end  # @testset "create_∂"
 N = SVector(3,4,5)
 M = prod(N)
 r = reshape(collect(1:3M), M, 3)'[:]  # index mapping from block matrix to narrowly banded matrix
+Z = spzeros(M,M)
 
 @testset "create_curl for U" begin
     # Construct Cu for a uniform grid and BLOCH boundaries.
@@ -58,6 +59,13 @@ r = reshape(collect(1:3M), M, 3)'[:]  # index mapping from block matrix to narro
     @test all(any(Cu.≠0, 2))  # no zero rows
     @test all(sum(Cu, 2) .== 0)  # all row sums are zero, because Cu * ones(M) = 0
 
+    ∂x = (nw = 1; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂y = (nw = 2; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂z = (nw = 3; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    @test Cu == [Z -∂z ∂y;
+                 ∂z Z -∂x;
+                 -∂y ∂x Z]
+
     # Construct Cu for a nonuniform grid and general boundaries.
     ∆ldual = rand.(N.data)
     ebc = SVector(BLOCH, PPC, PDC)
@@ -65,23 +73,13 @@ r = reshape(collect(1:3M), M, 3)'[:]  # index mapping from block matrix to narro
 
     Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
 
-    # Examine diagonal blocks.
-    @test all(Cu[1:M, 1:M] .== 0)  # (1,1) block
-    @test all(Cu[M+1:2M, M+1:2M] .== 0)  # (2,2) block
-    @test all(Cu[2M+1:3M, 2M+1:3M] .== 0)  # (3,3) block
-
-    # Examine off-diagonal blocks.
-    for nv = nXYZ  # Cartesian component of output vector
-        parity = 1
-        for nw = next2(nv)  # direction of differentiation
-            nw′ = 6 - nv - nw  # Cartesian component of input vector
-            ∂w = create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
-
-            @test Cu[M*(nv-1)+1:M*nv, M*(nw′-1)+1:M*nw′] == parity * ∂w
-
-            parity = -1
-        end
-    end
+    # Examine Cu.
+    ∂x = (nw = 1; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂y = (nw = 2; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂z = (nw = 3; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    @test Cu == [Z -∂z ∂y;
+                 ∂z Z -∂x;
+                 -∂y ∂x Z]
 
     # Examine reordering.
     Cu_reorder = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=true)
@@ -101,6 +99,13 @@ end  # @testset "create_curl for U"
     @test all(any(Cv.≠0, 2))  # no zero rows
     @test all(sum(Cv, 2) .== 0)  # all row sums are zero, because Cv * ones(sum(Min)) = 0
 
+    ∂x = (nw = 1; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂y = (nw = 2; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂z = (nw = 3; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    @test Cv == [Z -∂z ∂y;
+                 ∂z Z -∂x;
+                 -∂y ∂x Z]
+
     # Construct Cv for a nonuniform grid and general boundaries.
     ∆lprim = rand.(N.data)
     ebc = SVector(BLOCH, PPC, PDC)
@@ -108,23 +113,13 @@ end  # @testset "create_curl for U"
 
     Cv = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
 
-    # Examine diagonal blocks.
-    @test all(Cv[1:M, 1:M] .== 0)  # (1,1) block
-    @test all(Cv[M+1:2M, M+1:2M] .== 0)  # (2,2) block
-    @test all(Cv[2M+1:3M, 2M+1:3M] .== 0)  # (3,3) block
-
-    # Examine off-diagonal blocks.
-    for nv = nXYZ  # Cartesian component of output vector
-        parity = 1
-        for nw = next2(nv)  # direction of differentiation
-            nw′ = 6 - nv - nw  # Cartesian component of input vector
-            ∂w = create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
-
-            @test Cv[M*(nv-1)+1:M*nv, M*(nw′-1)+1:M*nw′] == parity * ∂w
-
-            parity = -1
-        end
-    end
+    # Examine Cv.
+    ∂x = (nw = 1; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂y = (nw = 2; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂z = (nw = 3; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    @test Cv == [Z -∂z ∂y;
+                 ∂z Z -∂x;
+                 -∂y ∂x Z]
 
     # Examine reordering
     Cv_reorder = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=true)
