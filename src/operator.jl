@@ -73,37 +73,20 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
 
     # Modify I, J, V according to the boundary condition; see my notes on September 6, 2017.
     if ebc == BLOCH
-        if ns > 0
-            # Ghost points are at the positive end.
-            Vₛ[Base.setindex(indices(Vₛ), Nw, nw)...] .*= e⁻ⁱᵏᴸ  # mimic implementation of slicedim
-        else  # ns < 0
-            # Ghost points are at the negative end.
-            Vₛ[Base.setindex(indices(Vₛ), 1, nw)...] ./= e⁻ⁱᵏᴸ  # mimic implementation of slicedim
-        end
+        iw = ns<0 ? 1 : Nw  # ghost points at negative end for ns < 0
+        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns  # mimic implementation of slicedim
     else  # ebc ≠ BLOCH
         # Set up the diagonal entries.  (This is independent of ns.)
         # Because the way to set up the diagonal entries doesn't depend on ns, the operators
         # for ns = +1 and –1 are the transpose of each other.
-        if ebc == PPC
-            I₀ = slicedim(I₀, nw, 2:Nw)
-            V₀ = slicedim(V₀, nw, 2:Nw)
-        else  # ebc == PDC
-            I₀ = slicedim(I₀, nw, 1:Nw-1)
-            V₀ = slicedim(V₀, nw, 1:Nw-1)
-        end
+        iw = ebc==PPC ? 1 : Nw
+        V₀[Base.setindex(indices(V₀), iw, nw)...] .= 0  # mimic implementation of slicedim
 
         # Set up the off-diagonal entries.  (This is indepent of boundary condition.)
         # The construction here guarantees the off-diagonal parts for ns = +1 and -1 are the
         # transpose of each other, regardless of boundary condition.
-        if ns > 0
-            Iₛ = slicedim(Iₛ, nw, 1:Nw-1)
-            Jₛ = slicedim(Jₛ, nw, 1:Nw-1)
-            Vₛ = slicedim(Vₛ, nw, 1:Nw-1)
-        else  # ns < 0
-            Iₛ = slicedim(Iₛ, nw, 2:Nw)
-            Jₛ = slicedim(Jₛ, nw, 2:Nw)
-            Vₛ = slicedim(Vₛ, nw, 2:Nw)
-        end
+        iw = ns<0 ? 1 : Nw
+        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0  # mimic implementation of slicedim
     end
 
     I = [I₀[:]; Iₛ[:]]  # row indices of [diagonal; off-diagonal]
@@ -245,49 +228,25 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
 
     # Modify I, J, V according to the boundary condition; see my notes on September 6, 2017.
     if ebc == BLOCH
-        if ns > 0
-            # Ghost points are at the positive end.
-            Vₛ[Base.setindex(indices(Vₛ), Nw, nw)...] .*= e⁻ⁱᵏᴸ  # mimic implementation of slicedim
-        else  # ns < 0
-            # Ghost points are at the negative end.
-            Vₛ[Base.setindex(indices(Vₛ), 1, nw)...] ./= e⁻ⁱᵏᴸ  # mimic implementation of slicedim
-        end
+        iw = ns<0 ? 1 : Nw  # ghost points at negative end for ns < 0
+        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns  # mimic implementation of slicedim
     else  # ebc ≠ BLOCH
         # Set up the diagonal entries.  (This is independent of ns.)
         # Because the way to set up the diagonal entries doesn't depend on ns, the operators
         # for ns = +1 and –1 are the transpose of each other.
-        if !withcongbc  # incongruent boundary
-            # This part is the same as create_∂info.
-            if ebc == PPC  # gt == DUAL (i.e., field = V)
-                I₀ = slicedim(I₀, nw, 2:Nw)
-                V₀ = slicedim(V₀, nw, 2:Nw)
-            else  # ebc == PDC, and gt == PRIM (i.e., field = U)
-                I₀ = slicedim(I₀, nw, 1:Nw-1)
-                V₀ = slicedim(V₀, nw, 1:Nw-1)
-            end
-        else  # congruent boundary
-            # This part is different from create_∂info: 2 instead of 0 is used.  See my
-            # notes entitled [Beginning of the part added on Sep/21/2017] in RN - Subpixel
-            # Smoothing.
-            if ebc == PPC  # gt == PRIM (i.e., field = U)
-                V₀[Base.setindex(indices(V₀), 1, nw)...] .*= 2  # mimic implementation of slicedim
-            else  # ebc == PDC, and gt == DUAL (i.e., field = V)
-                V₀[Base.setindex(indices(Vₛ), Nw, nw)...] .*= 2  # mimic implementation of slicedim
-            end
-        end
+
+        # The part below is the same as create_∂info if withcongbc == false; otherwise, it
+        # is different from create_∂info: 2 instead of 0 is used.  See my notes entitled
+        # [Beginning of the part added on Sep/21/2017] in RN - Subpixel Smoothing.
+        iw = ebc==PPC ? 1 : Nw
+        val = withcongbc ? 2 : 0
+        V₀[Base.setindex(indices(V₀), iw, nw)...] .*= val  # mimic implementation of slicedim
 
         # Set up the off-diagonal entries.  (This is indepent of boundary condition.)
         # The construction here guarantees the off-diagonal parts for ns = +1 and -1 are the
         # transpose of each other, regardless of boundary condition.
-        if ns > 0
-            Iₛ = slicedim(Iₛ, nw, 1:Nw-1)
-            Jₛ = slicedim(Jₛ, nw, 1:Nw-1)
-            Vₛ = slicedim(Vₛ, nw, 1:Nw-1)
-        else  # ns < 0
-            Iₛ = slicedim(Iₛ, nw, 2:Nw)
-            Jₛ = slicedim(Jₛ, nw, 2:Nw)
-            Vₛ = slicedim(Vₛ, nw, 2:Nw)
-        end
+        iw = ns<0 ? 1 : Nw
+        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0  # mimic implementation of slicedim
     end
 
     I = [I₀[:]; Iₛ[:]]  # row indices of [diagonal; off-diagonal]
