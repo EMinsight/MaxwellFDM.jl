@@ -1,4 +1,4 @@
-export create_∂, create_curl, create_M, create_mean, create_param3dmat, param3d2mat
+export create_∂, create_curl, create_m, create_mean, create_param3dmat, param3d2mat
 
 ## Difference operators ##
 create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
@@ -175,17 +175,17 @@ end
 # the fields along the direction normal to the fields, the field-averaging operators average
 # fields along the field direction.  As a result, backward (rather than forward) averaging
 # is for primal fields.
-create_M(gt::GridType,  # PRIM|DUAL for primal|dual field
+create_m(gt::GridType,  # PRIM|DUAL for primal|dual field
          nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
          N::SVector{K,Int},  # size of grid
          ebc::EBC=BLOCH,  # boundary condition in w-direction
          e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
         ) where {K} =
-    (M = prod(N); sparse(create_Minfo(gt, nw, ns, N, ebc, e⁻ⁱᵏᴸ)..., M, M))
+    (M = prod(N); sparse(create_minfo(gt, nw, ns, N, ebc, e⁻ⁱᵏᴸ)..., M, M))
 
 
-create_M(gt::GridType,  # PRIM|DUAL for primal|dual field
+create_m(gt::GridType,  # PRIM|DUAL for primal|dual field
          nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
          N::SVector{K,Int},  # size of grid
@@ -194,20 +194,20 @@ create_M(gt::GridType,  # PRIM|DUAL for primal|dual field
          ebc::EBC=BLOCH,  # boundary condition in w-direction
          e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
         ) where {K} =
-    (M = prod(N); sparse(create_Minfo(gt, nw, ns, N, ∆w, ∆w′, ebc, e⁻ⁱᵏᴸ)..., M, M))
+    (M = prod(N); sparse(create_minfo(gt, nw, ns, N, ∆w, ∆w′, ebc, e⁻ⁱᵏᴸ)..., M, M))
 
 
-create_Minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
+create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
              nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
              ns::Integer,  # 1|-1 for forward|backward averaging
              N::SVector{K,Int},  # size of grid
              ebc::EBC,  # boundary condition in w-direction
              e⁻ⁱᵏᴸ::Number  # BLOCH phase factor
             ) where {K} =
-    (∆w = ones(N[nw]); create_Minfo(gt, nw, ns, N, ∆w, ∆w, ebc, e⁻ⁱᵏᴸ))
+    (∆w = ones(N[nw]); create_minfo(gt, nw, ns, N, ∆w, ∆w, ebc, e⁻ⁱᵏᴸ))
 
 
-function create_Minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
+function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
                       nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
                       ns::Integer,  # 1|-1 for forward|backward averaging
                       N::SVector{K,Int},  # size of grid
@@ -331,7 +331,7 @@ function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
         nw = mod1(nv+kdiag, 3)
         jstr, joff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (column stride, column offset)
 
-        I, J, V = create_Minfo(gt, nw, ns, N, ∆l[nw], ∆l′[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
+        I, J, V = create_minfo(gt, nw, ns, N, ∆l[nw], ∆l′[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
 
         @. I = istr * I + ioff
         @. J = jstr * J + joff

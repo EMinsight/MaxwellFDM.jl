@@ -1,4 +1,4 @@
-@testset "diff" begin
+@testset "operator" begin
 
 @testset "create_∂" begin
     N = SVector(8,9,10)
@@ -157,7 +157,7 @@ end  # @testset "create_curl for V"
     @test all(abs.(B[B.≠0]).==1)  # all nonzero off-diagonal entries are ±1
 end  # @testset "curl of curl"
 
-@testset "create_M" begin
+@testset "create_m" begin
     N = SVector(8,9,10)
     # N = SVector(3,3,3)
     M = prod(N)
@@ -192,9 +192,11 @@ end  # @testset "curl of curl"
                 ind′ = sub2ind(N.data, sub′...)
                 Mws[ind, ind′] = 0.5  # off-diagonal entry
             end
-            @test create_M(PRIM, nw, ns, N) == create_M(DUAL, nw, ns, N) == Mws
+            @test create_m(PRIM, nw, ns, N) == create_m(DUAL, nw, ns, N) == Mws
         end
     end
-end  # @testset "create_M"
+end  # @testset "create_m"
 
-end  # @testset "differential"
+# Need to test symmetry of param3dmat for different boundary conditions.
+
+end  # @testset "operator"
