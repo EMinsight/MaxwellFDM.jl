@@ -1,8 +1,7 @@
 @testset "diff" begin
 
 @testset "create_∂" begin
-    Nmax = 10
-    N = SVector(rand(1:Nmax, 3)...)
+    N = SVector(8,9,10)
     # N = SVector(3,3,3)
     M = prod(N)
     for nw = nXYZ
@@ -130,7 +129,7 @@ end  # @testset "create_curl for V"
     # Construct Cu and Cv for a uniform grid and BLOCH boundaries.
     ∆ldual = ones.(N.data)
     ∆lprim = ones.(N.data)
-    ebc =  @SVector fill(BLOCH, 3)
+    ebc =  SVector(BLOCH, PPC, PDC)
     e⁻ⁱᵏᴸ = @SVector ones(3)
 
     Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
@@ -143,7 +142,10 @@ end  # @testset "create_curl for V"
         end
     end
 
-    # Construct Cv * Cu
+    # Construct Cv * Cu for all BLOCH.
+    ebc =  @SVector fill(BLOCH, 3)
+    Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cv = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
     A = Cv * Cu
 
     # Test curl of curl.
@@ -154,5 +156,45 @@ end  # @testset "create_curl for V"
     B = A - 4*speye(A)
     @test all(abs.(B[B.≠0]).==1)  # all nonzero off-diagonal entries are ±1
 end  # @testset "curl of curl"
+
+@testset "create_M" begin
+    N = SVector(8,9,10)
+    # N = SVector(3,3,3)
+    M = prod(N)
+    for nw = nXYZ
+    # for nw = (1,)
+        Nw = N[nw]
+        sub′ = Vector{Int}(3)
+
+        for ns = (-1,1)
+        # for ns = (1,)
+            Mws = spzeros(M,M)
+
+            for ind = 1:M
+                Mws[ind,ind] = 0.5  # diagonal entries
+
+                # Calculate the column index of the off-diagonal entry in the row `ind`.
+                sub′ .= ind2sub(N.data, ind)
+                if ns == 1  # forward difference
+                    if sub′[nw] == Nw
+                        sub′[nw] = 1
+                    else
+                        sub′[nw] += 1
+                    end
+                else  # ns = -1: backward difference
+                    if sub′[nw] == 1
+                        sub′[nw] = Nw
+                    else
+                        sub′[nw] -= 1
+                    end
+                end
+
+                ind′ = sub2ind(N.data, sub′...)
+                Mws[ind, ind′] = 0.5  # off-diagonal entry
+            end
+            @test create_M(PRIM, nw, ns, N) == create_M(DUAL, nw, ns, N) == Mws
+        end
+    end
+end  # @testset "create_M"
 
 end  # @testset "differential"

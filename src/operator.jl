@@ -1,5 +1,6 @@
-export create_∂, create_curl
+export create_∂, create_curl, create_M, create_mean, create_param3dmat, param3d2mat
 
+## Difference operators ##
 create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
          N::SVector{K,Int},  # size of grid
@@ -32,13 +33,13 @@ create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
 #
 # Now, let's think about the backward difference operator for V.  Because the boundary is
 # PPC, the ghost V₀, which is before the negative boundary, must be the same as the
-# non-ghost V₁.  Therefore, this leads to the first difference being V₁-V₀ = V₁-V₁ = 0,
+# non-ghost Vₛ.  Therefore, this leads to the first difference being Vₛ-V₀ = Vₛ-Vₛ = 0,
 # which means that the first row of the backward difference operator must be empty.
 # However, when the forward difference operator for PPC is created the same as that for
 # BLOCH, its transpose does not have an empty first row!
 #
 # For the backward differce operater to be the transpose of the forward difference operator,
-# I need to create the forward difference operator such that U₁ is zeroed.  This turns out
+# I need to create the forward difference operator such that Uₛ is zeroed.  This turns out
 # to work.  See the notes on Sep/06/2017 in RN - MaxwellFD3D.jl.nb.
 
 # Creates the w-directional difference matrix, with division by ∆w's.
@@ -55,30 +56,34 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
 
     # Construct the row and column indices of nonzero entries of the matrix.
     I₀ = reshape(collect(1:M), N.data)  # row and column indices of diagonal entries
-    I₁ = reshape(collect(1:M), N.data)  # row indices of off-diagonal entries
-    J₁ = reshape(collect(1:M), N.data)  # column indices of off-diagonal entries
+    Iₛ = reshape(collect(1:M), N.data)  # row indices of off-diagonal entries
+    Jₛ = reshape(collect(1:M), N.data)  # column indices of off-diagonal entries
     shifts = -ns * ŵ  # [0,-1,0] for w == YY and ns = +1
-    J₁ = circshift(J₁, shifts.data)
+    Jₛ = circshift(Jₛ, shifts.data)
+
+    # Align ∆w in the w-direction.
+    vec1 =  @SVector ones(Int,K)
+    sizew = @. !ŵ * vec1 + ŵ * N  # [1,Ny,1] for w == YY
+    ∆W = reshape(∆w, sizew.data)
 
     # Construct the values of the diagonal and off-diagonal nonzero entries of the matrix.
-    vec1 =  @SVector ones(Int,K)
-    wsize = @. !ŵ * vec1 + ŵ * N  # [1,Ny,1] for w == YY
-    ∆W = reshape(∆w, wsize.data)  # align ∆w in the w-direction
     T = promote_type(eltype(∆w), eltype(e⁻ⁱᵏᴸ))
     V₀ = -ns .* ones(T, N.data) ./ ∆W  # values of diagonal entries
-    V₁ = ns .* ones(T, N.data) ./ ∆W  # values of off-diagonal entries
+    Vₛ = ns .* ones(T, N.data) ./ ∆W  # values of off-diagonal entries
 
     # Modify I, J, V according to the boundary condition; see my notes on September 6, 2017.
     if ebc == BLOCH
         if ns > 0
             # Ghost points are at the positive end.
-            V₁[Base.setindex(indices(V₁), Nw, nw)...] .*= e⁻ⁱᵏᴸ  # mimic implementation of slicedim
+            Vₛ[Base.setindex(indices(Vₛ), Nw, nw)...] .*= e⁻ⁱᵏᴸ  # mimic implementation of slicedim
         else  # ns < 0
             # Ghost points are at the negative end.
-            V₁[Base.setindex(indices(V₁), 1, nw)...] .*= 1/e⁻ⁱᵏᴸ  # mimic implementation of slicedim
+            Vₛ[Base.setindex(indices(Vₛ), 1, nw)...] ./= e⁻ⁱᵏᴸ  # mimic implementation of slicedim
         end
     else  # ebc ≠ BLOCH
-        # Diagonal entries
+        # Set up the diagonal entries.  (This is independent of ns.)
+        # Because the way to set up the diagonal entries doesn't depend on ns, the operators
+        # for ns = +1 and –1 are the transpose of each other.
         if ebc == PPC
             I₀ = slicedim(I₀, nw, 2:Nw)
             V₀ = slicedim(V₀, nw, 2:Nw)
@@ -87,32 +92,37 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
             V₀ = slicedim(V₀, nw, 1:Nw-1)
         end
 
-        # Off-diagonal entries
+        # Set up the off-diagonal entries.  (This is indepent of boundary condition.)
+        # The construction here guarantees the off-diagonal parts for ns = +1 and -1 are the
+        # transpose of each other, regardless of boundary condition.
         if ns > 0
-            I₁ = slicedim(I₁, nw, 1:Nw-1)
-            J₁ = slicedim(J₁, nw, 1:Nw-1)
-            V₁ = slicedim(V₁, nw, 1:Nw-1)
+            Iₛ = slicedim(Iₛ, nw, 1:Nw-1)
+            Jₛ = slicedim(Jₛ, nw, 1:Nw-1)
+            Vₛ = slicedim(Vₛ, nw, 1:Nw-1)
         else  # ns < 0
-            I₁ = slicedim(I₁, nw, 2:Nw)
-            J₁ = slicedim(J₁, nw, 2:Nw)
-            V₁ = slicedim(V₁, nw, 2:Nw)
+            Iₛ = slicedim(Iₛ, nw, 2:Nw)
+            Jₛ = slicedim(Jₛ, nw, 2:Nw)
+            Vₛ = slicedim(Vₛ, nw, 2:Nw)
         end
     end
 
-    I = [I₀[:]; I₁[:]]  # row indices
-    J = [I₀[:]; J₁[:]]  # column indices
-    V = [V₀[:]; V₁[:]]  # matrix entries
+    I = [I₀[:]; Iₛ[:]]  # row indices of [diagonal; off-diagonal]
+    J = [I₀[:]; Jₛ[:]]  # column indices of [diagonal; off-diagonal]
+    V = [V₀[:]; Vₛ[:]]  # matrix entries of [diagonal, off-diagonal]
 
     return I, J, V
 end
 
-create_curl(gt::GridType,
-            N::AbsVec{<:Integer},
-            ∆l::Tuple3{AbsVec{<:Number}},
-            ebc::AbsVec{EBC},
-            e⁻ⁱᵏᴸ::AbsVec{<:Number}=ones(length(N));
-            reorder::Bool=true) =
-    (K = length(N); create_curl(gt, SVector{K}(N), ∆l, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder))
+
+## Discrete curl ##
+create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+            N::AbsVec{<:Integer},  # size of grid
+            ∆l::Tuple3{AbsVec{<:Number}},  # ∆l[w]: distances between grid planes in x-direction
+            ebc::AbsVec{EBC},  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::AbsVec{<:Number}=ones(length(N));  # BLOCH phase factor in x, y, z
+            reorder::Bool=true  # true for more tightly banded matrix
+           ) =
+    (K = length(N); create_curl(gt, SVector{K}(N), ∆l, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 
 # I need to create create_curl_info! first.  Then, from there it is easy to eliminate some
@@ -121,35 +131,13 @@ create_curl(gt::GridType,
 # Also in the future, change create_∂ to return only r, c, v vectors (instead of a sparse matrix)
 # and create a sparse matrix at once.  This will create the curl matrix twice as fast.  I
 # can even pre-permutate the collection of r's, c's, v's to create a permuted sparse matrix.
-function create_curl(gt::GridType,
-                     N::SVector{K,<:Integer},
-                     ∆l::Tuple3{AbsVec{<:Number}},
-                     ebc::SVector{K,EBC},
-                     e⁻ⁱᵏᴸ::SVector{K,<:Number},
-                     reorder::Bool
-                    ) where {K}
-    # Create the curl operator acting on the primal field U.
-
-    # gt: PRIM for curl for primal fields, DUAL for curl for dual fields
-
-    # Nx, Ny, Nz = N
-    #
-    # ∂yUz = create_∂(YY, (Nx+1,Ny+1,Nz), ∆l(Int(YY)))  # Nin = (Nx+1,Ny+1,Nz), Nout = (Nx+1,Ny,Nz)
-    # ∂zUy = create_∂(ZZ, (Nx+1,Ny,Nz+1), ∆l(Int(ZZ)))  # Nin = (Nx+1,Ny,Nz+1), Nout = (Nx+1,Ny,Nz)
-    # Zxx = spzeros(prod((Nx+1,Ny,Nz)), prod((Nx,Ny+1,Nz+1)))  # Nin = (Nx,Ny+1,Nz+1), Nout = (Nx+1,Ny,Nz)
-    #
-    # ∂zUx = create_∂(ZZ, (Nx,Ny+1,Nz+1), ∆l(Int(ZZ)))  # Nin = (Nx,Ny+1,Nz+1), Nout = (Nx,Ny+1,Nz)
-    # ∂xUz = create_∂(XX, (Nx+1,Ny+1,Nz), ∆l(Int(XX)))  # Nin = (Nx+1,Ny+1,Nz), Nout = (Nx,Ny+1,Nz)
-    # Zyy = spzeros(prod((Nx,Ny+1,Nz)), prod((Nx+1,Ny,Nz+1)))  # Nin = (Nx+1,Ny,Nz+1), Nout = (Nx,Ny+1,Nz)
-    #
-    # ∂xUy = create_∂(XX, (Nx+1,Ny,Nz+1), ∆l(Int(XX)))  # Nin = (Nx+1,Ny,Nz+1), Nout = (Nx,Ny,Nz+1)
-    # ∂yUx = create_∂(YY, (Nx,Ny+1,Nz+1), ∆l(Int(YY)))  # Nin = (Nx,Ny+1,Nz+1), Nout = (Nx,Ny,Nz+1)
-    # Zzz = spzeros(prod((Nx,Ny,Nz+1)), prod((Nx+1,Ny+1,Nz)))  # Nin = (Nx+1,Ny+1,Nz), Nout = (Nx,Ny,Nz+1)
-    #
-    # return [Zxx -∂zUy ∂yUz;
-    #         ∂zUx Zyy -∂xUz;
-    #         -∂yUx ∂xUy Zzz]
-
+function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+                     N::IVector3,  # size of grid
+                     ∆l::Tuple3{AbsVec{<:Number}},  # ∆l[w]: distances between grid planes in x-direction
+                     ebc::SVector{3,EBC},  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+                     reorder::Bool=true  # true for more tightly banded matrix
+                    )
     ns = gt==PRIM ? 1 : -1
     T = promote_type(eltype.(∆l)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
@@ -181,53 +169,252 @@ function create_curl(gt::GridType,
     return sparse(Itot, Jtot, Vtot, 3M, 3M)
 end
 
-# function create_curlV(N::Tuple3{Int}, ∆l::Tuple3{AbsVec{T}}, ebc::Tuple32{EBC}, e⁻ⁱᵏᴸ::Tuple3{Number}=(1,1,1)) where {T<:Number}
-#     # Create the curl operator acting on the dual field V.  Unlike the case for the primal
-#     # field U, internal boundary conditions need to be supplied, because curlU can generate
-#     # in-domain V from in-domain (including boundary) U, whereas curlV cannot generate
-#     # in-domain U from in-domain V, but V needs to be expanded for ghost points.
-#
-#     !isproperebc(ebc, e⁻ⁱᵏᴸ) && throw(ArgumentError("ebc = $ebc and e⁻ⁱᵏᴸ = $e⁻ⁱᵏᴸ do not describe proper boundary conditions."))
-#
-#     Nin = (w -> N .+ (XYZ.==w)).(XYZ)
-#     Nout = (w -> N .+ (XYZ.≠w)).(XYZ)
-#     Min = prod.(Nin)
-#     Mout = prod.(Nout)
-#
-#     curlV = spzeros(sum(Mout), sum(Min))
-#     for r = XYZ
-#         nr = Int(r)
-#         outrange2 = 0
-#         for k = 1:nr
-#             outrange2 += Mout[k]
-#         end
-#         # outrange2 = sum(Mout[1:nr])  # Mout[1:nr] is type-unstable
-#         outrange1 = outrange2 - Mout[nr] + 1
-#         outrange = outrange1:outrange2
-#         s = 1
-#         for p = next3(r)
-#             p == r && break
-#             np = Int(p)
-#             nq = 6 - (nr+np)
-#             q = XYZ[nq]
-#
-#             isbloch = ebc[np][1]==BLOCH
-#             factor = isbloch ? (e⁻ⁱᵏᴸ[np], 1/e⁻ⁱᵏᴸ[np]) : (-1).^(ebc[np].==PDC)
-#             gapVq = create_ghostappender_dual(Nin[nq], p, isbloch, factor)
-#             ∂pVq = create_∂(p, Nin[nq] .+ 2.*(XYZ.==p), ∆l[np])
-#
-#             inrange2 = 0
-#             for k = 1:nq
-#                 inrange2 += Min[k]
-#             end
-#             # inrange2 = sum(Min[1:nq])  # Min[1:nq] is type-unstable
-#             inrange1 = inrange2 - Min[nq] + 1
-#             inrange = inrange1:inrange2
-#
-#             curlV[outrange, inrange] = s * ∂pVq * gapVq
-#             s = -1
-#         end
-#     end
-#
-#     return curlV
-# end
+## Field-averaging operators ##
+# Construction of these operators are similar to that of difference operators.  However,
+# unlike the difference operators that are primarilly used for curl and hence differentiates
+# the fields along the direction normal to the fields, the field-averaging operators average
+# fields along the field direction.  As a result, backward (rather than forward) averaging
+# is for primal fields.
+create_M(gt::GridType,  # PRIM|DUAL for primal|dual field
+         nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
+         ns::Integer,  # 1|-1 for forward|backward difference
+         N::SVector{K,Int},  # size of grid
+         ebc::EBC=BLOCH,  # boundary condition in w-direction
+         e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
+        ) where {K} =
+    (M = prod(N); sparse(create_Minfo(gt, nw, ns, N, ebc, e⁻ⁱᵏᴸ)..., M, M))
+
+
+create_M(gt::GridType,  # PRIM|DUAL for primal|dual field
+         nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
+         ns::Integer,  # 1|-1 for forward|backward difference
+         N::SVector{K,Int},  # size of grid
+         ∆w::AbsVec{<:Number},  # line segments to multiply with; vector of length N[nw]
+         ∆w′::AbsVec{<:Number},  # line segments to divide by; vector of length N[nw]
+         ebc::EBC=BLOCH,  # boundary condition in w-direction
+         e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
+        ) where {K} =
+    (M = prod(N); sparse(create_Minfo(gt, nw, ns, N, ∆w, ∆w′, ebc, e⁻ⁱᵏᴸ)..., M, M))
+
+
+create_Minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
+             nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
+             ns::Integer,  # 1|-1 for forward|backward averaging
+             N::SVector{K,Int},  # size of grid
+             ebc::EBC,  # boundary condition in w-direction
+             e⁻ⁱᵏᴸ::Number  # BLOCH phase factor
+            ) where {K} =
+    (∆w = ones(N[nw]); create_Minfo(gt, nw, ns, N, ∆w, ∆w, ebc, e⁻ⁱᵏᴸ))
+
+
+function create_Minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
+                      nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
+                      ns::Integer,  # 1|-1 for forward|backward averaging
+                      N::SVector{K,Int},  # size of grid
+                      ∆w::AbsVec{<:Number},  # line segments to multiply with; vector of length N[nw]
+                      ∆w′::AbsVec{<:Number},  # line segments to divide by; vector of length N[nw]
+                      ebc::EBC,  # boundary condition in w-direction
+                      e⁻ⁱᵏᴸ::Number  # BLOCH phase factor
+                     ) where {K}
+    M = prod(N)
+    Nw = N[nw]
+    ŵ = SVector(ntuple(identity,Val{K})) .== nw  # [0,true,0] for w == YY
+    T = promote_type(eltype(∆w), eltype(∆w′), eltype(e⁻ⁱᵏᴸ))
+    withcongbc = (gt==PRIM && ebc==PPC) || (gt==DUAL && ebc==PDC)  # bc type is congruent with field type
+
+    # Align ∆w and ∆w′ in the w-direction.
+    vec1 =  @SVector ones(Int,K)
+    sizew = @. !ŵ * vec1 + ŵ * N  # [1,Ny,1] for w == YY
+    ∆W = reshape(∆w, sizew.data)
+    ∆W′ = reshape(∆w′, sizew.data)
+
+    # Construct the row indices and values of nonzero diagonal entries of the matrix.
+    I₀ = reshape(collect(1:M), N.data)  # row and column indices of diagonal entries
+    V₀ = fill(T(0.5), N.data) .* ∆W ./∆W′  # values of diagonal entries
+
+    # Construct the row and column indices and values of nonzero off-diagonal entries of the
+    # matrix.
+    Iₛ = reshape(collect(1:M), N.data)  # row indices of off-diagonal entries
+    Jₛ = reshape(collect(1:M), N.data)  # column indices of off-diagonal entries
+    Vₛ = fill(T(0.5), N.data) .* ∆W  # values of off-diagonal entries (division later)
+
+    shifts = -ns * ŵ  # [0,-1,0] for w == YY and ns = +1
+    Jₛ = circshift(Jₛ, shifts.data)
+    Vₛ = circshift(Vₛ, shifts.data)
+    Vₛ ./= ∆W′
+
+    # Modify I, J, V according to the boundary condition; see my notes on September 6, 2017.
+    if ebc == BLOCH
+        if ns > 0
+            # Ghost points are at the positive end.
+            Vₛ[Base.setindex(indices(Vₛ), Nw, nw)...] .*= e⁻ⁱᵏᴸ  # mimic implementation of slicedim
+        else  # ns < 0
+            # Ghost points are at the negative end.
+            Vₛ[Base.setindex(indices(Vₛ), 1, nw)...] ./= e⁻ⁱᵏᴸ  # mimic implementation of slicedim
+        end
+    else  # ebc ≠ BLOCH
+        # Set up the diagonal entries.  (This is independent of ns.)
+        # Because the way to set up the diagonal entries doesn't depend on ns, the operators
+        # for ns = +1 and –1 are the transpose of each other.
+        if !withcongbc  # incongruent boundary
+            # This part is the same as create_∂info.
+            if ebc == PPC  # gt == DUAL (i.e., field = V)
+                I₀ = slicedim(I₀, nw, 2:Nw)
+                V₀ = slicedim(V₀, nw, 2:Nw)
+            else  # ebc == PDC, and gt == PRIM (i.e., field = U)
+                I₀ = slicedim(I₀, nw, 1:Nw-1)
+                V₀ = slicedim(V₀, nw, 1:Nw-1)
+            end
+        else  # congruent boundary
+            # This part is different from create_∂info: 2 instead of 0 is used.  See my
+            # notes entitled [Beginning of the part added on Sep/21/2017] in RN - Subpixel
+            # Smoothing.
+            if ebc == PPC  # gt == PRIM (i.e., field = U)
+                V₀[Base.setindex(indices(V₀), 1, nw)...] .*= 2  # mimic implementation of slicedim
+            else  # ebc == PDC, and gt == DUAL (i.e., field = V)
+                V₀[Base.setindex(indices(Vₛ), Nw, nw)...] .*= 2  # mimic implementation of slicedim
+            end
+        end
+
+        # Set up the off-diagonal entries.  (This is indepent of boundary condition.)
+        # The construction here guarantees the off-diagonal parts for ns = +1 and -1 are the
+        # transpose of each other, regardless of boundary condition.
+        if ns > 0
+            Iₛ = slicedim(Iₛ, nw, 1:Nw-1)
+            Jₛ = slicedim(Jₛ, nw, 1:Nw-1)
+            Vₛ = slicedim(Vₛ, nw, 1:Nw-1)
+        else  # ns < 0
+            Iₛ = slicedim(Iₛ, nw, 2:Nw)
+            Jₛ = slicedim(Jₛ, nw, 2:Nw)
+            Vₛ = slicedim(Vₛ, nw, 2:Nw)
+        end
+    end
+
+    I = [I₀[:]; Iₛ[:]]  # row indices of [diagonal; off-diagonal]
+    J = [I₀[:]; Jₛ[:]]  # column indices of [diagonal; off-diagonal]
+    V = [V₀[:]; Vₛ[:]]  # matrix entries of [diagonal, off-diagonal]
+
+    return I, J, V
+end
+
+create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+            ns::Integer,  # 1|-1 for forward|backward averaging
+            k::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
+            N::IVector3,  # size of grid
+            ebc::SVector{3,EBC},  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+            reorder::Bool=true  # true for more tightly banded matrix
+           ) =
+    create_mean(gt, ns, k, N, ones.(N.data), ones.(N.data), ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+
+
+function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+                     ns::Integer,  # 1|-1 for forward|backward averaging
+                     kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
+                     N::IVector3,  # size of grid
+                     ∆l::Tuple3{AbsVec{<:Number}},  # line segments to multiply with; vectors of length N
+                     ∆l′::Tuple3{AbsVec{<:Number}},  # line segments to divide by; vectors of length N
+                     ebc::SVector{3,EBC},  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+                     reorder::Bool=true  # true for more tightly banded matrix
+                    )
+    T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
+    M = prod(N)
+
+    Itot = Vector{Int}()
+    Jtot = Vector{Int}()
+    Vtot = Vector{T}()
+
+    for nv = nXYZ  # Cartesian compotent of output vector
+        istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
+
+        nw = mod1(nv+kdiag, 3)
+        jstr, joff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (column stride, column offset)
+
+        I, J, V = create_Minfo(gt, nw, ns, N, ∆l[nw], ∆l′[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
+
+        @. I = istr * I + ioff
+        @. J = jstr * J + joff
+
+        append!(Itot, I)
+        append!(Jtot, J)
+        append!(Vtot, V)
+    end
+
+    return sparse(Itot, Jtot, Vtot, 3M, 3M)
+end
+
+function create_param3dmat(param3d::AbsArr{CFloat,5},
+                           kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
+                           N::IVector3;  # size of grid
+                           reorder::Bool=true  # true for more tightly banded matrix
+                          )
+    # Note that param3d's i, j, k indices run from 1 to N+1 rather than to N.
+    M = prod(N)
+    I = Vector{Int}(3M)
+    J = Vector{Int}(3M)
+    V = Vector{CFloat}(3M)
+    n = 0
+    for nv = nXYZ  # row index of tensor
+        istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
+        nw = mod1(nv+kdiag, 3)
+        jstr, joff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (column stride, column offset)
+        for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
+            n += 1
+            ind = sub2ind(N.data, i, j, k)  # linear index of Yee's cell
+
+            I[n] = istr * ind + ioff
+            J[n] = jstr * ind + joff
+            V[n] = param3d[i,j,k,nv,nw]
+        end
+    end
+    # for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
+    #     ind = sub2ind(N.data, i, j, k)  # linear index of Yee's cell
+    #     for nv = nXYZ  # row index of tensor
+    #         n += 1
+    #         istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
+    #         nw = mod1(nv+kdiag, 3)
+    #         jstr, joff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (column stride, column offset)
+    #
+    #         I[n] = istr * ind + ioff
+    #         J[n] = jstr * ind + joff
+    #         V[n] = param3d[i,j,k,nv,nw]
+    #     end
+    # end
+
+    return sparse(I, J, V, 3M, 3M)
+end
+
+param3d2mat(param3d::AbsArr{CFloat,5},
+            gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+            N::AbsVec{<:Integer},  # size of grid
+            ∆l::Tuple3{AbsVec{<:Number}},  # line segments to multiply with; vectors of length N
+            ∆l′::Tuple3{AbsVec{<:Number}},  # line segments to divide by; vectors of length N
+            ebc::AbsVec{EBC},  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::AbsVec{<:Number}=ones(length(N));  # BLOCH phase factor in x, y, z
+            reorder::Bool=true  # true for more tightly banded matrix
+           ) =
+    (K = length(N); param3d2mat(param3d, gt, SVector{K}(N), ∆l, ∆l′, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
+
+function param3d2mat(param3d::AbsArr{CFloat,5},
+                     gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+                     N::IVector3,  # size of grid
+                     ∆l::Tuple3{AbsVec{<:Number}},  # line segments to multiply with; vectors of length N
+                     ∆l′::Tuple3{AbsVec{<:Number}},  # line segments to divide by; vectors of length N
+                     ebc::SVector{3,EBC},  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+                     reorder::Bool=true  # true for more tightly banded matrix
+                    )
+    M = prod(N)
+    ns_in, ns_out = gt==PRIM ? (-1,1) : (1,-1)
+    Mout = create_mean(gt, ns_out, 0, N, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+
+    p3dmat = spzeros(CFloat, 3M, 3M)
+    for kdiag = (0,1,-1)  # (diagonal, superdiagonal, subdiagonal)
+        Min = create_mean(gt, ns_in, kdiag, N, ∆l, ∆l′, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+        p3dmatₖ = create_param3dmat(param3d, kdiag, N, reorder=reorder)
+        p3dmat += Mout * p3dmatₖ * Min
+    end
+
+    return p3dmat
+end
