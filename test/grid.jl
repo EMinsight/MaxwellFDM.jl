@@ -1,5 +1,5 @@
 # The following without the qualifier MaxwellFD3D cannot find the Grid constructor of MaxwellFD3D.
-# Grid(axis::Axis, unit::PhysUnit, lprim::AbsVec{<:Real}, Npml::NTuple{2,Int}, ebc::EBC) =
+# Grid(axis::Axis, unit::PhysUnit, lprim::AbsVecReal, Npml::NTuple{2,Int}, ebc::EBC) =
 #     MaxwellFD3D.Grid((axis,), unit, (lprim,), ([Npml[nN]], [Npml[nP]]), (ebc,))
 
 # Calculate ghost points from l, L, and ebc.
@@ -121,8 +121,8 @@ end  # @testset "Grid{1}, dual boundary"
     boundstype = [PRIM, PRIM, PRIM]
     M = M .- (boundstype.==DUAL)
 
-    L = SVector(sum.(∆ldual))  # FVector3
-    l₀ = L ./ 2  # FVector3
+    L = SVector(sum.(∆ldual))  # SVec3Float
+    l₀ = L ./ 2  # SVec3Float
     lprim = map(x->[0; cumsum(x)], ∆ldual) .- (l₀...)  # tuple of vectors
 
     g3 = Grid(unit, lprim, Npml, ebc)

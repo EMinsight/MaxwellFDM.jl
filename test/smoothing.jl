@@ -43,7 +43,7 @@ end  # @testset "sort8!"
 
     # Add objects.
     ovec = Object3[]
-    paramset = (CMatrix3[], CMatrix3[])
+    paramset = (SMat3Complex[], SMat3Complex[])
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
@@ -149,7 +149,7 @@ end
 
     # Add objects.
     ovec = Object3[]
-    paramset = (CMatrix3[], CMatrix3[])
+    paramset = (SMat3Complex[], SMat3Complex[])
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.

@@ -38,20 +38,20 @@ struct Grid{K}
 end
 
 # Constructor for 1D grid: arguments don't have to be tuples.
-Grid(axis::Axis, unit::PhysUnit, lprim::AbsVec{<:Real}, Npml::Tuple2{<:Integer}, ebc::EBC) =
+Grid(axis::Axis, unit::PhysUnit, lprim::AbsVecReal, Npml::Tuple2{<:Integer}, ebc::EBC) =
     Grid(SVector(axis), unit, (lprim,), ([Npml[nN]], [Npml[nP]]), SVector(ebc))
 
 # Constructor for 3D grid: axis is always XYZ.
-Grid(unit::PhysUnit, lprim::Tuple3{AbsVec{<:Real}}, Npml::Tuple2{AbsVec{<:Integer}}, ebc::AbsVec{EBC}) =
+Grid(unit::PhysUnit, lprim::Tuple3{AbsVecReal}, Npml::Tuple2{AbsVecInteger}, ebc::AbsVec{EBC}) =
     Grid(XYZ, unit, lprim, Npml, ebc)
 
 # Constructor taking non-static vectors.
-Grid(axis::AbsVec{Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVec{<:Real}},
-     Npml::Tuple2{AbsVec{<:Integer}}, ebc::AbsVec{EBC}) where {K} =
+Grid(axis::AbsVec{Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal},
+     Npml::Tuple2{AbsVecInteger}, ebc::AbsVec{EBC}) where {K} =
      Grid(SVector{K}(axis), unit, lprim, SVector{K}.(Npml), SVector{K}(ebc))
 
 # Constructor calling the inner constructor.
-function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVec{<:Real}},
+function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal},
               Npml::Tuple2{SVector{K,<:Integer}}, ebc::SVector{K,EBC}) where {K}
     all(issorted.(lprim)) || throw(ArgumentError("all entry vectors of lprim = $(lprim) must be sorted."))
 
@@ -112,9 +112,9 @@ function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVec{<:Re
 
     # Construct an instance of Ghosted.
     τind = (map(n->collect(1:n+1), N.data), map(n->collect(1:n+1), N.data))  # Tuple23{Vector{Int}}
-    τindg_prim = .!bcb.*N + 1 - bcd  # IVector3: N+1 for PPC; N for PDC; 1 for BLOCH
-    τindg_dual = bcb.*N + 1 + bcp  # IVector3: 2 for PPC; 1 for PDC; N+1 for BLOCH
-    τindg = (τindg_prim, τindg_dual)  # Tuple2{IVector3}
+    τindg_prim = .!bcb.*N + 1 - bcd  # SVec3Int: N+1 for PPC; N for PDC; 1 for BLOCH
+    τindg_dual = bcb.*N + 1 + bcp  # SVec3Int: 2 for PPC; 1 for PDC; N+1 for BLOCH
+    τindg = (τindg_prim, τindg_dual)  # Tuple2{SVec3Int}
 
     τl = (deepcopy(lprim), deepcopy(ldual))
 

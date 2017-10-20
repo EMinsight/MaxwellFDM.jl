@@ -47,20 +47,16 @@ Z = spzeros(M,M)
 
 @testset "create_curl for U" begin
     # Construct Cu for a uniform grid and BLOCH boundaries.
-    ∆ldual = ones.(N.data)
-    ebc =  @SVector fill(BLOCH, 3)
-    e⁻ⁱᵏᴸ = @SVector ones(3)
-
-    Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cu = create_curl(PRIM, N, reorder=false)
 
     # Examine the overall coefficients.
     @test all(any(Cu.≠0, 1))  # no zero columns
     @test all(any(Cu.≠0, 2))  # no zero rows
     @test all(sum(Cu, 2) .== 0)  # all row sums are zero, because Cu * ones(M) = 0
 
-    ∂x = (nw = 1; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
-    ∂y = (nw = 2; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
-    ∂z = (nw = 3; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂x = (nw = 1; create_∂(nw, 1, N))
+    ∂y = (nw = 2; create_∂(nw, 1, N))
+    ∂z = (nw = 3; create_∂(nw, 1, N))
     @test Cu == [Z -∂z ∂y;
                  ∂z Z -∂x;
                  -∂y ∂x Z]
@@ -87,20 +83,16 @@ end  # @testset "create_curl for U"
 
 @testset "create_curl for V" begin
     # Construct Cv for a uniform grid and BLOCH boundaries.
-    ∆lprim = ones.(N.data)
-    ebc =  @SVector fill(BLOCH, 3)
-    e⁻ⁱᵏᴸ = @SVector ones(3)
-
-    Cv = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cv = create_curl(DUAL, N, reorder=false)
 
     # Examine the overall coefficients.
     @test all(any(Cv.≠0, 1))  # no zero columns
     @test all(any(Cv.≠0, 2))  # no zero rows
     @test all(sum(Cv, 2) .== 0)  # all row sums are zero, because Cv * ones(sum(Min)) = 0
 
-    ∂x = (nw = 1; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
-    ∂y = (nw = 2; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
-    ∂z = (nw = 3; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂x = (nw = 1; create_∂(nw, -1, N))
+    ∂y = (nw = 2; create_∂(nw, -1, N))
+    ∂z = (nw = 3; create_∂(nw, -1, N))
     @test Cv == [Z -∂z ∂y;
                  ∂z Z -∂x;
                  -∂y ∂x Z]

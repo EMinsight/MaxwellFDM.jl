@@ -14,7 +14,7 @@ Base.isapprox(a::Tuple, b::Tuple; kws...) = all(p -> isapprox(p...; kws...), zip
 # include("gridgen.jl")
 # include("material.jl")
 # include("smoothing.jl")
-# include("field.jl")
-include("diff.jl")
+include("operator.jl")
+# include("pml.jl")
 
 # end  # @testset "MaxwellFD3D"

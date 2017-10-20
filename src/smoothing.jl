@@ -19,12 +19,12 @@
 export create_param3d, create_n3d, assign_param!, smooth_param!
 
 # See http://stackoverflow.com/questions/2786899/fastest-sort-of-fixed-length-6-int-array.
-@inline function swap8!(ind::AbsVec{<:Integer}, v::AbsVec, i::Integer, j::Integer)
+@inline function swap8!(ind::AbsVecInteger, v::AbsVec, i::Integer, j::Integer)
     @inbounds if v[ind[j]] < v[ind[i]]
         @inbounds ind[i], ind[j] = ind[j], ind[i]
     end
 end
-@inline function sort8!(ind::AbsVec{<:Integer}, v::AbsVec)
+@inline function sort8!(ind::AbsVecInteger, v::AbsVec)
     @simd for n = 1:8
         @inbounds ind[n] = n
     end
@@ -35,7 +35,7 @@ end
     swap8!(ind, v, 3, 5); swap8!(ind, v, 4, 6); swap8!(ind, v, 4, 5)
     return ind
 end
-@inline function countdiff(ind::AbsVec{<:Integer}, v::AbsVec)
+@inline function countdiff(ind::AbsVecInteger, v::AbsVec)
     c, nₑ = 1, 9
     @simd for n = 2:8
         @inbounds v[ind[n-1]] ≠ v[ind[n]] && (c += 1; nₑ = n)
@@ -50,10 +50,10 @@ SVector(1.,1.,-1.), SVector(-1.,1.,-1.), SVector(1.,-1.,-1.), SVector(-1.,-1.,-1
 # This function creates param3d of size N+1, but note that only the first N portion is used.
 # It is created with size N+1 to match the sizes of other matrices and hence to simplify the
 # algorithm.
-create_param3d(N::IVector3) =
+create_param3d(N::SVec3Int) =
     (s = (N+1).data; (Array{CFloat}(s..., 3, 3), Array{CFloat}(s..., 3, 3)))  # 3 = numel(Axis)
 
-create_n3d(::Type{T}, N::IVector3) where {T} =
+create_n3d(::Type{T}, N::SVec3Int) where {T} =
     (s = (N+1).data; (Array{T}.((s,s,s,s)), Array{T}.((s,s,s,s))))  # Tuple24{Array{T,3}}
 
 # Overall smoothing algorithm:
@@ -117,7 +117,7 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
                        pind3d::Tuple24{AbsArr{ParamInd,3}},  # material parameter index array to set
                        oind3d::Tuple24{AbsArr{ObjInd,3}},  # object index array to set
                        ovec::AbsArr{<:Object3},  # object vector; later object overwrites earlier.
-                       τl::Tuple23{AbsVec{<:Real}},  # field component locations transformed by boundary conditions
+                       τl::Tuple23{AbsVecReal},  # field component locations transformed by boundary conditions
                        ebc::SVector{3,EBC})
     # Circularly shift subscripts for BLOCH boundary condition.  This makes sure τl[sub[w]]
     # is always sorted for all boundary conditions.  Sorted τl is necessary to use findfirst
@@ -208,8 +208,8 @@ function assign_param_obj!(gt::GridType,  # primal field (U) or dual field (V)
     # Set the location indices of object boundaries.
     assert(all(issorted.(τlcmp)))
     bn, bp = bounds(o)  # (SVector{3}, SVector{3})
-    subn = map((l,b) -> (n = findfirst(l.≥b); n==0 ? 1 : n), τlcmp, bn)  # IVector3
-    subp = map((l,b) -> (n = findlast(l.≤b); n==0 ? length(l) : n), τlcmp, bp)  # IVector3
+    subn = map((l,b) -> (n = findfirst(l.≥b); n==0 ? 1 : n), τlcmp, bn)  # SVec3Int
+    subp = map((l,b) -> (n = findlast(l.≤b); n==0 ? length(l) : n), τlcmp, bp)  # SVec3Int
     I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVector{3,UnitRange{Int}}
 
     # Assign param to param3d.
@@ -259,10 +259,10 @@ function smooth_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
                        obj3d::Tuple24{AbsArr{<:Object3,3}},  # object array (does not change)
                        pind3d::Tuple24{AbsArr{ParamInd,3}},  # material parameter index array (does not chaneg)
                        oind3d::Tuple24{AbsArr{ObjInd,3}},  # object index array (does not change)
-                       l::Tuple23{AbsVec{<:Real}},  # location of field components
-                       l′::Tuple23{AbsVec{<:Real}},  # location of voxel corners without transformation by boundary conditions
+                       l::Tuple23{AbsVecReal},  # location of field components
+                       l′::Tuple23{AbsVecReal},  # location of voxel corners without transformation by boundary conditions
                        σ::Tuple23{AbsVec{Bool}},  # false if on symmetry boundary
-                       ∆τ′::Tuple23{AbsVec{<:Real}})  # amount of shift by BLOCH boundary conditions
+                       ∆τ′::Tuple23{AbsVecReal})  # amount of shift by BLOCH boundary conditions
     for ngt = nPD
         param3d_gt = param3d[ngt]
         gt = PD[ngt]
@@ -303,10 +303,10 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                            obj3d_cmp′::AbsArr{<:Object3,3},  # object array (does not change)
                            pind3d_cmp′::AbsArr{ParamInd,3},  # material parameter index array (does not chaneg)
                            oind3d_cmp′::AbsArr{ObjInd,3},  # object index array (does not change)
-                           lcmp::Tuple3{AbsVec{<:Real}},  # location of field components
-                           lcmp′::Tuple3{AbsVec{<:Real}},  # location of voxel corners without transformation by boundary conditions
+                           lcmp::Tuple3{AbsVecReal},  # location of field components
+                           lcmp′::Tuple3{AbsVecReal},  # location of voxel corners without transformation by boundary conditions
                            σcmp::Tuple3{AbsVec{Bool}},  # false if on symmetry boundary
-                           ∆τcmp′::Tuple3{AbsVec{<:Real}})  # amount of shift by BLOCH boundary conditions
+                           ∆τcmp′::Tuple3{AbsVecReal})  # amount of shift by BLOCH boundary conditions
     Nx, Ny, Nz = length.(lcmp)
     pind_vxl = Vector{Int}(8)  # material parameter indices inside voxel
     oind_vxl = Vector{Int}(8)  # object indices inside voxel
@@ -314,7 +314,7 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
 
     for k = 1:Nz, j = 1:Ny, i = 1:Nx
         ijk_cmp = SVector(i,j,k)
-        ijk_vxl = (ijk_cmp, ijk_cmp+1)  # Tuple2{IVector3}
+        ijk_vxl = (ijk_cmp, ijk_cmp+1)  # Tuple2{SVec3Int}
 
         # Get objects at voxel corners.
         c = 0
@@ -374,22 +374,22 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                     # the surface of a single object, so we have to estimate nout from the
                     # locations of the corners occupied by the two materials.
                     param_fg, param_bg, nout, rvol =
-                        kottke_input_simple(ind_c, n_change, obj_fg, obj_bg)::Tuple{CMatrix3,CMatrix3,FVector3,Float}
+                        kottke_input_simple(ind_c, n_change, obj_fg, obj_bg)::Tuple{SMat3Complex,SMat3Complex,SVec3Float,Float}
                 else  # Nobj_vxl == 2 (because Nobj_vxl ≠ 1 when Nparam_vxl == 2)
                     # When Nparam_vxl == Nobj_vxl == 2, different material parameters
                     # must correspond to different objects.
-                    x₀ = t_ind(lcmp, ijk_cmp)  # FVector3: location of voxel center
+                    x₀ = t_ind(lcmp, ijk_cmp)  # SVec3Float: location of voxel center
                     σvxl = t_ind(σcmp, ijk_cmp)
                     lvxl = t_ind(lcmp′, (ijk_cmp, ijk_cmp+1))
-                    ∆fg = t_ind(∆τcmp′, ijk_cmp + SVector(sub_fg) - 1)  # FVector3; nonzero if corner ind_fg is outside periodic boundary
+                    ∆fg = t_ind(∆τcmp′, ijk_cmp + SVector(sub_fg) - 1)  # SVec3Float; nonzero if corner ind_fg is outside periodic boundary
                     param_fg, param_bg, nout, rvol =
-                        kottke_input_accurate(x₀, σvxl, lvxl, ∆fg, obj_fg, obj_bg, gt)::Tuple{CMatrix3,CMatrix3,FVector3,Float}
+                        kottke_input_accurate(x₀, σvxl, lvxl, ∆fg, obj_fg, obj_bg, gt)::Tuple{SMat3Complex,SMat3Complex,SVec3Float,Float}
                 end  # if Nobj_vxl
 
                 if iszero(nout)  # includes case of Nparam_vxl ≥ 3
                     # Give up Kottke's subpixel smoothing and take simple averaging.
-                    param_cmp = gt==PRIM ? amean_param(obj3d_cmp′, ijk_vxl, gt)::CMatrix3 :
-                                           hmean_param(obj3d_cmp′, ijk_vxl, gt)::CMatrix3
+                    param_cmp = gt==PRIM ? amean_param(obj3d_cmp′, ijk_vxl, gt)::SMat3Complex :
+                                           hmean_param(obj3d_cmp′, ijk_vxl, gt)::SMat3Complex
                 else
                     # Perform Kottke's subpixel smoothing.
                     param_cmp = kottke_avg_param(param_fg, param_bg, nout, rvol)
@@ -409,8 +409,8 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
     return nothing
 end
 
-function amean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{IVector3}, gt::GridType)
-    p = CMatrix3(0,0,0, 0,0,0, 0,0,0)
+function amean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{SVec3Int}, gt::GridType)
+    p = SMat3Complex(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
         o = obj3d_cmp′[ic,jc,kc]
         p += matparam(o.data.mat::EncodedMaterial, gt)
@@ -418,8 +418,8 @@ function amean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{IVector3
     return p / length(ovec)
 end
 
-function hmean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{IVector3}, gt::GridType)
-    p = CMatrix3(0,0,0, 0,0,0, 0,0,0)
+function hmean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{SVec3Int}, gt::GridType)
+    p = SMat3Complex(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
         o = obj3d_cmp′[ic,jc,kc]
         p += inv(matparam(o.data.mat::EncodedMaterial, gt))
@@ -427,7 +427,7 @@ function hmean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{IVector3
     return inv(p / length(ovec))
 end
 
-function kottke_input_simple(ind_c::AbsVec{<:Integer}, n_change::Integer, obj_fg::Object3, obj_bg::Object3, gt::GridType)
+function kottke_input_simple(ind_c::AbsVecInteger, n_change::Integer, obj_fg::Object3, obj_bg::Object3, gt::GridType)
     param_fg = matparam(obj_fg, gt)  # foreground material
     param_bg = matparam(obj_bg, gt)  # background material
 
@@ -440,7 +440,7 @@ function kottke_input_simple(ind_c::AbsVec{<:Integer}, n_change::Integer, obj_fg
     return param_fg, param_bg, nout, rvol
 end
 
-function kottke_input_accurate(x₀::FVector3, σvxl::SVector{3,Bool}, lvxl::Tuple2{FVector3}, ∆fg::FVector3, obj_fg::Object3, obj_bg::Object3, gt::GridType)
+function kottke_input_accurate(x₀::SVec3Float, σvxl::SVector{3,Bool}, lvxl::Tuple2{SVec3Float}, ∆fg::SVec3Float, obj_fg::Object3, obj_bg::Object3, gt::GridType)
     param_fg, param_bg = matparam(obj_fg, gt), matparam(obj_bg, gt)
 
     r₀, nout = surfpt_nearby(x₀ + ∆fg, obj_fg)

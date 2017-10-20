@@ -23,7 +23,7 @@ function movingmin(l::AbsVec{T}) where {T<:Number}
     return lmov
 end
 
-function consolidate_similar!(l::AbsVec{<:Number}, L::Number)
+function consolidate_similar!(l::AbsVecNumber, L::Number)
     # Consolidate approximately equal points.  Assume l is sorted.
 
     # Original code:
@@ -45,7 +45,7 @@ function consolidate_similar!(l::AbsVec{<:Number}, L::Number)
     end
 end
 
-function findsim(l1::AbsVec{<:Number}, l2::AbsVec{<:Number}, L::Number)
+function findsim(l1::AbsVecNumber, l2::AbsVecNumber, L::Number)
     ind = Int[]
     for i = 1:length(l1)
         v1 = l1[i]
@@ -62,8 +62,8 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
                         domaintype::GridType,
                         intvprim::AbsVec{ClosedInterval},  # object boundaries to fit to primal grid planes; does not change
                         intvdual::AbsVec{ClosedInterval},  # object boundaries to fit to dual grid planes; does not change
-                        lprim₀::AbsVec{<:Real},  # default points to take as primal grid planes; copied internally
-                        ldual₀::AbsVec{<:Real})  # default points to take as dual grid planes; copied internally
+                        lprim₀::AbsVecReal,  # default points to take as primal grid planes; copied internally
+                        ldual₀::AbsVecReal)  # default points to take as dual grid planes; copied internally
 
     # (length(Lpml)≠2 || any(Lpml.<0)) && throw(ArgumentError("Lpml = $Lpml must be length-2 and nonnegative."))
     # sum(Lpml) > L_(domain) && throw(ArgumentError("sum(Lpml) = $(sum(Lpml)) must be ≤ L_(domain) = $(L_(domain))."))
@@ -245,7 +245,7 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
     return sublprim
 end
 
-function findfirst_stiff_∆∆l(∆l::AbsVec{<:Real}, rt::Real)
+function findfirst_stiff_∆∆l(∆l::AbsVecReal, rt::Real)
     n = length(∆l)
     n < 2 && throw(ArgumentError("∆l = $∆l must be length-2 or longer."))
 
@@ -258,11 +258,11 @@ function findfirst_stiff_∆∆l(∆l::AbsVec{<:Real}, rt::Real)
     return 0
 end
 
-function issmooth(∆l::AbsVec{<:Real}, rt::Real)
+function issmooth(∆l::AbsVecReal, rt::Real)
     return findfirst_stiff_∆∆l(∆l, rt) == 0
 end
 
-function fill_constant(∆lout::Real, gap::AbsVec{<:Real}, ∆lt::Real, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
+function fill_constant(∆lout::Real, gap::AbsVecReal, ∆lt::Real, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
     # Fill the gap with constant ∆l close to ∆lt.
 
     # ∆lout: ∆l outside gap
@@ -293,7 +293,7 @@ function fill_constant(∆lout::Real, gap::AbsVec{<:Real}, ∆lt::Real, rt::Real
     return filler
 end
 
-function fill_geometric_sym(∆lsym::Real, gap::AbsVec{<:Real}, ∆lt::Real, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
+function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
     # Generate a filler subgrid whose grid node separations increases geometrically
     # from both ends.  The target ∆l must be greater than or equal to ∆ln, which is before
     # the gap, and ∆lp, which is after the gap, and ∆ln == ∆lp.
@@ -421,7 +421,7 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVec{<:Real}, ∆lt::Real, rt:
     return filler
 end
 
-function fill_geometric(∆ln::Real, gap::AbsVec{<:Real}, ∆lt::Real, ∆lp::Real, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
+function fill_geometric(∆ln::Real, gap::AbsVecReal, ∆lt::Real, ∆lp::Real, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
     # Generate a filler subgrid whose grid vertex separations increases
     # geometrically from both ends.
 
@@ -496,7 +496,7 @@ julia> sublprim = [[0., 0.5], [1.], [10., 11., 12], [1.5], [20.5, 21.], [2.], [3
 julia> lprim = comp_lprim1d(sublprim);
 ```
 """
-function comp_lprim1d(sublprim::AbsVec{<:AbsVec{<:Real}}, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
+function comp_lprim1d(sublprim::AbsVec{<:AbsVecReal}, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
     # Check inputs.
     nentry = length(sublprim)
     iseven(nentry) && throw(ArgumentError("sublprim = $sublprim must have odd number of entries."))
@@ -559,8 +559,8 @@ function gen_lprim1d(domain::OpenInterval,
                      domaintype::GridType,
                      intvprim::AbsVec{ClosedInterval},
                      intvdual::AbsVec{ClosedInterval},
-                     lprim0::AbsVec{<:Real},
-                     ldual0::AbsVec{<:Real},
+                     lprim0::AbsVecReal,
+                     ldual0::AbsVecReal,
                      rt::Real=R_TARGET_DEFAULT,
                      rmax::Real=R_MAX_DEFAULT)
     # intvprim = unique(intvprim)
@@ -580,8 +580,8 @@ end
 function gen_lprim(domain::Box{N},
                    domaintype::NTuple{N,GridType},
                    sprim::AbsVec{<:Shape{N}},
-                   lprim0::NTuple{N,AbsVec{<:Real}}=ntuple(n->Float[],Val{N}),
-                   ldual0::NTuple{N,AbsVec{<:Real}}=ntuple(n->Float[],Val{N}),
+                   lprim0::NTuple{N,AbsVecReal}=ntuple(n->Float[],Val{N}),
+                   ldual0::NTuple{N,AbsVecReal}=ntuple(n->Float[],Val{N}),
                    rt::Real=R_TARGET_DEFAULT,
                    rmax::Real=R_MAX_DEFAULT) where {N}
     lprim = [gen_lprim1d(OpenInterval(domain,w), domaintype[w], (s->ClosedInterval(s,w)).(sprim),
@@ -593,8 +593,8 @@ end
 # function gen_lprim3d(domain::Interval3D,
 #                      domaintype::Tuple3{GridType},
 #                      intvprim::AbsVec{Interval3D},
-#                      lprim0::Tuple3{AbsVec{<:Real}},
-#                      ldual0::Tuple3{AbsVec{<:Real}},
+#                      lprim0::Tuple3{AbsVecReal},
+#                      ldual0::Tuple3{AbsVecReal},
 #                      rt::Real=R_TARGET_DEFAULT,
 #                      rmax::Real=R_MAX_DEFAULT)
 #     xprim = genlprim1d(domain.comp[nX], domaintype[nX], (i->i.comp[nX]).(intvprim), lprim0[nX], ldual[nX])

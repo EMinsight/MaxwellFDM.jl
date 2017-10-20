@@ -134,7 +134,7 @@ end  # @testset "Object"
 
 @testset "Object Vector" begin
     ovec = Object3[]
-    paramset = (CMatrix3[], CMatrix3[])
+    paramset = (SMat3Complex[], SMat3Complex[])
     vac = Material("vacuum")
     Si = Material("Si", ε = 12)
 

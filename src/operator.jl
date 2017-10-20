@@ -4,7 +4,7 @@ export create_∂, create_curl, create_m, create_mean, create_param3dmat, param3
 create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
          N::SVector{K,Int},  # size of grid
-         ∆w::AbsVec{<:Number},  # spatial discretization; vector of length N[nw]
+         ∆w::AbsVecNumber,  # spatial discretization; vector of length N[nw]
          ebc::EBC=BLOCH,  # boundary condition in w-direction
          e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
         ) where {K} =
@@ -46,7 +46,7 @@ create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
 function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
                       ns::Integer,  # 1|-1 for forward|backward difference
                       N::SVector{K,Int},  # size of grid
-                      ∆w::AbsVec{<:Number},  # spatial discretization; vector of length N[nw]
+                      ∆w::AbsVecNumber,  # spatial discretization; vector of length N[nw]
                       ebc::EBC,  # boundary condition in w-direction
                       e⁻ⁱᵏᴸ::Number  # BLOCH phase factor
                      ) where {K}
@@ -99,12 +99,11 @@ end
 
 ## Discrete curl ##
 create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
-            N::AbsVec{<:Integer},  # size of grid
-            ∆l::Tuple3{AbsVec{<:Number}},  # ∆l[w]: distances between grid planes in x-direction
-            ebc::AbsVec{EBC},  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::AbsVec{<:Number}=ones(length(N));  # BLOCH phase factor in x, y, z
-            reorder::Bool=true  # true for more tightly banded matrix
-           ) =
+            N::AbsVecInteger,  # size of grid
+            ∆l::Tuple3{AbsVecNumber}=ones.((N...)),  # ∆l[w]: distances between grid planes in x-direction
+            ebc::AbsVec{EBC}=fill(BLOCH,length(N)),  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # BLOCH phase factor in x, y, z
+            reorder::Bool=true) =  # true for more tightly banded matrix
     (K = length(N); create_curl(gt, SVector{K}(N), ∆l, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 
@@ -115,12 +114,11 @@ create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
 # and create a sparse matrix at once.  This will create the curl matrix twice as fast.  I
 # can even pre-permutate the collection of r's, c's, v's to create a permuted sparse matrix.
 function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
-                     N::IVector3,  # size of grid
-                     ∆l::Tuple3{AbsVec{<:Number}},  # ∆l[w]: distances between grid planes in x-direction
+                     N::SVec3Int,  # size of grid
+                     ∆l::Tuple3{AbsVecNumber},  # ∆l[w]: distances between grid planes in x-direction
                      ebc::SVector{3,EBC},  # boundary conditions in x, y, z
                      e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
-                     reorder::Bool=true  # true for more tightly banded matrix
-                    )
+                     reorder::Bool=true)  # true for more tightly banded matrix
     ns = gt==PRIM ? 1 : -1
     T = promote_type(eltype.(∆l)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
@@ -172,8 +170,8 @@ create_m(gt::GridType,  # PRIM|DUAL for primal|dual field
          nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
          N::SVector{K,Int},  # size of grid
-         ∆w::AbsVec{<:Number},  # line segments to multiply with; vector of length N[nw]
-         ∆w′::AbsVec{<:Number},  # line segments to divide by; vector of length N[nw]
+         ∆w::AbsVecNumber,  # line segments to multiply with; vector of length N[nw]
+         ∆w′::AbsVecNumber,  # line segments to divide by; vector of length N[nw]
          ebc::EBC=BLOCH,  # boundary condition in w-direction
          e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
         ) where {K} =
@@ -194,8 +192,8 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
                       nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
                       ns::Integer,  # 1|-1 for forward|backward averaging
                       N::SVector{K,Int},  # size of grid
-                      ∆w::AbsVec{<:Number},  # line segments to multiply with; vector of length N[nw]
-                      ∆w′::AbsVec{<:Number},  # line segments to divide by; vector of length N[nw]
+                      ∆w::AbsVecNumber,  # line segments to multiply with; vector of length N[nw]
+                      ∆w′::AbsVecNumber,  # line segments to divide by; vector of length N[nw]
                       ebc::EBC,  # boundary condition in w-direction
                       e⁻ⁱᵏᴸ::Number  # BLOCH phase factor
                      ) where {K}
@@ -259,24 +257,22 @@ end
 create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
             ns::Integer,  # 1|-1 for forward|backward averaging
             k::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
-            N::IVector3,  # size of grid
+            N::SVec3Int,  # size of grid
             ebc::SVector{3,EBC},  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
-            reorder::Bool=true  # true for more tightly banded matrix
-           ) =
+            reorder::Bool=true) =  # true for more tightly banded matrix
     create_mean(gt, ns, k, N, ones.(N.data), ones.(N.data), ebc, e⁻ⁱᵏᴸ, reorder=reorder)
 
 
 function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
                      ns::Integer,  # 1|-1 for forward|backward averaging
                      kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
-                     N::IVector3,  # size of grid
-                     ∆l::Tuple3{AbsVec{<:Number}},  # line segments to multiply with; vectors of length N
-                     ∆l′::Tuple3{AbsVec{<:Number}},  # line segments to divide by; vectors of length N
+                     N::SVec3Int,  # size of grid
+                     ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
+                     ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
                      ebc::SVector{3,EBC},  # boundary conditions in x, y, z
                      e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
-                     reorder::Bool=true  # true for more tightly banded matrix
-                    )
+                     reorder::Bool=true)  # true for more tightly banded matrix
     T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
 
@@ -305,9 +301,8 @@ end
 
 function create_param3dmat(param3d::AbsArr{CFloat,5},
                            kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
-                           N::IVector3;  # size of grid
-                           reorder::Bool=true  # true for more tightly banded matrix
-                          )
+                           N::SVec3Int;  # size of grid
+                           reorder::Bool=true)  # true for more tightly banded matrix
     # Note that param3d's i, j, k indices run from 1 to N+1 rather than to N.
     M = prod(N)
     I = Vector{Int}(3M)
@@ -346,24 +341,22 @@ end
 
 param3d2mat(param3d::AbsArr{CFloat,5},
             gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
-            N::AbsVec{<:Integer},  # size of grid
-            ∆l::Tuple3{AbsVec{<:Number}},  # line segments to multiply with; vectors of length N
-            ∆l′::Tuple3{AbsVec{<:Number}},  # line segments to divide by; vectors of length N
+            N::AbsVecInteger,  # size of grid
+            ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
+            ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
             ebc::AbsVec{EBC},  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::AbsVec{<:Number}=ones(length(N));  # BLOCH phase factor in x, y, z
-            reorder::Bool=true  # true for more tightly banded matrix
-           ) =
+            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # BLOCH phase factor in x, y, z
+            reorder::Bool=true) =  # true for more tightly banded matrix
     (K = length(N); param3d2mat(param3d, gt, SVector{K}(N), ∆l, ∆l′, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 function param3d2mat(param3d::AbsArr{CFloat,5},
                      gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
-                     N::IVector3,  # size of grid
-                     ∆l::Tuple3{AbsVec{<:Number}},  # line segments to multiply with; vectors of length N
-                     ∆l′::Tuple3{AbsVec{<:Number}},  # line segments to divide by; vectors of length N
+                     N::SVec3Int,  # size of grid
+                     ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
+                     ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
                      ebc::SVector{3,EBC},  # boundary conditions in x, y, z
                      e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
-                     reorder::Bool=true  # true for more tightly banded matrix
-                    )
+                     reorder::Bool=true)  # true for more tightly banded matrix
     M = prod(N)
     ns_in, ns_out = gt==PRIM ? (-1,1) : (1,-1)
     Mout = create_mean(gt, ns_out, 0, N, ebc, e⁻ⁱᵏᴸ, reorder=reorder)

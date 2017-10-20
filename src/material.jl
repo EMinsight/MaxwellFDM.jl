@@ -2,14 +2,14 @@ export Material, EncodedMaterial
 export matparam, kottke_avg_param
 import Base:string
 
-tensorize(x::Number) = tensorize(CVector3(x,x,x))
-tensorize(v::AbsVec{<:Number}) = diagm(CVector3(v))
-tensorize(m::AbsMat{<:Number}) = CMatrix3(m)
+tensorize(x::Number) = tensorize(SVec3Complex(x,x,x))
+tensorize(v::AbsVecNumber) = diagm(SVec3Complex(v))
+tensorize(m::AbsMatNumber) = SMat3Complex(m)
 
 struct Material
     name::String
-    ε::CMatrix3
-    μ::CMatrix3
+    ε::SMat3Complex
+    μ::SMat3Complex
 end
 Material(name::String; ε::MatParam=1, μ::MatParam=1) = Material(name, tensorize(ε), tensorize(μ))
 
@@ -17,7 +17,7 @@ string(m::Material) = m.name
 
 struct EncodedMaterial
     name::String
-    param::Tuple2{CMatrix3}  # (material parameter interacting with primal field U, material parameter interacting with dual field V)
+    param::Tuple2{SMat3Complex}  # (material parameter interacting with primal field U, material parameter interacting with dual field V)
 end
 EncodedMaterial(ge::GridType, m::Material) = ge==PRIM ? EncodedMaterial(m.name, (m.ε,m.μ)) :
                                                         EncodedMaterial(m.name, (m.μ,m.ε))
@@ -29,7 +29,7 @@ matparam(em::EncodedMaterial, gt::GridType) = em.param[Int(gt)]
 # the paper by Kottke, Farjadpour, Johnson entitled "Perturbation theory for anisotropic
 # dielectric interfaces, and application to subpixel smoothing of discretized numerical
 # methods", Physical Review E 77 (2008): 036611.
-function kottke_avg_param(param1::CMatrix3, param2::CMatrix3, n12::FVector3, rvol1::Real)
+function kottke_avg_param(param1::SMat3Complex, param2::SMat3Complex, n12::SVec3Float, rvol1::Real)
     n = normalize(n12)
 
     # Pick a vector that is not along n.
@@ -58,7 +58,7 @@ end
 function τ_trans(ε)
     ε₁₁, ε₂₁, ε₃₁, ε₁₂, ε₂₂, ε₃₂, ε₁₃, ε₂₃, ε₃₃ = ε
 
-    return CMatrix3(
+    return SMat3Complex(
         -1/ε₁₁, ε₂₁/ε₁₁, ε₃₁/ε₁₁,
         ε₁₂/ε₁₁, ε₂₂ - ε₂₁*ε₁₂/ε₁₁, ε₃₂ - ε₃₁*ε₁₂/ε₁₁,
         ε₁₃/ε₁₁, ε₂₃ - ε₂₁*ε₁₃/ε₁₁, ε₃₃ - ε₃₁*ε₁₃/ε₁₁
@@ -76,7 +76,7 @@ end
 function τ⁻¹_trans(τ)
     τ₁₁, τ₂₁, τ₃₁, τ₁₂, τ₂₂, τ₃₂, τ₁₃, τ₂₃, τ₃₃ = τ
 
-    return CMatrix3(
+    return SMat3Complex(
         -1/τ₁₁, -τ₂₁/τ₁₁, -τ₃₁/τ₁₁,
         -τ₁₂/τ₁₁, τ₂₂ - τ₂₁*τ₁₂/τ₁₁, τ₃₂ - τ₃₁*τ₁₂/τ₁₁,
         -τ₁₃/τ₁₁, τ₂₃ - τ₂₁*τ₁₃/τ₁₁, τ₃₃ - τ₃₁*τ₁₃/τ₁₁

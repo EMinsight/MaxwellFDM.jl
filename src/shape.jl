@@ -52,7 +52,7 @@ paramind(o::Object{K}, gt::GridType) where {K} = (auxdata(o)::AuxData{K}).pind[I
 objind(o::Object) = auxdata(o).oind
 
 # inbounds_(lo::Object) = (b = bounds(s); b[nN] .≤)
-function add!(ovec::AbsVec{<:Object{K}}, paramvec::Tuple2{AbsVec{CMatrix3}}, os::Object{K}...) where {K}
+function add!(ovec::AbsVec{<:Object{K}}, paramvec::Tuple2{AbsVec{SMat3Complex}}, os::Object{K}...) where {K}
     for o = os
         add!(ovec, paramvec, o)
     end
@@ -62,7 +62,7 @@ end
 # When I put an periodic array of an object, consider assigning the same object index to the
 # periodized objects.  That way, I can treat two of objects over a periodic boundary as the
 # same object.
-function add!(ovec::AbsVec{<:Object{K}}, paramvec::Tuple2{AbsVec{CMatrix3}}, o::Object{K}) where {K}
+function add!(ovec::AbsVec{<:Object{K}}, paramvec::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
     # o must be filled with AuxData already.
     isdefined(auxdata(o), :mat) || throw(ArgumentError("o = $o must be filled with material by setmat!() before added to ovec."))
 
