@@ -151,6 +151,9 @@ function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
 end
 
 ## Field-averaging operators ##
+# This creates the averaging operator for a single Cartesian component.  For the operator
+# for all three Cartesian components, use create_mean.
+#
 # Construction of these operators are similar to that of difference operators.  However,
 # unlike the difference operators that are primarilly used for curl and hence differentiates
 # the fields along the direction normal to the fields, the field-averaging operators average
@@ -254,14 +257,16 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     return I, J, V
 end
 
+# Creates the field-averaging operator for all three Cartegian components.  Need to specify
+# which of the diagonal, superdiagonal, subdiagonal of param3d this operator will work with.
 create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
             ns::Integer,  # 1|-1 for forward|backward averaging
-            k::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
+            kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
             N::SVec3Int,  # size of grid
             ebc::SVector{3,EBC},  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
-    create_mean(gt, ns, k, N, ones.(N.data), ones.(N.data), ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+    create_mean(gt, ns, kdiag, N, ones.(N.data), ones.(N.data), ebc, e⁻ⁱᵏᴸ, reorder=reorder)
 
 
 function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
@@ -361,8 +366,9 @@ function param3d2mat(param3d::AbsArr{CFloat,5},
     ns_in, ns_out = gt==PRIM ? (-1,1) : (1,-1)
     Mout = create_mean(gt, ns_out, 0, N, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
 
-    p3dmat = spzeros(CFloat, 3M, 3M)
-    for kdiag = (0,1,-1)  # (diagonal, superdiagonal, subdiagonal)
+    kdiag = 0
+    p3dmat = create_param3dmat(param3d, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
+    for kdiag = (1,-1)  # (superdiagonal, subdiagonal) components of ε tensor
         Min = create_mean(gt, ns_in, kdiag, N, ∆l, ∆l′, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
         p3dmatₖ = create_param3dmat(param3d, kdiag, N, reorder=reorder)
         p3dmat += Mout * p3dmatₖ * Min
