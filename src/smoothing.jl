@@ -25,14 +25,18 @@ export create_param3d, create_n3d, assign_param!, smooth_param!
     end
 end
 @inline function sort8!(ind::AbsVecInteger, v::AbsVec)
+    # Initialize ind.
     @simd for n = 1:8
         @inbounds ind[n] = n
     end
+
+    # Sort ind.
     swap8!(ind, v, 1, 2); swap8!(ind, v, 3, 4); swap8!(ind, v, 1, 3); swap8!(ind, v, 2, 4);
     swap8!(ind, v, 2, 3); swap8!(ind, v, 5, 6); swap8!(ind, v, 7, 8); swap8!(ind, v, 5, 7);
     swap8!(ind, v, 6, 8); swap8!(ind, v, 6, 7); swap8!(ind, v, 1, 5); swap8!(ind, v, 2, 6);
     swap8!(ind, v, 2, 5); swap8!(ind, v, 3, 7); swap8!(ind, v, 4, 8); swap8!(ind, v, 4, 7);
     swap8!(ind, v, 3, 5); swap8!(ind, v, 4, 6); swap8!(ind, v, 4, 5)
+
     return ind
 end
 @inline function countdiff(ind::AbsVecInteger, v::AbsVec)
@@ -58,13 +62,14 @@ create_n3d(::Type{T}, N::SVec3Int) where {T} =
 
 # Overall smoothing algorithm:
 # - Assign obj, pind, oind to arrays object-by-object.  Use lcmp created considering BC (τlcmp).
-# - Using pind and oind, determine cells to perform subpixel smoothing.
-# - For a cell to perform subpixel smoothing, figure out a voxel corner occupied by the
-# foreground object.
-#     - If the corner is outside the boundary...
-#         - If the corner is outside the periodic boundary, we need to perform translation before surfpt_nearby (using ∆fg).
-#         - If the corner is outside the symmetry boundary, we need to zero the nout componnent normal to the boundary (using σvxl).
-#         - ∆fg and σvxl can be obtained simply by looking at the indices and BC.
+# - Using pind and oind, determine voxels to perform subpixel smoothing.
+# - Inside a voxel, we need to figure out the foreground object with which subpixel smoothing is performed.
+# - Iterating voxel corners, find the object that is put latest.  That object is the foreground object.
+# - Complication occurs when the voxel corner assigned with the foreground object is outside the domain boundary.
+# - In that case, to calculate nout and rvol properly, we have to move the voxel center.  (This is effectively the same as moving the foreground object.)
+#     - If the corner is outside the periodic boundary, translate the voxel center before surfpt_nearby (using ∆fg).
+#     - If the corner is outside the symmetry boundary, zero the nout componnent normal to the boundary (using σvxl).
+#     - ∆fg and σvxl can be obtained simply by looking at the indices and BC.
 
 # Notes on ghost point transformation by boundary conditions:
 #
@@ -338,30 +343,40 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
             rvol = 0.0
             if  Nparam_vxl == 2
                 # Attempt to apply Kottke's subpixel smoothing algorithm.
-                ind_fg, ind_bg = ind_c[8], ind_c[1]::Int  # indices of corners with foreground and background material parameters
-                sub_fg, sub_bg = ind2sub((2,2,2), ind_fg), ind2sub((2,2,2), ind_bg)  # subscritpts of corners ind_fg and ind_bg
-                obj_fg, obj_bg = obj3d_cmp′[t_ind(ijk_vxl, sub_fg).data...], obj3d_cmp′[t_ind(ijk_vxl, sub_bg).data...]
+                ind_c1, ind_c2 = ind_c[8], ind_c[1]::Int  # indices of corners with two material parameters
+                sub_c1, sub_c2 = ind2sub((2,2,2), ind_c1), ind2sub((2,2,2), ind_c2)  # subscritpts of corners ind_c1 and ind_c2
+                obj_c1, obj_c2 = obj3d_cmp′[t_ind(ijk_vxl, sub_c1).data...], obj3d_cmp′[t_ind(ijk_vxl, sub_c2).data...]
 
                 with2objs = true
-                oind_fg, oind_bg = oind_vxl[ind_fg], oind_vxl[ind_bg]
+                oind_c1, oind_c2 = oind_vxl[ind_c1], oind_vxl[ind_c2]
 
                 # Because the voxel has two different material parameters, it has either two
                 # objects (when each parameter is composed of a single object), or more than
                 # two objects (if either of the two parameters is composed of two or more
                 # objects).
 
-                # Check if param_fg is composed of more than one object (such that the voxel
+                # Check if param_c1 is composed of more than one object (such that the voxel
                 # has more than two objects).
-                for n = n_change:7  # n = 8 corresponds to ind_c[8] for param_fg
-                    (with2objs = oind_vxl[ind_c[n]]==oind_fg) || break
+                for n = n_change:7  # n = 8 corresponds to oind_c1 and is omitted
+                    (with2objs = oind_vxl[ind_c[n]]==oind_c1) || break
                 end
 
                 if with2objs  # single object for param_fg
-                    # Check if param_bg is composed of more than one object (such that the
+                    # Check if param_c2 is composed of more than one object (such that the
                     # voxel has more than two objects).
-                    for n = 2:n_change-1  # n = 1 corresponds ind_c[1] for param_bg
-                        (with2objs = oind_vxl[ind_c[n]]==oind_bg) || break
+                    for n = 2:n_change-1  # n = 1 corresponds oind_c2 and is omitted
+                        (with2objs = oind_vxl[ind_c[n]]==oind_c2) || break
                     end
+                end
+
+                # Find which of obj_c1 and obj_c2 are the foreground and background objects.
+                if oind_c1 > oind_c2
+                    obj_fg, obj_bg = obj_c1, obj_c2
+                    sub_fg = sub_c1
+                else
+                    assert(oind_c1≠oind_c2)
+                    obj_fg, obj_bg = obj_c2, obj_c1
+                    sub_fg = sub_c2
                 end
 
                 # Find
@@ -378,10 +393,12 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                 else  # Nobj_vxl == 2 (because Nobj_vxl ≠ 1 when Nparam_vxl == 2)
                     # When Nparam_vxl == Nobj_vxl == 2, different material parameters
                     # must correspond to different objects.
-                    x₀ = t_ind(lcmp, ijk_cmp)  # SVec3Float: location of voxel center
+                    x₀ = t_ind(lcmp, ijk_cmp)  # SVec3Float: location of center of smoothing voxel
                     σvxl = t_ind(σcmp, ijk_cmp)
                     lvxl = t_ind(lcmp′, (ijk_cmp, ijk_cmp+1))
                     ∆fg = t_ind(∆τcmp′, ijk_cmp + SVector(sub_fg) - 1)  # SVec3Float; nonzero if corner ind_fg is outside periodic boundary
+
+                    # See "Overall smoothing algorithm" above.
                     param_fg, param_bg, nout, rvol =
                         kottke_input_accurate(x₀, σvxl, lvxl, ∆fg, obj_fg, obj_bg, gt)::Tuple{SMat3Complex,SMat3Complex,SVec3Float,Float}
                 end  # if Nobj_vxl
