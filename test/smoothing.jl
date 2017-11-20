@@ -3,9 +3,9 @@
 @testset "sort8!" begin
     v = rand(8)
     ind = collect(1:8)
-    @inferred(MaxwellFD3D.sort8!(ind,v))
+    @inferred(MaxwellFDM.sort8!(ind,v))
     @test issorted(v[ind])
-    @test @inferred(MaxwellFD3D.countdiff(ind,v)) == (8,8)
+    @test @inferred(MaxwellFDM.countdiff(ind,v)) == (8,8)
 end  # @testset "sort8!"
 
 # @testset "Object" begin

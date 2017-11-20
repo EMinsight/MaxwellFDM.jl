@@ -1,1 +1,1 @@
-# MaxwellFD3D
+# MaxwellFDM

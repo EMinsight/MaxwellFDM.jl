@@ -1,4 +1,4 @@
-module MaxwellFD3D
+module MaxwellFDM
 
 using StaticArrays, GeometryPrimitives
 using DataStructures  # SortedSet in gridgen.jl
@@ -49,4 +49,4 @@ include("operator.jl")
 include("pml.jl")
 # include("equation.jl")
 
-end # module MaxwellFD3D
+end # module MaxwellFDM

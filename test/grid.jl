@@ -1,6 +1,6 @@
-# The following without the qualifier MaxwellFD3D cannot find the Grid constructor of MaxwellFD3D.
+# The following without the qualifier MaxwellFDM cannot find the Grid constructor of MaxwellFDM.
 # Grid(axis::Axis, unit::PhysUnit, lprim::AbsVecReal, Npml::NTuple{2,Int}, ebc::EBC) =
-#     MaxwellFD3D.Grid((axis,), unit, (lprim,), ([Npml[nN]], [Npml[nP]]), (ebc,))
+#     MaxwellFDM.Grid((axis,), unit, (lprim,), ([Npml[nN]], [Npml[nP]]), (ebc,))
 
 # Calculate ghost points from l, L, and ebc.
 lghost(l::NTuple{2,NTuple{K,AbstractVector{<:Real}}},  # grid point locations

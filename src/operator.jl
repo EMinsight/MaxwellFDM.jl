@@ -40,7 +40,7 @@ create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
 #
 # For the backward differce operater to be the transpose of the forward difference operator,
 # I need to create the forward difference operator such that Uₛ is zeroed.  This turns out
-# to work.  See the notes on Sep/06/2017 in RN - MaxwellFD3D.jl.nb.
+# to work.  See the notes on Sep/06/2017 in RN - MaxwellFDM.jl.nb.
 
 # Creates the w-directional difference matrix, with division by ∆w's.
 function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical

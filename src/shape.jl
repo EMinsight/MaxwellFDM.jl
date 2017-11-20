@@ -1,8 +1,8 @@
 # Below, the symbols of GeometryPrimitives such as KDTree, bounds, surfpt_nearby, normal do
 # not have to be re-defined here to be exported.  When GeometryPrimitives is imported to
-# MaxwellFD3D by "using GeometryPrimitives", the symbols of GeometryPrimitives are already
-# inside the namespace of MaxwellFD3D, so we simply need to export them to use outside
-# MaxwellFD3D without qualification.
+# MaxwellFDM by "using GeometryPrimitives", the symbols of GeometryPrimitives are already
+# inside the namespace of MaxwellFDM, so we simply need to export them to use outside
+# MaxwellFDM without qualification.
 #
 # One caveat, though.  In this file, bounds is defined for Interval, so if we simply export
 # bounds, then only this is exported.  So, when defining bounds for Interval, we have to

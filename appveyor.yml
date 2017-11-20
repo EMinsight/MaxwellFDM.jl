@@ -28,7 +28,7 @@ build_script:
 # Need to convert from shallow to complete for Pkg.clone to work
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
-      Pkg.clone(pwd(), \"MaxwellFD3D\"); Pkg.build(\"MaxwellFD3D\")"
+      Pkg.clone(pwd(), \"MaxwellFDM\"); Pkg.build(\"MaxwellFDM\")"
 
 test_script:
-  - C:\projects\julia\bin\julia -e "Pkg.test(\"MaxwellFD3D\")"
+  - C:\projects\julia\bin\julia -e "Pkg.test(\"MaxwellFDM\")"
