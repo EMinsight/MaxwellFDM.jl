@@ -1,6 +1,6 @@
 # How do we handle TF/SF?  Need a capability to do subpixel smoothing only inside some region.
 
-# I can enhance the assignment performance by constructing oid3d (not oind3d), which stores
+# I could enhance the assignment performance by constructing oid3d (not oind3d), which stores
 # unique object IDs rather than the reference itself.  This array is different from oind3d
 # in that it distinguishes objects repeated by periodic boundary condition.  Then, I can
 # retrieve objects from a map from this IDs to objects.  I could use oid3d in smoothing as
@@ -61,15 +61,16 @@ create_n3d(::Type{T}, N::SVec3Int) where {T} =
     (s = (N+1).data; (Array{T}.((s,s,s,s)), Array{T}.((s,s,s,s))))  # Tuple24{Array{T,3}}
 
 # Overall smoothing algorithm:
-# - Assign obj, pind, oind to arrays object-by-object.  Use lcmp created considering BC (τlcmp).
+# - Assign obj, pind, oind to arrays object-by-object.
+#     - For the locations of grid points to assign the objects to, use lcmp created considering BC (τlcmp).
 # - Using pind and oind, determine voxels to perform subpixel smoothing.
-# - Inside a voxel, we need to figure out the foreground object with which subpixel smoothing is performed.
-# - Iterating voxel corners, find the object that is put latest.  That object is the foreground object.
-# - Complication occurs when the voxel corner assigned with the foreground object is outside the domain boundary.
-# - In that case, to calculate nout and rvol properly, we have to move the voxel center.  (This is effectively the same as moving the foreground object.)
-#     - If the corner is outside the periodic boundary, translate the voxel center before surfpt_nearby (using ∆fg).
-#     - If the corner is outside the symmetry boundary, zero the nout componnent normal to the boundary (using σvxl).
-#     - ∆fg and σvxl can be obtained simply by looking at the indices and BC.
+# - Inside each of the voxels, figure out the foreground object with which subpixel smoothing is performed.
+#     - Iterating voxel corners, find the object that is put latest.  That object is the foreground object.
+#     - Complication occurs when the voxel corner assigned with the foreground object is outside the domain boundary.
+#         - In that case, to calculate nout and rvol properly, we have to move the voxel center.  (This is effectively the same as moving the foreground object.)
+#             - If the corner is outside the periodic boundary, translate the voxel center before surfpt_nearby (using ∆fg).
+#             - If the corner is outside the symmetry boundary, zero the nout componnent normal to the boundary (using σvxl).
+#             - ∆fg and σvxl can be obtained simply by looking at the indices and BC.
 
 # Notes on ghost point transformation by boundary conditions:
 #
@@ -110,7 +111,7 @@ create_n3d(::Type{T}, N::SVec3Int) where {T} =
 # such that we can assign objects the same way regardless of the kinds of boundary conditions.
 
 # Why do we need to set up so many arrays: param3d, obj3d, pind3d, oind3d?  In principle, it
-# is sufficien to set up only param3d and obj3d, because in the smoothing algorithm we need
+# is sufficient to set up only param3d and obj3d, because in the smoothing algorithm we need
 # to know pind and oind only inside a single voxel at a moment, and these two 2×2×2 arrays
 # can be easily constructed from the obj3d array.
 # However, retrieving pind and oind from obj3d point-by-point like this is very slow due to
