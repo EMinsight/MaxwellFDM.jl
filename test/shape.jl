@@ -5,15 +5,14 @@ const one⁻ = 1 - rtol  # slightly less than 1
 const intv1⁻ = (-one⁻, one⁻)
 
 @testset "Interval" begin
-    box = Box([0,1], [2,3])
     vac = Material("vacuum")
     ge = PRIM
     evac = EncodedMaterial(ge, vac)
-    setmat!(box, evac)
-    setmax∆l!(box, [0.1, 0.15])
-    b = bounds(box)
-    oi = OpenInterval(box, nX)
-    ci = ClosedInterval(box, nY)
+
+    box_vac = Object(Box([0,1], [2,3]), evac, [0.1, 0.15])
+    b = bounds(box_vac)
+    oi = OpenInterval(box_vac, nX)
+    ci = ClosedInterval(box_vac, nY)
 
     @test bounds(oi) == (-1,1)
     @test bounds(ci) == (-0.5, 2.5)
@@ -67,14 +66,13 @@ end
     @testset "Box" begin
         ba = sort(rand(3,2), 2)  # array
         b = (ba[:,1], ba[:,2])
-        # ∆lmax = (b[2]-b[1]) / 10
-        box = Box(b)
-        setmat!(box, emat)
 
-        @test bounds(box) ≈ b
-        @test all(b .∈ box)
-        @test max∆l(box) == fill(Inf,3)
-        @test matparam(box,PRIM)==emat.param[nPR] && matparam(box,DUAL)==emat.param[nDL]
+        box_emat = Object(Box(b), emat)
+
+        @test bounds(box_emat) ≈ b
+        @test all(b .∈ box_emat)
+        @test max∆l(box_emat) == fill(Inf,3)
+        @test matparam(box_emat,PRIM)==emat.param[nPR] && matparam(box_emat,DUAL)==emat.param[nDL]
     end  # @testset "Box"
 
     @testset "Ellipsoid" begin
@@ -82,16 +80,15 @@ end
         r = rand(3)
         b = (c-r, c+r)
         ∆lmax = r / 10
-        el = Ellipsoid(c, r)
-        setmat!(el, emat)
-        setmax∆l!(el, ∆lmax)
 
-        @test bounds(el) ≈ b
-        @test all([(c′ = copy(c); c′[w] += s*r[w]; c′) for w = nXYZ, s = intv1⁻] .∈ el)
+        el_emat = Object(Ellipsoid(c, r), emat, ∆lmax)
+
+        @test bounds(el_emat) ≈ b
+        @test all([(c′ = copy(c); c′[w] += s*r[w]; c′) for w = nXYZ, s = intv1⁻] .∈ el_emat)
         @test all([(c′ = copy(c); c′[nX] += sx*r[nX]; c′[nY] += sy*r[nY]; c′[nZ] += sz*r[nZ];
-            all(bounds(el)[nN] .≤ c′ .≤ bounds(el)[nP])) for sx = intv1⁻, sy = intv1⁻, sz = intv1⁻])
-        @test max∆l(el) == ∆lmax
-        @test matparam(el,PRIM)==emat.param[nPR] && matparam(el,DUAL)==emat.param[nDL]
+            all(bounds(el_emat)[nN] .≤ c′ .≤ bounds(el_emat)[nP])) for sx = intv1⁻, sy = intv1⁻, sz = intv1⁻])
+        @test max∆l(el_emat) == ∆lmax
+        @test matparam(el_emat,PRIM)==emat.param[nPR] && matparam(el_emat,DUAL)==emat.param[nDL]
     end  # @testset "Ellipsoid"
 
     @testset "Cylinder" begin
@@ -101,34 +98,32 @@ end
         R = [r,r,h/2]
         a = [0,0,1]
         ∆lmax = R ./ 10
-        cyl = Cylinder(c, r, a, h)
-        setmat!(cyl, emat)
-        setmax∆l!(cyl, ∆lmax)
+
+        cyl_emat = Object(Cylinder(c,r,a,h), emat, ∆lmax)
 
         b = (c-R, c+R)
 
-        @test bounds(cyl) ≈ b
-        @test all([(c′ = copy(c); c′[w] += s*R[w]; c′) for w = (nX, nZ), s = intv1⁻] .∈ cyl)
-        @test all([(c′ = copy(c); c′[w] += s*R[w]; c′) for w = (nY, nZ), s = intv1⁻] .∈ cyl)
-        @test max∆l(cyl) == ∆lmax
-        @test matparam(cyl,PRIM)==emat.param[nPR] && matparam(cyl,DUAL)==emat.param[nDL]
+        @test bounds(cyl_emat) ≈ b
+        @test all([(c′ = copy(c); c′[w] += s*R[w]; c′) for w = (nX, nZ), s = intv1⁻] .∈ cyl_emat)
+        @test all([(c′ = copy(c); c′[w] += s*R[w]; c′) for w = (nY, nZ), s = intv1⁻] .∈ cyl_emat)
+        @test max∆l(cyl_emat) == ∆lmax
+        @test matparam(cyl_emat,PRIM)==emat.param[nPR] && matparam(cyl_emat,DUAL)==emat.param[nDL]
     end  # @testset "Cylinder"
 
     @testset "Sphere" begin
         c = rand(3)
         r = rand()
         ∆lmax = r / 10
-        sph = Sphere(c, r)
-        setmat!(sph, emat)
-        setmax∆l!(sph, ∆lmax)
+
+        sph_emat = Object(Sphere(c,r), emat, ∆lmax)
 
         R = [r,r,r]
         b = (c-R, c+R)
 
-        @test bounds(sph) ≈ b
-        @test all([all([(c′ = copy(c); c′[w] += s*R[w]; c′) for s = intv1⁻] .∈ sph) for w = nXYZ])
-        @test max∆l(sph) == fill(∆lmax,3)
-        @test matparam(sph,PRIM)==emat.param[nPR] && matparam(sph,DUAL)==emat.param[nDL]
+        @test bounds(sph_emat) ≈ b
+        @test all([all([(c′ = copy(c); c′[w] += s*R[w]; c′) for s = intv1⁻] .∈ sph_emat) for w = nXYZ])
+        @test max∆l(sph_emat) == fill(∆lmax,3)
+        @test matparam(sph_emat,PRIM)==emat.param[nPR] && matparam(sph_emat,DUAL)==emat.param[nDL]
     end  # @testset "Sphere"
 end  # @testset "Object"
 
@@ -142,26 +137,23 @@ end  # @testset "Object"
     evac = EncodedMaterial(ge, vac)
     eSi = EncodedMaterial(ge, Si)
 
-    box = Box((rand(3), rand(3))); @test_throws ArgumentError add!(ovec, paramset, box)
-    setmat!(box, evac);
-    add!(ovec, paramset, box)
+    box_evac = Object(Box((rand(3),rand(3))), evac)
+    add!(ovec, paramset, box_evac)
 
-    el = Ellipsoid(rand(3), rand(3));
-    setmat!(el, eSi);
-    add!(ovec, paramset, el)
+    el_eSi = Object(Ellipsoid(rand(3),rand(3)), eSi)
+    add!(ovec, paramset, el_eSi)
 
-    box2 = Box((rand(3), rand(3)));
-    setmat!(box2, evac);
-    add!(ovec, paramset, box2)
+    box2_evac = Object(Box((rand(3),rand(3))), evac)
+    add!(ovec, paramset, box2_evac)
 
-    @test paramind(box,PRIM)==1 && paramind(box,DUAL)==1
-    @test objind(box) == 1
+    @test paramind(box_evac,PRIM)==1 && paramind(box_evac,DUAL)==1
+    @test objind(box_evac) == 1
 
-    @test paramind(el,PRIM)==2 && paramind(el,DUAL)==1
-    @test objind(el) == 2
+    @test paramind(el_eSi,PRIM)==2 && paramind(el_eSi,DUAL)==1
+    @test objind(el_eSi) == 2
 
-    @test paramind(box2,PRIM)==1 && paramind(box2,DUAL)==1
-    @test objind(box2) == 3
+    @test paramind(box2_evac,PRIM)==1 && paramind(box2_evac,DUAL)==1
+    @test objind(box2_evac) == 3
 end
 
 

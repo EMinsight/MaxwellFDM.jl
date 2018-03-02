@@ -130,15 +130,20 @@ end  # @testset "gen_lprim1d for randomly generated intervals, dual domain"
     @test isapprox(lprim, lprim_result, rtol = 1e-6)
 end  # @testset "comp_lprim1d"
 
+# Test with shapes
 @testset "gen_lprim" begin
     ∆L = 5
     ∆l = 1
-    domain = Box([0,0,0], [200,200,200])
-    setmax∆l!(domain, 10)
+
+    ge = PRIM
+    vac = Material("vacuum")
+    evac = EncodedMaterial(ge, vac)
+    domain = Object(Box([0,0,0], [200,200,200]), evac, 10)
 
     h = 50
     r = 20
-    sprim = [setmax∆l!(Cylinder([0,0,0],r,[0,0,1],h), [∆l,∆l,∆L]), setmax∆l!(Sphere([0,0,h/2], r), ∆l), setmax∆l!(Sphere([0,0,-h/2], r), ∆l)]
+    sprim = [Object(Cylinder([0,0,0],r,[0,0,1],h), evac, [∆l,∆l,∆L]), Object(Sphere([0,0,h/2], r), evac, ∆l), Object(Sphere([0,0,-h/2], r), evac, ∆l)]
+    # sprim = [Object(Sphere([0,0,0],r), evac, [∆l,∆l,∆L]), Object(Sphere([0,0,h/2], r), evac, ∆l), Object(Sphere([0,0,-h/2], r), evac, ∆l)]
 
     (xprim, yprim, zprim) = gen_lprim(domain, (PRIM,PRIM,PRIM), sprim)
     # info("xprim = $xprim")

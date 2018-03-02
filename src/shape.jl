@@ -8,67 +8,58 @@
 # bounds, then only this is exported.  So, when defining bounds for Interval, we have to
 # "extend" bounds for Shape by defining it as GeometryPrimitives.bounds(::Interval) = ....
 # Then, exporting bounds exports this whole collection of bounds, both for Shape and Interval.
-export OpenInterval, ClosedInterval, KDTree, Object, Object3, Box, Ellipsoid, Cylinder, Sphere  # types
-export bounds, surfpt_nearby, normal, setmat!, setmax∆l!, max∆l, matparam, paramind, objind, add!
+export OpenInterval, ClosedInterval, KDTree, Object, Object3
+export bounds, max∆l, matparam, paramind, objind, add!  #, surfpt_nearby, normal
 # export lsf, bound_, L_, center_, dist2bound, bound_contains, ∆lmax, sphere, transform,
 #     surfnormal, surfpoint  # functions
 # import Base:size, getindex, contains, isless, union, intersect
 
-mutable struct AuxData{K}
-    ∆lmax::SVector{K,Float}
+mutable struct Object{K,S}
+    shape::S
     mat::EncodedMaterial
+    ∆lmax::SVector{K,Float}
     oind::Int  # object index; for comparison of sameness of objects quickly and more generally (e.g. when periodized; see add!)
     pind::Tuple2{Int}  # {primal material index, dual material index} (see add!)
-    AuxData{K}() where {K} = new(SVector(ntuple(k->Inf, Val{K})))
+    Object{K,S}(shape, mat, ∆lmax) where {K,S<:Shape{K}} = new(shape, mat, ∆lmax)
 end
 
-# Define Object as Shape with a material and ∆lmax.
-const GeomPrim = GeometryPrimitives
-const Object{K,L} = Shape{K,L,AuxData{K}}
-const Object3 = Object{3,9}
-const Box{K,L} = GeomPrim.Box{K,L,AuxData{K}}
-const Ellipsoid{K,L} = GeomPrim.Ellipsoid{K,L,AuxData{K}}
-const Cylinder{K,L} = GeomPrim.Cylinder{K,L,AuxData{K}}
-const Sphere{K,L} = GeomPrim.Sphere{K,L,AuxData{K}}
+Object(shape::S, mat::EncodedMaterial, ∆lmax::SVector{K}=SVector(ntuple(k->Inf, Val{K}))) where {K,S<:Shape{K}} = Object{K,S}(shape, mat, ∆lmax)
+Object(shape::Shape{K}, mat::EncodedMaterial, ∆lmax::AbsVec) where {K} = Object(shape, mat, SVector{K}(∆lmax))
+Object(shape::Shape{K}, mat::EncodedMaterial, ∆lmax::Real) where {K} = Object(shape, mat, SVector(ntuple(k->∆lmax, Val{K})))
 
-# Redefine individual Shape constructors to have placeholders for AuxData.
-Box(c::AbsVec, d::AbsVec, axes=eye(length(c))) = GeomPrim.Box(c, d, axes, AuxData{length(c)}())
-Box(b::Tuple2{AbsVec}, axes=eye(length(b[1]))) = GeomPrim.Box((b[1]+b[2])/2, abs.(b[2]-b[1]), axes, AuxData{length(b[1])}())
-Ellipsoid(c::AbsVec, r::AbsVec, axes=eye(length(c))) = GeomPrim.Ellipsoid(c, r, axes, AuxData{length(c)}())
-Cylinder(c::AbsVec, r::Real, a::AbsVec, h::Real) = GeomPrim.Cylinder(c, r, a, h, AuxData{length(c)}())
-Sphere(c::AbsVec, r::Real) = GeomPrim.Sphere(c, r, AuxData{length(c)}())
+# Define Object with ∆lmax, Shape, and a material.
+const Object3 = Object{3}
 
-# Use return type annotation to define a function to obtain data::AuxData{K} type-stably from Objec{K}.
-(auxdata(o::Object{K})::AuxData{K}) where {K} = o.data
+# Add a new convenience constructor
+GeometryPrimitives.Box(b::Tuple2{AbsVec}, axes=eye(length(b[1]))) = Box((b[1]+b[2])/2, abs.(b[2]-b[1]), axes)
 
-# Create the user interface such that sim.add(shape, material, ∆lmax) uses this function.
-setmat!(o::Object, em::EncodedMaterial) = (o.data.mat = em; o)
-setmax∆l!(o::Object{K}, ∆lmax::AbsVec) where {K} = (o.data.∆lmax = SVector{K}(∆lmax); o)
-setmax∆l!(o::Object{K}, ∆lmax::Number) where {K} = setmax∆l!(o, fill(∆lmax, K))
+GeometryPrimitives.bounds(o::Object) = bounds(o.shape)
+Base.in(x::SVector{K}, o::Object{K}) where {K} = in(x, o.shape)
+Base.in(x::AbsVec, o::Object{K}) where {K} = in(SVector{K}(x), o)
 
-max∆l(o::Object) = auxdata(o).∆lmax
-matparam(o::Object, gt::GridType) = matparam(auxdata(o).mat, gt)
-paramind(o::Object{K}, gt::GridType) where {K} = (auxdata(o)::AuxData{K}).pind[Int(gt)]
-objind(o::Object) = auxdata(o).oind
+# Create the user interface such that maxwellsys.add(shape, material, ∆lmax) uses this function.
+# setmat!(o::Object, em::EncodedMaterial) = (o.mat = em; o)
+# setmax∆l!(o::Object{K}, ∆lmax::AbsVec) where {K} = (o.∆lmax = SVector{K}(∆lmax); o)
+# setmax∆l!(o::Object{K}, ∆lmax::Number) where {K} = setmax∆l!(o, SVector(ntuple(k->∆lmax, Val{K})))
 
-# inbounds_(lo::Object) = (b = bounds(s); b[nN] .≤)
+max∆l(o::Object) = o.∆lmax
+matparam(o::Object, gt::GridType) = matparam(o.mat, gt)
+paramind(o::Object{K}, gt::GridType) where {K} = o.pind[Int(gt)]
+objind(o::Object) = o.oind
+
 function add!(ovec::AbsVec{<:Object{K}}, paramvec::Tuple2{AbsVec{SMat3Complex}}, os::Object{K}...) where {K}
     for o = os
         add!(ovec, paramvec, o)
     end
-    return nothing
 end
 
 # When I put an periodic array of an object, consider assigning the same object index to the
 # periodized objects.  That way, I can treat two of objects over a periodic boundary as the
 # same object.
 function add!(ovec::AbsVec{<:Object{K}}, paramvec::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
-    # o must be filled with AuxData already.
-    isdefined(auxdata(o), :mat) || throw(ArgumentError("o = $o must be filled with material by setmat!() before added to ovec."))
-
     # Assign the object index to o.
-    auxdata(o).oind = isempty(ovec) ? 1 : objind(ovec[1])+1  # not just length(ovec)+1 to handle periodized objects
-    unshift!(ovec, o)  # prepend o to use ovec with KDTree
+    o.oind = isempty(ovec) ? 1 : objind(ovec[1])+1  # not just length(ovec)+1 to handle periodized objects
+    unshift!(ovec, o)  # prepend o (for potential use of ovec with KDTree)
 
     # Assign the material parameter indices to o.
     p, pvec = matparam(o,PRIM), paramvec[nPR]
@@ -79,7 +70,7 @@ function add!(ovec::AbsVec{<:Object{K}}, paramvec::Tuple2{AbsVec{SMat3Complex}},
     pind_dual = findlast(x -> x==p, pvec)
     pind_dual==0 && (push!(pvec, p); pind_dual = length(pvec))
 
-    auxdata(o).pind = (pind_prim, pind_dual)
+    o.pind = (pind_prim, pind_dual)
 
     return nothing
 end
@@ -96,7 +87,7 @@ struct OpenInterval <: Interval
         return new(bounds, ∆lmax)
     end
 end
-OpenInterval(o::Object, w::Int) = (b = bounds(o); OpenInterval((b[nN][w], b[nP][w]), max∆l(o)[w]))  # w: direction
+OpenInterval(o::Object, w::Int) = (b = bounds(o.shape); OpenInterval((b[nN][w], b[nP][w]), max∆l(o)[w]))  # w: direction
 
 struct ClosedInterval <: Interval
     bounds::Tuple2{Float}
@@ -109,7 +100,7 @@ struct ClosedInterval <: Interval
 end
 ClosedInterval(o::Object, w::Int) = (b = bounds(o); ClosedInterval((b[nN][w], b[nP][w]), max∆l(o)[w]))  # w: direction
 
-GeomPrim.bounds(intv::Interval) = intv.bounds
+GeometryPrimitives.bounds(intv::Interval) = intv.bounds
 max∆l(intv::Interval) = intv.∆lmax
 
 Base.length(intv::Interval) = intv.bounds[nP] - intv.bounds[nN]

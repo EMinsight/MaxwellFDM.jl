@@ -577,9 +577,9 @@ function gen_lprim1d(domain::OpenInterval,
     return lprim
 end
 
-function gen_lprim(domain::Box{N},
+function gen_lprim(domain::Object{N,<:Box{N}},
                    domaintype::NTuple{N,GridType},
-                   sprim::AbsVec{<:Shape{N}},
+                   sprim::AbsVec{<:Object{N}},
                    lprim0::NTuple{N,AbsVecReal}=ntuple(n->Float[],Val{N}),
                    ldual0::NTuple{N,AbsVecReal}=ntuple(n->Float[],Val{N}),
                    rt::Real=R_TARGET_DEFAULT,

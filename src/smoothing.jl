@@ -461,7 +461,7 @@ end
 function kottke_input_accurate(x₀::SVec3Float, σvxl::SVector{3,Bool}, lvxl::Tuple2{SVec3Float}, ∆fg::SVec3Float, obj_fg::Object3, obj_bg::Object3, gt::GridType)
     param_fg, param_bg = matparam(obj_fg, gt), matparam(obj_bg, gt)
 
-    r₀, nout = surfpt_nearby(x₀ + ∆fg, obj_fg)
+    r₀, nout = surfpt_nearby(x₀ + ∆fg, obj_fg.shape)
     r₀ -= ∆fg
     nout = σvxl .* nout  # if voxel is across symmetry boundary plane, project nout to plane
 
