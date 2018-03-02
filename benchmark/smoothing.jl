@@ -291,9 +291,9 @@ vac = EncodedMaterial(PRIM, Material("Vacuum", ε=εvac))
 diel = EncodedMaterial(PRIM, Material("Dielectric", ε=εdiel))
 
 # Create objects.
-dom_vac = setmat!(Box(g3.bounds), vac)
-obj_diel = setmat!(Sphere([0,0,0], 75), diel)
-# obj_diel = setmat!(Box([0,0,0], [75,75,75]), diel)
+dom_vac = Object(Box(g3.bounds), vac)
+obj_diel = Object(Sphere([0,0,0], 75), diel)
+# obj_diel = Object(Box([0,0,0], [75,75,75]), diel)
 
 # Add objects.
 ovec = Object3[]
