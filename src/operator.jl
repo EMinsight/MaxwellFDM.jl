@@ -308,7 +308,8 @@ function create_param3dmat(param3d::AbsArr{CFloat,5},
                            kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
                            N::SVec3Int;  # size of grid
                            reorder::Bool=true)  # true for more tightly banded matrix
-    # Note that param3d's i, j, k indices run from 1 to N+1 rather than to N.
+    # Note that param3d's i, j, k indices run from 1 to N+1 rather than to N, so we should
+    # not iterate those indices from 1 to end.
     M = prod(N)
     I = Vector{Int}(3M)
     J = Vector{Int}(3M)
