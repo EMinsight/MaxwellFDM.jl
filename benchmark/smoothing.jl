@@ -1,4 +1,5 @@
-using MaxwellFDM, StaticArrays
+using StaticArrays, GeometryPrimitives
+using MaxwellFDM
 using BenchmarkTools
 
 xprim = [
@@ -336,6 +337,7 @@ pind3d_cmp = view(pind3d[ngt′][nw], ind_cmp...)
 oind3d_cmp = view(oind3d[ngt′][nw], ind_cmp...)
 
 # @code_warntype MaxwellFDM.assign_param_obj!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec[1], τlcmp)
+# @code_warntype MaxwellFDM.assign_param_obj!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec[2], τlcmp)
 # @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec, τlcmp)
 # @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
 

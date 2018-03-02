@@ -223,7 +223,7 @@ function assign_param_obj!(gt::GridType,  # primal field (U) or dual field (V)
     param = matparam(o,gt)
     pind′ = paramind(o,gt′)
     oind = objind(o)
-    if o isa Box{3,9} && (o::Box{3,9}).p == @SMatrix(eye(3))  # o is Cartesian box
+    if o.shape isa Box{3,9} && (o.shape::Box{3,9}).p == @SMatrix(eye(3))  # o.shape is Cartesian box
         if nw == 4
             # Set the off-diagonal entries of the material parameter tensor.
             for nc = nXYZ, nr = next2(nc)  # column- and row-indices
@@ -237,7 +237,7 @@ function assign_param_obj!(gt::GridType,  # primal field (U) or dual field (V)
         pind3d_cmp[I,J,K] .= pind′
         oind3d_cmp[I,J,K] .= oind
         obj3d_cmp[I,J,K] .= o
-    else  # o is not Cartesian box
+    else  # o.shape is not Cartesian box
         for k = K, j = J, i = I  # z-, y-, x-indices
             pt = t_ind(τlcmp, i, j, k)
             if pt ∈ o
