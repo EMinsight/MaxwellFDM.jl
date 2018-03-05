@@ -102,8 +102,8 @@ function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}
     N = SVector(length.(∆l[nPR]))
 
     # Find the locations of the ghost points transformed into the domain by the boundary
-    # conditions.  Note tha regardless of the boundary type, the primal ghost point is on
-    # the positive side (so it is lprim[end]) and the dual ghost point is on the negative
+    # conditions.  Note that regardless of the boundary condition, the primal ghost point is
+    # on the positive side (so it is lprim[end]) and the dual ghost point is on the negative
     # side (so it is ldual[1]).
     # Make sure these locations are where the objects assigned to the ghost points are found.
     bcp = ebc.==PPC

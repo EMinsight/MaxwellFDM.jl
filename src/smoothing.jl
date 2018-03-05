@@ -62,7 +62,7 @@ create_n3d(::Type{T}, N::SVec3Int) where {T} =
 
 # Overall smoothing algorithm:
 # - Assign obj, pind, oind to arrays object-by-object.
-#     - For the locations of grid points to assign the objects to, use lcmp created considering BC (τlcmp).
+#     - For the locations of grid points to assign the objects to, use τlcmp (lcmp created considering BC).
 # - Using pind and oind, determine voxels to perform subpixel smoothing.
 # - Inside each of the voxels, figure out the foreground object with which subpixel smoothing is performed.
 #     - Iterating voxel corners, find the object that is put latest.  That object is the foreground object.
@@ -80,24 +80,25 @@ create_n3d(::Type{T}, N::SVec3Int) where {T} =
 # domain is the user's responsibility.)
 #
 # - Instead, transform ghost points back to the corresponding points inside the domain, and
-# see which object is there.  Take that object to point the ghost points.
+# see which object is there.  Take that object to the ghost points.
 #
 # - Ghost points are usually copied from different non-ghost points by translation (for
-# periodic BC) or reflection (for symmetry BC), but they are not if their transformed points
-# are themselves (e.g., primal ghost points on PPC, and dual ghost points on PDC).  For the
-# latter case, the fields of interest are still inferrable by means other than spatial
-# transformation (i.e., the field are zero at primal ghost points on PPC and dual ghost
-# points on PDC), so in the equation solving step we don't have to keep degrees of freedom
-# for these ghost points.  However, to smooth material parameterts at non-ghost points
-# around ghost boundaries, we need objects assigned to ghost points.  If these ghost points
-# are not copied from other non-ghost points by spatial transformation, we need to assign
-# objects to these ghost points.
+# periodic BC) or reflection (for symmetry BC), but NOT if their transformed points are
+# themselves (e.g., primal ghost points on PPC, and dual ghost points on PDC).  For the
+# latter case, the fields of interest on the ghost points are still inferrable by other
+# means than spatial transformation (i.e., the fields are zero at primal ghost points on PPC
+# and dual ghost points on PDC).  Therefore, at the equation solving step we don't need to
+# keep the degrees of freedom for those ghost points.  Still, to smooth material parameterts
+# at non-ghost points around ghost boundaries, we need objects assigned to ghost points
+# (because ghost points are the corners of the voxels centered at those non-ghost points).
+# These ghost points are not copied from other non-ghost points by spatial transformation,
+# so we need to assign objects to these ghost points.
 #
-# - When the ghost points are copies of non-ghost points, both the fields and objects at the
-# ghost must be copied for consistency, not only one of them.  For example, if a periodic
-# boundary condition is used, the primal grid point at the positive end must be copies of
-# the primal grid point at the negative end, from which both the objects and fields at the
-# ghost points must be copied.
+# - When the ghost points are the copies of non-ghost points, both the fields and objects at
+# the ghost points must be copied for consistency, not only one of them.  For example, if a
+# periodic boundary condition is used, the primal grid point at the positive end must be
+# copies of the primal grid point at the negative end, from which both the objects and
+# fields must be copied to the ghost points.
 
 # Notes on assignment:
 #
@@ -106,9 +107,9 @@ create_n3d(::Type{T}, N::SVec3Int) where {T} =
 # points whose properties are inferrable from other points.  This is not always the case.
 # See the above "Notes on ghost point transformation by boundary conditions".
 #
-# If the ghost points are not exactly on the symmetry boundary condition, we can recover the
-# ghost point arrays from somewhere else.  The algorithm below prepares grid point indices
-# such that we can assign objects the same way regardless of the kinds of boundary conditions.
+# If the ghost points are not exactly on symmetry BC, we can recover the ghost point arrays
+# from somewhere else.  The algorithm below prepares grid point indices such that we can
+# assign objects the same way regardless of the kinds of boundary conditions.
 
 # Why do we need to set up so many arrays: param3d, obj3d, pind3d, oind3d?  In principle, it
 # is sufficient to set up only param3d and obj3d, because in the smoothing algorithm we need
@@ -128,26 +129,47 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
     # Circularly shift subscripts for BLOCH boundary condition.  This makes sure τl[sub[w]]
     # is always sorted for all boundary conditions.  Sorted τl is necessary to use findfirst
     # and findlast in assign_param_obj!.
+    #
+    # Primal grid: ghost points are always at the positive end.
+    # - Bloch: ghost points copy the values of non-ghost points at the negative end, so τl
+    # must be circshifted to right in order to be sorted.
+    # - PPC: ghost points have own degrees of freedom at the positive end, so τl is already
+    # sorted.
+    # - PDC: ghost points copy the values of non-ghost points at the positive end, so τl is
+    # already sorted.
+    # Therefore, the primal grid needs to be circshifted to right only for the Bloch BC.
+    #
+    # Dual grid: ghost points are always at the negative end.
+    # - Bloch: ghost points copy the values of non-ghost points at the positive end, so τl
+    # must be circshifted to left in order to be sorted.
+    # - PPC: ghost points copy the values of non-ghost points at the negative end, so τl is
+    # already sorted.
+    # - PDC: ghost points have own degrees of freedom at the negative end, so τl is already
+    # sorted.
     M = length.(τl[nPR])  # N+1
     sub = (map((m,e)->circshift(1:m, e==BLOCH), M, ebc.data),
            map((m,e)->circshift(1:m, -(e==BLOCH)), M, ebc.data))
 
     # Subscripts for param3d are a bit different.  param3d always have ghost cells at the
-    # positive end, regardless of the parameter type.  Therefore, if the above sub puts
-    # ghost points at the positive end, the psub below does not have to be circshifted.  On
-    # the other hand, if the above sub puts ghost points at the negative end, the psub below
-    # must be circshifted by +1.
+    # positive end, regardless of the material parameter type.  Therefore, if the above sub
+    # puts ghost points at the positive end, the psub below does not have to be circshifted.
+    # On the other hand, if the above sub puts ghost points at the negative end, the psub
+    # below must be circshifted by +1 to push the ghost points to the negative end.
     #
-    # Bottom line: prepare subscripts such that param3d and other arrays have ghost cells
-    # at the same subscripts.  Note that before circshift,
+    # Bottom line: prepare subscripts such that circshifted param3d and circshifted τl have
+    # ghost points at the same indices.  Note that before circshift,
     # - param3d has ghost cells at the positive end,
     # - the primal grid has ghost points at the positive end, and
     # - the dual grid has ghost points at the negative end.
-    # This means that before circshift, param3d and the primal grid have the same ghost cell
-    # location, whereas param3d and the dual grid don't.  Therefore, param3d must be
-    # circshifted if the primal grid is circshifted or the dual grid is NOT circshifted.
-    psub = (map((m,e)->circshift(1:m, e==BLOCH), M, ebc.data),
-            map((m,e)->circshift(1:m, e≠BLOCH), M, ebc.data))
+    # This means that before circshift, primal param3d and the primal τl have ghost points
+    # at the same indices, whereas dual param3d and the dual τl don't.  Therefore, primal
+    # param3d must be circshifted to right if the primal τl is circshifted to right.  (This
+    # is to send param3d's ghost points existing at the positive end to the negative end).
+    # Similarly, dual param3d must be circshifted to right if the dual τl is NOT circshifted
+    # to left.  (This is also to send param3d's ghost points existing at the positive end to
+    # the negative end, where the ghost points of the non-circshifted dual τl exist).
+    psub = (map((m,e)->circshift(1:m, e==BLOCH), M, ebc.data),  # primal grid
+            map((m,e)->circshift(1:m, e≠BLOCH), M, ebc.data))  # dual grid
 
     ## Perform assignment.
     for ngt = nPD
