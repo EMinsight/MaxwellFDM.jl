@@ -212,7 +212,7 @@ function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                            oind3d_cmp::AbsArr{ObjInd,3},  # object index array to set
                            ovec::AbsVec{<:Object3},  # object vector; later object overwrites earlier.
                            τlcmp::Tuple3{AbsVec{Float}})  # location of field components
-    for n = length(ovec):-1:1  # last in ovec is first object added; see shape.jl/add!
+    for n = length(ovec):-1:1  # last in ovec is first object added; see object.jl/add!
         o = ovec[n]
         # Set material parameter tensors and various object-related indices at Fw (= Uw or
         # Vw) locations.
