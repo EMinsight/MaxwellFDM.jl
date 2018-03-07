@@ -1,4 +1,4 @@
-@testset "shape" begin
+@testset "object" begin
 
 const rtol = Base.rtoldefault(Float64)
 const one⁻ = 1 - rtol  # slightly less than 1
@@ -200,4 +200,4 @@ end
 #     @test all(contains.(lsf_z, [(x,y,z) for x = 0:1, y = 0:1, z = -1:0]))
 # end
 
-end  # @testset "shape"
+end  # @testset "object"
