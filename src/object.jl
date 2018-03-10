@@ -18,8 +18,8 @@ mutable struct Object{K,S<:Shape}  # use S<:Shape{K} after Julia issue #26321 is
     shape::S
     mat::EncodedMaterial
     ∆lmax::SVector{K,Float}
-    oind::Int  # object index; for comparison of sameness of objects quickly and more generally (e.g. when periodized; see add!)
-    pind::Tuple2{Int}  # {primal material index, dual material index} (see add!)
+    oind::ObjInd  # object index; for comparison of sameness of objects quickly and more generally (e.g. when periodized; see add!)
+    pind::Tuple2{ParamInd}  # {primal material index, dual material index} (see add!)
     Object{K,S}(shape, mat, ∆lmax) where {K,S<:Shape{K}} = new(shape, mat, ∆lmax)
 end
 
