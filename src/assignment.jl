@@ -144,7 +144,7 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
             # τl.  Even though all arrays are for same locations, param3d_cmp contains gt
             # material, whereas obj3d_cmp, pind3d_cmp, oind3d_cmp contain alter(gt)
             # material (so use ngt′ instead of ngt for them).
-            param3d_cmp = view(param3d[ngt], psub_cmp..., 1:3, 1:3)
+            param3d_cmp = view(param3d[ngt], psub_cmp..., nXYZ, nXYZ)
             obj3d_cmp = view(obj3d[ngt′][nw], sub_cmp...)
             pind3d_cmp = view(pind3d[ngt′][nw], sub_cmp...)
             oind3d_cmp = view(oind3d[ngt′][nw], sub_cmp...)
@@ -157,81 +157,85 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
     return nothing
 end
 
+# This is the innermost function that is customized for MaxwellFDM (i.e., uses specific
+# parameters and arrays.)
 function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
-                           nw::Int,  # w = XX (1), YY (2), ZZ (3), grid node (4)
+                           nw::Integer,  # w = XX (1), YY (2), ZZ (3), grid node (4)
                            param3d_cmp::AbsArr{CFloat,5},  # parameter array to set
                            obj3d_cmp::AbsArr{Object3,3},  # object array to set
                            pind3d_cmp::AbsArr{ParamInd,3},  # material parameter index array to set
                            oind3d_cmp::AbsArr{ObjInd,3},  # object index array to set
                            ovec::AbsVec{<:Object3},  # object vector; later object overwrites earlier.
-                           τlcmp::Tuple3{AbsVec{Float}})  # location of field components
+                           τlcmp::Tuple3{AbsVecFloat})  # location of field components
     for n = length(ovec):-1:1  # last in ovec is first object added; see object.jl/add!
         o = ovec[n]
-        # Set material parameter tensors and various object-related indices at Fw (= Uw or
-        # Vw) locations.
-        # The set parameter tensors are used in Maxwell's equations without modification if
-        # subpixel smoothing is not needed at the locations lcmp.
-        assign_param_obj!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, o, τlcmp)
+
+        # Retrieve shape once here, so that it can be passed to the function barrier.
+        shape = o.shape
+
+        # Prepare values to set.
+        gt′ = alter(gt)
+        param = matparam(o,gt)
+        pind′ = paramind(o,gt′)
+        oind = objind(o)
+
+        avfs = (pind3d_cmp, pind′, assign_scalar!), (oind3d_cmp, oind, assign_scalar!), (obj3d_cmp, o, assign_scalar!)
+        if nw == 4
+            assign_val_shape!(shape, τlcmp, (param3d_cmp, param, assign_tensor_offdiag!), avfs...)
+        else  # nw = 1, 2, 3
+            assign_val_shape!(shape, τlcmp, (@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], assign_scalar!), avfs...)
+        end
     end
 
     return nothing
 end
 
-# Note that this function is used as a function barrier to achieve type stability of o.
-function assign_param_obj!(gt::GridType,  # primal field (U) or dual field (V)
-                           nw::Int,  # w = XX (1), YY (2), ZZ (3), grid node (4); not from 0 to 3, because 0 cannot be used as array index
-                           param3d_cmp::AbsArr{CFloat,5},  # parameter array to set
-                           obj3d_cmp::AbsArr{Object3,3},  # object array to set
-                           pind3d_cmp::AbsArr{ParamInd,3},  # material parameter index array to set
-                           oind3d_cmp::AbsArr{ObjInd,3},  # object index array to set
-                           o::Object3,  # object whose parameter is taken
-                           τlcmp::Tuple3{AbsVec{Float}})  # location of field components
+# Do we need an another wrapper function that selects τlcmp from gt and nw?  The downside of
+# such a function is that avf already contains nw information.
+# Maybe, I could create a function that selects τlcmp from gt and nw.
+
+
+# Given a shape, assign value at the points within the shape.
+# Get a variable-length list of (array, value, function)'s.
+function assign_val_shape!(shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}, avfs::Tuple{AbsArr, Any, Function}...) # avf: (array, value, function)
     # Set the location indices of object boundaries.
     assert(all(issorted.(τlcmp)))
-    bn, bp = bounds(o)  # (SVector{3}, SVector{3})
+    bn, bp = bounds(shape)  # (SVector{3}, SVector{3})
     subn = map((l,b) -> (n = findfirst(l.≥b); n==0 ? 1 : n), τlcmp, bn)  # SVec3Int
     subp = map((l,b) -> (n = findlast(l.≤b); n==0 ? length(l) : n), τlcmp, bp)  # SVec3Int
     I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVector{3,UnitRange{Int}}
 
-    # Assign param to param3d.
-    gt′ = alter(gt)
-    param = matparam(o,gt)
-    pind′ = paramind(o,gt′)
-    oind = objind(o)
-    if o.shape isa Box{3,9} && (o.shape::Box{3,9}).p == @SMatrix(eye(3))  # o.shape is Cartesian box
-        if nw == 4
-            # Set the off-diagonal entries of the material parameter tensor.
-            for nc = nXYZ, nr = next2(nc)  # column- and row-indices
-                param3d_cmp[I, J, K, nr, nc] .= param[nr,nc]
-            end
-        else  # nw = 1, 2, 3
-            # Set the diagonal entries of the material parameter tensor.
-            param3d_cmp[I, J, K, nw, nw] .= param[nw,nw]
-        end
-
-        pind3d_cmp[I,J,K] .= pind′
-        oind3d_cmp[I,J,K] .= oind
-        obj3d_cmp[I,J,K] .= o
-    else  # o.shape is not Cartesian box
+    if shape isa Box{3,9} && (shape::Box{3,9}).p == @SMatrix(eye(3))  # shape is Cartesian box
+        assign_val!((I,J,K), avfs...)
+    else  # shape is not Cartesian box
         for k = K, j = J, i = I  # z-, y-, x-indices
             pt = t_ind(τlcmp, i, j, k)
-            if pt ∈ o
-                if nw == 4
-                    # Set the off-diagonal entries of the material parameter tensor.
-                    for nc = nXYZ, nr = next2(nc)  # column- and row-indices
-                        param3d_cmp[i,j,k,nr,nc] = param[nr,nc]
-                    end
-                else  # nw = 1, 2, 3
-                    # Set the diagonal entries of the material parameter tensor.
-                    param3d_cmp[i,j,k,nw,nw] = param[nw,nw]
-                end
-
-                pind3d_cmp[i,j,k] = pind′
-                oind3d_cmp[i,j,k] = oind
-                obj3d_cmp[i,j,k] = o
-            end  # if pt ∈ o
+            if pt ∈ shape
+                assign_val!((i,j,k), avfs...)
+            end  # if pt ∈ shape
         end  # for k = ..., j = ..., i = ...
-    end  # if o isa ...
+    end  # if shape isa ...
 
+    return nothing
+end
+
+
+function assign_val!(subs::Tuple3{S}, avfs::Tuple{AbsArr, Any, Function}...) where {S<:Union{Integer,AbsVecInteger}} # avf: (array, value, function)
+    for avf = avfs
+        array, value, f_assign! = avf
+        f_assign!(array, value, subs)
+    end
+    return nothing
+end
+
+
+assign_scalar!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}} =
+    (array[subs...] = scalar; nothing)
+
+
+function assign_tensor_offdiag!(array::AbsArr{T,5}, tensor::AbsMat{T}, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
+    for nc = nXYZ, nr = next2(nc)  # column- and row-indices
+        array[subs..., nr, nc] .= tensor[nr,nc]
+    end
     return nothing
 end
