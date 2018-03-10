@@ -176,7 +176,7 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                     # the surface of a single object, so we have to estimate nout from the
                     # locations of the corners occupied by the two materials.
                     param_fg, param_bg, nout, rvol =
-                        kottke_input_simple(ind_c, n_change, obj_fg, obj_bg)::Tuple{SMat3Complex,SMat3Complex,SVec3Float,Float}
+                        kottke_input_simple(ind_c, n_change, obj_fg, obj_bg, gt)::Tuple{SMat3Complex,SMat3Complex,SVec3Float,Float}
                 else  # Nobj_vxl == 2 (because Nobj_vxl ≠ 1 when Nparam_vxl == 2)
                     # When Nparam_vxl == Nobj_vxl == 2, different material parameters
                     # must correspond to different objects.
