@@ -294,11 +294,18 @@ diel = EncodedMaterial(PRIM, Material("Dielectric", ε=εdiel))
 dom_vac = Object(Box(g3.bounds), vac)
 obj_diel = Object(Sphere([0,0,0], 75), diel)
 # obj_diel = Object(Box([0,0,0], [75,75,75]), diel)
+obj_xn_diel = Object(Sphere([-150,0,0], 75), diel)
+obj_xp_diel = Object(Sphere([150,0,0], 75), diel)
+obj_yn_diel = Object(Sphere([0,-150,0], 75), diel)
+obj_yp_diel = Object(Sphere([0,150,0], 75), diel)
+obj_zn_diel = Object(Sphere([0,0,-150], 75), diel)
+obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 
 # Add objects.
 ovec = Object3[]
 paramset = (SMat3Complex[], SMat3Complex[])
-add!(ovec, paramset, dom_vac, obj_diel)
+# add!(ovec, paramset, dom_vac, obj_diel)
+add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
 # add!(ovec, paramset, dom_vac)
 
 param3d = create_param3d(g3.N)
