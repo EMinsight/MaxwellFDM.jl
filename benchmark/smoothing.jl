@@ -304,9 +304,9 @@ obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 # Add objects.
 ovec = Object3[]
 paramset = (SMat3Complex[], SMat3Complex[])
+# add!(ovec, paramset, dom_vac)
 # add!(ovec, paramset, dom_vac, obj_diel)
 add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
-# add!(ovec, paramset, dom_vac)
 
 param3d = create_param3d(g3.N)
 obj3d = create_n3d(Object3, g3.N)
@@ -342,7 +342,7 @@ obj3d_cmp = view(obj3d[ngt′][nw], ind_cmp...)
 pind3d_cmp = view(pind3d[ngt′][nw], ind_cmp...)
 oind3d_cmp = view(oind3d[ngt′][nw], ind_cmp...)
 
-o = ovec[1]  # ovec[1]: Sphere, ovec[2]: Box
+o = ovec[end-1]  # ovec[end-1]: Sphere, ovec[end]: Box
 shape = o.shape
 
 gt′ = alter(gt)
@@ -350,9 +350,10 @@ param = matparam(o,gt)
 pind′ = paramind(o,gt′)
 oind = objind(o)
 
-avfs = (pind3d_cmp, pind′, MaxwellFDM.assign_scalar!), (oind3d_cmp, oind, MaxwellFDM.assign_scalar!), (obj3d_cmp, o, MaxwellFDM.assign_scalar!)
-@time MaxwellFDM.assign_val_shape!(shape, τlcmp, (@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], MaxwellFDM.assign_scalar!), avfs...)
-@time MaxwellFDM.assign_val_shape!(shape, τlcmp, (param3d_cmp, param, MaxwellFDM.assign_tensor_offdiag!), avfs...)
+arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
+vals = (pind′, oind, o)
+# @time MaxwellFDM.assign_val_shape!(shape, τlcmp, (arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]))
+# @code_warntype MaxwellFDM.assign_val_shape!(shape, τlcmp, (arrays..., param3d_cmp), (vals, param))
 
 
 # @code_warntype MaxwellFDM.assign_param_obj!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec[1], τlcmp)
@@ -360,7 +361,7 @@ avfs = (pind3d_cmp, pind′, MaxwellFDM.assign_scalar!), (oind3d_cmp, oind, Maxw
 # @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec, τlcmp)
 # @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
 
-# @time assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
+@time assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
 
 # gt_cmp′ = alter.(gt_cmp)
 # lcmp = t_ind(g3.l, gt_cmp)
@@ -375,7 +376,7 @@ avfs = (pind3d_cmp, pind′, MaxwellFDM.assign_scalar!), (oind3d_cmp, oind, Maxw
 
 # @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj3d_cmp′, pind3d_cmp′, oind3d_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
 
-# @time smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+@time smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
 
 # # Construct arguments and call assign_param!.

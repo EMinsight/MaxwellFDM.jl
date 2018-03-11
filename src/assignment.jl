@@ -179,12 +179,33 @@ function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
         pind′ = paramind(o,gt′)
         oind = objind(o)
 
-        avfs = (pind3d_cmp, pind′, assign_scalar!), (oind3d_cmp, oind, assign_scalar!), (obj3d_cmp, o, assign_scalar!)
+        # Set the values to the arrays.
+        #
+        # In fact, assign_val_shape! was designed to perform assignment on multiple arrays
+        # at once.  This is meant to be achieved by passing a tuple named `arrays` below.
+        # However, this is an inhomogeneous tuple, and retrieving entries from a tuple uses
+        # too many allocations.  See the problem reported at
+        # - https://github.com/JuliaLang/julia/issues/19850
+        # - https://discourse.julialang.org/t/broadcasting-setindex-over-a-tuple-of-arrays-with-splatted-indices-is-slow/9641
+        #
+        # So, use the more compact code (commented below) once this issue is resolved.  The
+        # current code performs Base.in(pt, Shape) more than necessary, but
+        # benchmark/smoothing.jl demonstrates that the performance does not degrade much.
+        assign_val_shape!(shape, τlcmp, pind3d_cmp, pind′)
+        assign_val_shape!(shape, τlcmp, oind3d_cmp, oind)
+        assign_val_shape!(shape, τlcmp, obj3d_cmp, o)
         if nw == 4
-            assign_val_shape!(shape, τlcmp, (param3d_cmp, param, assign_tensor_offdiag!), avfs...)
+            assign_val_shape!(shape, τlcmp, param3d_cmp, param)
         else  # nw = 1, 2, 3
-            assign_val_shape!(shape, τlcmp, (@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], assign_scalar!), avfs...)
+            assign_val_shape!(shape, τlcmp, @view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw])
         end
+        # arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
+        # vals = (pind′, oind, o)
+        # if nw == 4
+        #     assign_val_shape!(shape, τlcmp, (arrays..., param3d_cmp), (vals..., param))
+        # else  # nw = 1, 2, 3
+        #     assign_val_shape!(shape, τlcmp, (arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]))
+        # end
     end
 
     return nothing
@@ -194,10 +215,18 @@ end
 # such a function is that avf already contains nw information.
 # Maybe, I could create a function that selects τlcmp from gt and nw.
 
+assign_val_shape!(shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}, array::AbsArr{T,3}, val::T) where {T} =
+    assign_val_shape!(shape, τlcmp, (array,), (val,))
+
+assign_val_shape!(shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}, array::AbsArr{T,5}, val::AbsMat{T}) where {T} =
+    assign_val_shape!(shape, τlcmp, (array,), (val,))
 
 # Given a shape, assign value at the points within the shape.
 # Get a variable-length list of (array, value, function)'s.
-function assign_val_shape!(shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}, avfs::Tuple{AbsArr, Any, Function}...) # avf: (array, value, function)
+function assign_val_shape!(shape::Shape{3},
+                           τlcmp::Tuple3{AbsVecFloat},
+                           arrays::Tuple,
+                           vals::Tuple)
     # Set the location indices of object boundaries.
     assert(all(issorted.(τlcmp)))
     bn, bp = bounds(shape)  # (SVector{3}, SVector{3})
@@ -206,12 +235,12 @@ function assign_val_shape!(shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}, avfs::T
     I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVector{3,UnitRange{Int}}
 
     if shape isa Box{3,9} && (shape::Box{3,9}).p == @SMatrix(eye(3))  # shape is Cartesian box
-        assign_val!((I,J,K), avfs...)
+        assign_val!.(arrays, vals, ((I,J,K),))
     else  # shape is not Cartesian box
         for k = K, j = J, i = I  # z-, y-, x-indices
             pt = t_ind(τlcmp, i, j, k)
             if pt ∈ shape
-                assign_val!((i,j,k), avfs...)
+                assign_val!.(arrays, vals, ((i,j,k),))
             end  # if pt ∈ shape
         end  # for k = ..., j = ..., i = ...
     end  # if shape isa ...
@@ -219,23 +248,13 @@ function assign_val_shape!(shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}, avfs::T
     return nothing
 end
 
-
-function assign_val!(subs::Tuple3{S}, avfs::Tuple{AbsArr, Any, Function}...) where {S<:Union{Integer,AbsVecInteger}} # avf: (array, value, function)
-    for avf = avfs
-        array, value, f_assign! = avf
-        f_assign!(array, value, subs)
-    end
-    return nothing
-end
-
-
-assign_scalar!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}} =
+assign_val!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}} =
     (array[subs...] = scalar; nothing)
 
 
-function assign_tensor_offdiag!(array::AbsArr{T,5}, tensor::AbsMat{T}, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
+function assign_val!(array::AbsArr{T,5}, tensor::AbsMat{T}, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
     for nc = nXYZ, nr = next2(nc)  # column- and row-indices
-        array[subs..., nr, nc] .= tensor[nr,nc]
+        array[subs..., nr, nc] = tensor[nr,nc]
     end
     return nothing
 end
