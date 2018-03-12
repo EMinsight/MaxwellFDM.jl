@@ -352,12 +352,10 @@ oind = objind(o)
 
 arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
 vals = (pind′, oind, o)
-# @time MaxwellFDM.assign_val_shape!(shape, τlcmp, (arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]))
-# @code_warntype MaxwellFDM.assign_val_shape!(shape, τlcmp, (arrays..., param3d_cmp), (vals, param))
+# @time assign_val_shape!((arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
+# @code_warntype assign_val_shape!((arrays..., param3d_cmp), (vals, param), shape, τlcmp)
 
 
-# @code_warntype MaxwellFDM.assign_param_obj!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec[1], τlcmp)
-# @code_warntype MaxwellFDM.assign_val_shape!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec[2], τlcmp)
 # @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec, τlcmp)
 # @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
 

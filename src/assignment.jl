@@ -14,16 +14,17 @@
 # pursue this extra optimization.  If I need to assign many objects, the situation may
 # change and I may need to implement this optimization.
 
-export create_param3d, create_n3d, assign_param!
+export create_param3d, create_n3d, assign_param!, assign_val_shape!
 
-# This function creates param3d of size N+1, but note that only the first N portion is used.
-# It is created with size N+1 to match the sizes of other matrices and hence to simplify the
-# algorithm.
+# Creates param3d of size N+1.  It is created with size N+1 to match the sizes of other
+# matrices created by create_n3d and hence to simplify the algorithm, but only the first N
+# portion is used.
 create_param3d(N::SVec3Int) =
     (s = (N+1).data; (Array{CFloat}(s..., 3, 3), Array{CFloat}(s..., 3, 3)))  # 3 = numel(Axis)
 
 create_n3d(::Type{T}, N::SVec3Int) where {T} =
     (s = (N+1).data; (Array{T}.((s,s,s,s)), Array{T}.((s,s,s,s))))  # Tuple24{Array{T,3}}
+
 
 # Notes on ghost point transformation by boundary conditions:
 #
@@ -157,8 +158,9 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
     return nothing
 end
 
-# This is the innermost function that is customized for MaxwellFDM (i.e., uses specific
-# parameters and arrays.)
+
+# This is the innermost function that is customized for MaxwellFDM (i.e., it takes arrays
+# of specific element types).
 function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                            nw::Integer,  # w = XX (1), YY (2), ZZ (3), grid node (4)
                            param3d_cmp::AbsArr{CFloat,5},  # parameter array to set
@@ -191,42 +193,44 @@ function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
         # So, use the more compact code (commented below) once this issue is resolved.  The
         # current code performs Base.in(pt, Shape) more than necessary, but
         # benchmark/smoothing.jl demonstrates that the performance does not degrade much.
-        assign_val_shape!(shape, τlcmp, pind3d_cmp, pind′)
-        assign_val_shape!(shape, τlcmp, oind3d_cmp, oind)
-        assign_val_shape!(shape, τlcmp, obj3d_cmp, o)
+        assign_val_shape!(pind3d_cmp, pind′, shape, τlcmp)
+        assign_val_shape!(oind3d_cmp, oind, shape, τlcmp)
+        assign_val_shape!(obj3d_cmp, o, shape, τlcmp)
         if nw == 4
-            assign_val_shape!(shape, τlcmp, param3d_cmp, param)
+            assign_val_shape!(param3d_cmp, param, shape, τlcmp)
         else  # nw = 1, 2, 3
-            assign_val_shape!(shape, τlcmp, @view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw])
+            assign_val_shape!(@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
         end
         # arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
         # vals = (pind′, oind, o)
         # if nw == 4
-        #     assign_val_shape!(shape, τlcmp, (arrays..., param3d_cmp), (vals..., param))
+        #     assign_val_shape!((arrays..., param3d_cmp), (vals..., param), shape, τlcmp)
         # else  # nw = 1, 2, 3
-        #     assign_val_shape!(shape, τlcmp, (arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]))
+        #     assign_val_shape!((arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
         # end
     end
 
     return nothing
 end
 
+
 # Do we need an another wrapper function that selects τlcmp from gt and nw?  The downside of
 # such a function is that avf already contains nw information.
 # Maybe, I could create a function that selects τlcmp from gt and nw.
 
-assign_val_shape!(shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}, array::AbsArr{T,3}, val::T) where {T} =
-    assign_val_shape!(shape, τlcmp, (array,), (val,))
 
-assign_val_shape!(shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}, array::AbsArr{T,5}, val::AbsMat{T}) where {T} =
-    assign_val_shape!(shape, τlcmp, (array,), (val,))
+assign_val_shape!(array::AbsArr{T,3}, val::T, shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}) where {T} =
+    assign_val_shape!((array,), (val,), shape, τlcmp)
+
+assign_val_shape!(array::AbsArr{T,5}, val::AbsMat{T}, shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}) where {T} =
+    assign_val_shape!((array,), (val,), shape, τlcmp)
 
 # Given a shape, assign value at the points within the shape.
 # Get a variable-length list of (array, value, function)'s.
-function assign_val_shape!(shape::Shape{3},
-                           τlcmp::Tuple3{AbsVecFloat},
-                           arrays::Tuple,
-                           vals::Tuple)
+function assign_val_shape!(arrays::Tuple,
+                           vals::Tuple,
+                           shape::Shape{3},
+                           τlcmp::Tuple3{AbsVecFloat})
     # Set the location indices of object boundaries.
     assert(all(issorted.(τlcmp)))
     bn, bp = bounds(shape)  # (SVector{3}, SVector{3})
@@ -248,9 +252,10 @@ function assign_val_shape!(shape::Shape{3},
     return nothing
 end
 
+
+# Could be named Base.setindex!, but didn't want this to be exported, so named different.
 assign_val!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}} =
     (array[subs...] = scalar; nothing)
-
 
 function assign_val!(array::AbsArr{T,5}, tensor::AbsMat{T}, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
     for nc = nXYZ, nr = next2(nc)  # column- and row-indices
