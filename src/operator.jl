@@ -1,5 +1,59 @@
 export create_∂, create_curl, create_m, create_mean, create_param3dmat, param3d2mat
 
+## Discrete curl ##
+create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+            N::AbsVecInteger,  # size of grid
+            ∆l::Tuple3{AbsVecNumber}=ones.((N...)),  # ∆l[w]: distances between grid planes in x-direction
+            ebc::AbsVec{EBC}=fill(BLOCH,length(N)),  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # BLOCH phase factor in x, y, z
+            reorder::Bool=true) =  # true for more tightly banded matrix
+    (K = length(N); create_curl(gt, SVector{K}(N), ∆l, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
+
+
+# I need to create create_curl_info! first.  Then, from there it is easy to eliminate some
+# rows and columns from I, J, V.  I need to create a sparse matrix from such reduced I, J, V.
+#
+# Also in the future, change create_∂ to return only r, c, v vectors (instead of a sparse matrix)
+# and create a sparse matrix at once.  This will create the curl matrix twice as fast.  I
+# can even pre-permutate the collection of r's, c's, v's to create a permuted sparse matrix.
+function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+                     N::SVec3Int,  # size of grid
+                     ∆l::Tuple3{AbsVecNumber},  # ∆l[w]: distances between grid planes in x-direction
+                     ebc::SVector{3,EBC},  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+                     reorder::Bool=true)  # true for more tightly banded matrix
+    ns = gt==PRIM ? 1 : -1
+    T = promote_type(eltype.(∆l)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
+    M = prod(N)
+
+    Itot = Vector{Int}()
+    Jtot = Vector{Int}()
+    Vtot = Vector{T}()
+
+    for nv = nXYZ  # Cartesian compotent of output vector
+        istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
+        parity = 1
+        for nw = next2(nv)  # direction of differentiation
+            nw′ = 6 - nv - nw  # Cantesian component of input vector; 6 = nX + nY + nZ
+            jstr, joff = reorder ? (3, nw′-3) : (1, M*(nw′-1))  # (column stride, column offset)
+            I, J, V = create_∂info(nw, ns, N, ∆l[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
+
+            @. I = istr * I + ioff
+            @. J = jstr * J + joff
+            V .*= parity
+
+            append!(Itot, I)
+            append!(Jtot, J)
+            append!(Vtot, V)
+
+            parity = -1
+        end
+    end
+
+    return sparse(Itot, Jtot, Vtot, 3M, 3M)
+end
+
+
 ## Difference operators ##
 create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
@@ -97,30 +151,28 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
 end
 
 
-## Discrete curl ##
-create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
-            N::AbsVecInteger,  # size of grid
-            ∆l::Tuple3{AbsVecNumber}=ones.((N...)),  # ∆l[w]: distances between grid planes in x-direction
-            ebc::AbsVec{EBC}=fill(BLOCH,length(N)),  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # BLOCH phase factor in x, y, z
+# Creates the field-averaging operator for all three Cartegian components.  Need to specify
+# which of the diagonal, superdiagonal, subdiagonal of param3d this operator will work with.
+create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+            ns::Integer,  # 1|-1 for forward|backward averaging
+            kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
+            N::SVec3Int,  # size of grid
+            ebc::SVector{3,EBC},  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
-    (K = length(N); create_curl(gt, SVector{K}(N), ∆l, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
+    create_mean(gt, ns, kdiag, N, ones.(N.data), ones.(N.data), ebc, e⁻ⁱᵏᴸ, reorder=reorder)
 
 
-# I need to create create_curl_info! first.  Then, from there it is easy to eliminate some
-# rows and columns from I, J, V.  I need to create a sparse matrix from such reduced I, J, V.
-#
-# Also in the future, change create_∂ to return only r, c, v vectors (instead of a sparse matrix)
-# and create a sparse matrix at once.  This will create the curl matrix twice as fast.  I
-# can even pre-permutate the collection of r's, c's, v's to create a permuted sparse matrix.
-function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+                     ns::Integer,  # 1|-1 for forward|backward averaging
+                     kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
                      N::SVec3Int,  # size of grid
-                     ∆l::Tuple3{AbsVecNumber},  # ∆l[w]: distances between grid planes in x-direction
+                     ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
+                     ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
                      ebc::SVector{3,EBC},  # boundary conditions in x, y, z
                      e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
-    ns = gt==PRIM ? 1 : -1
-    T = promote_type(eltype.(∆l)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
+    T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
 
     Itot = Vector{Int}()
@@ -129,26 +181,23 @@ function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
 
     for nv = nXYZ  # Cartesian compotent of output vector
         istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
-        parity = 1
-        for nw = next2(nv)  # direction of differentiation
-            nw′ = 6 - nv - nw  # Cantesian component of input vector; 6 = nX + nY + nZ
-            jstr, joff = reorder ? (3, nw′-3) : (1, M*(nw′-1))  # (column stride, column offset)
-            I, J, V = create_∂info(nw, ns, N, ∆l[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
 
-            @. I = istr * I + ioff
-            @. J = jstr * J + joff
-            V .*= parity
+        nw = mod1(nv+kdiag, 3)
+        jstr, joff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (column stride, column offset)
 
-            append!(Itot, I)
-            append!(Jtot, J)
-            append!(Vtot, V)
+        I, J, V = create_minfo(gt, nw, ns, N, ∆l[nw], ∆l′[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
 
-            parity = -1
-        end
+        @. I = istr * I + ioff
+        @. J = jstr * J + joff
+
+        append!(Itot, I)
+        append!(Jtot, J)
+        append!(Vtot, V)
     end
 
     return sparse(Itot, Jtot, Vtot, 3M, 3M)
 end
+
 
 ## Field-averaging operators ##
 # This creates the averaging operator for a single Cartesian component.  For the operator
@@ -257,52 +306,41 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     return I, J, V
 end
 
-# Creates the field-averaging operator for all three Cartegian components.  Need to specify
-# which of the diagonal, superdiagonal, subdiagonal of param3d this operator will work with.
-create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
-            ns::Integer,  # 1|-1 for forward|backward averaging
-            kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
-            N::SVec3Int,  # size of grid
-            ebc::SVector{3,EBC},  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+
+param3d2mat(param3d::AbsArr{CFloat,5},
+            gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+            N::AbsVecInteger,  # size of grid
+            ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
+            ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
+            ebc::AbsVec{EBC},  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # BLOCH phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
-    create_mean(gt, ns, kdiag, N, ones.(N.data), ones.(N.data), ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+    (K = length(N); param3d2mat(param3d, gt, SVector{K}(N), ∆l, ∆l′, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 
-function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
-                     ns::Integer,  # 1|-1 for forward|backward averaging
-                     kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
+function param3d2mat(param3d::AbsArr{CFloat,5},
+                     gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
                      ebc::SVector{3,EBC},  # boundary conditions in x, y, z
                      e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
-    T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
+    ns_in, ns_out = gt==PRIM ? (-1,1) : (1,-1)
+    Mout = create_mean(gt, ns_out, 0, N, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
 
-    Itot = Vector{Int}()
-    Jtot = Vector{Int}()
-    Vtot = Vector{T}()
-
-    for nv = nXYZ  # Cartesian compotent of output vector
-        istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
-
-        nw = mod1(nv+kdiag, 3)
-        jstr, joff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (column stride, column offset)
-
-        I, J, V = create_minfo(gt, nw, ns, N, ∆l[nw], ∆l′[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
-
-        @. I = istr * I + ioff
-        @. J = jstr * J + joff
-
-        append!(Itot, I)
-        append!(Jtot, J)
-        append!(Vtot, V)
+    kdiag = 0
+    p3dmat = create_param3dmat(param3d, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
+    for kdiag = (1,-1)  # (superdiagonal, subdiagonal) components of ε tensor
+        Min = create_mean(gt, ns_in, kdiag, N, ∆l, ∆l′, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+        p3dmatₖ = create_param3dmat(param3d, kdiag, N, reorder=reorder)
+        p3dmat += Mout * p3dmatₖ * Min
     end
 
-    return sparse(Itot, Jtot, Vtot, 3M, 3M)
+    return p3dmat
 end
+
 
 function create_param3dmat(param3d::AbsArr{CFloat,5},
                            kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
@@ -343,37 +381,4 @@ function create_param3dmat(param3d::AbsArr{CFloat,5},
     # end
 
     return sparse(I, J, V, 3M, 3M)
-end
-
-param3d2mat(param3d::AbsArr{CFloat,5},
-            gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
-            N::AbsVecInteger,  # size of grid
-            ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
-            ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-            ebc::AbsVec{EBC},  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # BLOCH phase factor in x, y, z
-            reorder::Bool=true) =  # true for more tightly banded matrix
-    (K = length(N); param3d2mat(param3d, gt, SVector{K}(N), ∆l, ∆l′, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
-
-function param3d2mat(param3d::AbsArr{CFloat,5},
-                     gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
-                     N::SVec3Int,  # size of grid
-                     ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
-                     ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-                     ebc::SVector{3,EBC},  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
-                     reorder::Bool=true)  # true for more tightly banded matrix
-    M = prod(N)
-    ns_in, ns_out = gt==PRIM ? (-1,1) : (1,-1)
-    Mout = create_mean(gt, ns_out, 0, N, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
-
-    kdiag = 0
-    p3dmat = create_param3dmat(param3d, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
-    for kdiag = (1,-1)  # (superdiagonal, subdiagonal) components of ε tensor
-        Min = create_mean(gt, ns_in, kdiag, N, ∆l, ∆l′, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
-        p3dmatₖ = create_param3dmat(param3d, kdiag, N, reorder=reorder)
-        p3dmat += Mout * p3dmatₖ * Min
-    end
-
-    return p3dmat
 end
