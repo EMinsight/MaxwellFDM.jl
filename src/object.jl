@@ -47,28 +47,28 @@ matparam(o::Object, gt::GridType) = matparam(o.mat, gt)
 paramind(o::Object{K}, gt::GridType) where {K} = o.pind[Int(gt)]
 objind(o::Object) = o.oind
 
-function add!(ovec::AbsVec{<:Object{K}}, paramvec::Tuple2{AbsVec{SMat3Complex}}, os::Object{K}...) where {K}
+function add!(ovec::AbsVec{<:Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, os::Object{K}...) where {K}
     for o = os
-        add!(ovec, paramvec, o)
+        add!(ovec, paramset, o)
     end
 end
 
 # When I put an periodic array of an object, consider assigning the same object index to the
 # periodized objects.  That way, I can treat two of objects over a periodic boundary as the
 # same object.
-function add!(ovec::AbsVec{<:Object{K}}, paramvec::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
+function add!(ovec::AbsVec{<:Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
     # Assign the object index to o.
-    o.oind = isempty(ovec) ? 1 : objind(ovec[1])+1  # not just length(ovec)+1 to handle periodized objects
-    unshift!(ovec, o)  # prepend o (for potential use of ovec with KDTree)
+    o.oind = isempty(ovec) ? 1 : objind(ovec[end])+1  # not just length(ovec)+1 to handle periodized objects (see comments above)
+    push!(ovec, o)  # append o (for potential use of ovec with KDTree, must use unshift! to prepend)
 
     # Assign the material parameter indices to o.
-    p, pvec = matparam(o,PRIM), paramvec[nPR]
-    pind_prim = findlast(x -> x==p, pvec)
-    pind_prim==0 && (push!(pvec, p); pind_prim = length(pvec))
+    p, pset = matparam(o,PRIM), paramset[nPR]
+    pind_prim = findlast(x -> x==p, pset)
+    pind_prim==0 && (push!(pset, p); pind_prim = length(pset))
 
-    p, pvec = matparam(o,DUAL), paramvec[nDL]
-    pind_dual = findlast(x -> x==p, pvec)
-    pind_dual==0 && (push!(pvec, p); pind_dual = length(pvec))
+    p, pset = matparam(o,DUAL), paramset[nDL]
+    pind_dual = findlast(x -> x==p, pset)
+    pind_dual==0 && (push!(pset, p); pind_dual = length(pset))
 
     o.pind = (pind_prim, pind_dual)
 
