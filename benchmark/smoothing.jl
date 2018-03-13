@@ -352,6 +352,8 @@ oind = objind(o)
 
 arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
 vals = (pind′, oind, o)
+
+println("# of objects = $(length(ovec))")
 # @time assign_val_shape!((arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
 # @code_warntype assign_val_shape!((arrays..., param3d_cmp), (vals, param), shape, τlcmp)
 

@@ -129,10 +129,10 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
     for ngt = nPD
         gt = PD[ngt]
         ngt′ = alter(ngt)
+        gt_cmp₀ = SVector(gt, gt, gt)
         for nw = 1:4
             # Set the grid types of the x-, y-, z-locations of Fw.
-            gt_cmp = SVector(gt, gt, gt)
-            gt_cmp = broadcast((k,w,g)->(k==w ? alter(g) : g), nXYZ, nw, gt_cmp)  # no change if nw = 4
+            gt_cmp = broadcast((k,w,g)->(k==w ? alter(g) : g), nXYZ, nw, gt_cmp₀)  # no change if nw = 4
 
             # Choose the circularly shifted subscripts to use.
             sub_cmp = t_ind(sub, gt_cmp)
@@ -168,7 +168,7 @@ function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                            pind3d_cmp::AbsArr{ParamInd,3},  # material parameter index array to set
                            oind3d_cmp::AbsArr{ObjInd,3},  # object index array to set
                            ovec::AbsVec{<:Object3},  # object vector; later object overwrites earlier.
-                           τlcmp::Tuple3{AbsVecFloat})  # location of field components
+                           τlcmp::Tuple3{AbsVecReal})  # location of field components
     for o = ovec  # last in ovec is last object added; see object.jl/add!
         # Retrieve shape once here, so that it can be passed to the function barrier.
         shape = o.shape
@@ -217,10 +217,10 @@ end
 # Maybe, I could create a function that selects τlcmp from gt and nw.
 
 
-assign_val_shape!(array::AbsArr{T,3}, val::T, shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}) where {T} =
+assign_val_shape!(array::AbsArr{T,3}, val::T, shape::Shape{3}, τlcmp::Tuple3{AbsVecReal}) where {T} =
     assign_val_shape!((array,), (val,), shape, τlcmp)
 
-assign_val_shape!(array::AbsArr{T,5}, val::AbsMat{T}, shape::Shape{3}, τlcmp::Tuple3{AbsVecFloat}) where {T} =
+assign_val_shape!(array::AbsArr{T,5}, val::AbsMat{T}, shape::Shape{3}, τlcmp::Tuple3{AbsVecReal}) where {T} =
     assign_val_shape!((array,), (val,), shape, τlcmp)
 
 # Given a shape, assign value at the points within the shape.
@@ -228,7 +228,7 @@ assign_val_shape!(array::AbsArr{T,5}, val::AbsMat{T}, shape::Shape{3}, τlcmp::T
 function assign_val_shape!(arrays::Tuple,
                            vals::Tuple,
                            shape::Shape{3},
-                           τlcmp::Tuple3{AbsVecFloat})
+                           τlcmp::Tuple3{AbsVecReal})
     # Set the location indices of object boundaries.
     assert(all(issorted.(τlcmp)))
     bn, bp = bounds(shape)  # (SVector{3}, SVector{3})
