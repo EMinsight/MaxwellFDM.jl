@@ -154,8 +154,24 @@ end  # @testset "Object"
 
     @test paramind(box2_evac,PRIM)==1 && paramind(box2_evac,DUAL)==1
     @test objind(box2_evac) == 3
-end
+end  # @testset "Object vector"
 
+@testset "periodize" begin
+    # Square lattice
+    Si = Material("Si", ε = 12)
+    ge = PRIM
+    eSi = EncodedMaterial(ge, Si)
+    c_eSi = Object(Cylinder([0,0,0], 1, [0,0,1], 5), eSi)
+
+    b = Box([0,0,0], [10,10,5])
+    A = [1 0 0; 0 1 0; 0 0 5]'
+    obj_array = periodize(c_eSi, A, b)
+
+    @test length(obj_array) == (11-2)^2
+    @test all(map(x->(x==max∆l(c_eSi)), max∆l.(obj_array)))
+    @test all(map(x->(x==matparam(c_eSi,PRIM)), matparam.(obj_array,PRIM)))
+    @test all(map(x->(x==matparam(c_eSi,DUAL)), matparam.(obj_array,DUAL)))
+end  # @testset "periodize"
 
 
 # @testset "union" begin

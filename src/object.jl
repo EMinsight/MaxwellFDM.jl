@@ -9,7 +9,7 @@
 # "extend" bounds for Shape by defining it as GeometryPrimitives.bounds(::Interval) = ....
 # Then, exporting bounds exports this whole collection of bounds, both for Shape and Interval.
 export OpenInterval, ClosedInterval, KDTree, Object, Object3
-export bounds, max∆l, matparam, paramind, objind, add!  #, surfpt_nearby, normal
+export bounds, max∆l, matparam, paramind, objind, add!, periodize  #, surfpt_nearby, normal
 # export lsf, bound_, L_, center_, dist2bound, bound_contains, ∆lmax, sphere, transform,
 #     surfnormal, surfpoint  # functions
 # import Base:size, getindex, contains, isless, union, intersect
@@ -47,6 +47,7 @@ matparam(o::Object, gt::GridType) = matparam(o.mat, gt)
 paramind(o::Object{K}, gt::GridType) where {K} = o.pind[Int(gt)]
 objind(o::Object) = o.oind
 
+# Consider using resize! on ovec.
 function add!(ovec::AbsVec{<:Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, os::Object{K}...) where {K}
     for o = os
         add!(ovec, paramset, o)
@@ -56,6 +57,9 @@ end
 # When I put an periodic array of an object, consider assigning the same object index to the
 # periodized objects.  That way, I can treat two of objects over a periodic boundary as the
 # same object.
+# This does not apply to the periodict objects in the supercell (e.g., holes in a photonic
+# crystal slab), because they are different objects: they are not the same object over a
+# periodic boundary.
 function add!(ovec::AbsVec{<:Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
     # Assign the object index to o.
     o.oind = isempty(ovec) ? 1 : objind(ovec[end])+1  # not just length(ovec)+1 to handle periodized objects (see comments above)
@@ -73,6 +77,17 @@ function add!(ovec::AbsVec{<:Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}},
     o.pind = (pind_prim, pind_dual)
 
     return nothing
+end
+
+function GeometryPrimitives.periodize(o::Object{K}, A::AbstractMatrix, ∆range::Shape{K}) where {K}
+    shp_array = periodize(o.shape, A, ∆range)
+    N = length(shp_array)
+    obj_array = fill(o, N)
+    for n = 1:N
+        obj_array[n].shape = shp_array[n]
+    end
+
+    return obj_array
 end
 
 
