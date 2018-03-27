@@ -41,3 +41,5 @@ as
 - more general TF/SF method
 
 MaxwellFDM is still a project under development.
+
+[//]: # Mention Ian's work.
