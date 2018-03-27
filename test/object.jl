@@ -171,6 +171,10 @@ end  # @testset "Object vector"
     @test all(map(x->(x==max∆l(c_eSi)), max∆l.(obj_array)))
     @test all(map(x->(x==matparam(c_eSi,PRIM)), matparam.(obj_array,PRIM)))
     @test all(map(x->(x==matparam(c_eSi,DUAL)), matparam.(obj_array,DUAL)))
+
+    ovec = Object3[]
+    paramset = (SMat3Complex[], SMat3Complex[])
+    add!(ovec, paramset, obj_array)
 end  # @testset "periodize"
 
 

@@ -48,7 +48,14 @@ paramind(o::Object{K}, gt::GridType) where {K} = o.pind[Int(gt)]
 objind(o::Object) = o.oind
 
 # Consider using resize! on ovec.
-function add!(ovec::AbsVec{<:Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, os::Object{K}...) where {K}
+function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, os::AbsVec{<:Object{K}}) where {K}
+    for o = os
+        add!(ovec, paramset, o)
+    end
+end
+
+# Consider using resize! on ovec.
+function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, os::Object{K}...) where {K}
     for o = os
         add!(ovec, paramset, o)
     end
@@ -60,7 +67,7 @@ end
 # This does not apply to the periodict objects in the supercell (e.g., holes in a photonic
 # crystal slab), because they are different objects: they are not the same object over a
 # periodic boundary.
-function add!(ovec::AbsVec{<:Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
+function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
     # Assign the object index to o.
     o.oind = isempty(ovec) ? 1 : objind(ovec[end])+1  # not just length(ovec)+1 to handle periodized objects (see comments above)
     push!(ovec, o)  # append o (for potential use of ovec with KDTree, must use unshift! to prepend)
@@ -82,9 +89,9 @@ end
 function GeometryPrimitives.periodize(o::Object{K}, A::AbstractMatrix, ∆range::Shape{K}) where {K}
     shp_array = periodize(o.shape, A, ∆range)
     N = length(shp_array)
-    obj_array = fill(o, N)
+    obj_array = Vector{Object{K}}(N)
     for n = 1:N
-        obj_array[n].shape = shp_array[n]
+        obj_array[n] = Object(shp_array[n], o.mat, o.∆lmax)
     end
 
     return obj_array
