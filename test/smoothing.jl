@@ -67,7 +67,7 @@ end  # @testset "sort8!"
 
     # Initialize ε3dexp.
     I = eye(3)
-    for k = 1:3, j = 1:3, i = 1:3
+    for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
         ε3dexp[i,j,k,:,:] = εvac * I
     end
 
@@ -119,9 +119,10 @@ end  # @testset "sort8!"
     ε3dexp[3,3,3,2,2] = εvac
     ε3dexp[3,3,3,3,3] = εvac
 
-    for k = 1:3, j = 1:3, i = 1:3
+    for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
         # info("(i,j,k) = $((i,j,k))")  # uncomment this to know where test fails
-        @test ε3d[i,j,k,:,:] ≈ ε3dexp[i,j,k,:,:]
+        @test @view(ε3d[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
+        @test issymmetric(@view(ε3d[i,j,k,:,:]))
     end
 end  # @testset "smoothing, box with odd number of voxels"
 
@@ -171,7 +172,7 @@ end  # @testset "smoothing, box with odd number of voxels"
 
     # Initialize ε3dexp.
     I = eye(3)
-    for k = 1:4, j = 1:4, i = 1:4
+    for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
         ε3dexp[i,j,k,:,:] = εvac * I
     end
 
@@ -341,9 +342,10 @@ end  # @testset "smoothing, box with odd number of voxels"
     ε3dexp[4,4,4,2,2] = εvac
     ε3dexp[4,4,4,3,3] = εvac
 
-    for k = 1:4, j = 1:4, i = 1:4
+    for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
         # info("(i,j,k) = $((i,j,k))")  # uncomment this to know where test fails
-        @test ε3d[i,j,k,:,:] ≈ ε3dexp[i,j,k,:,:]
+        @test @view(ε3d[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
+        @test issymmetric(@view(ε3d[i,j,k,:,:]))
     end
 end  # @testset "smoothing, box with even number of voxels"
 

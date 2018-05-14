@@ -151,21 +151,18 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
 end
 
 
-# Creates the field-averaging operator for all three Cartegian components.  Need to specify
-# which of the diagonal, superdiagonal, subdiagonal of param3d this operator will work with.
+# Creates the field-averaging operator for all three Cartegian components.
 create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
             ns::Integer,  # 1|-1 for forward|backward averaging
-            kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
             N::SVec3Int,  # size of grid
             ebc::SVector{3,EBC},  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
-    create_mean(gt, ns, kdiag, N, ones.(N.data), ones.(N.data), ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+    create_mean(gt, ns, N, ones.(N.data), ones.(N.data), ebc, e⁻ⁱᵏᴸ, reorder=reorder)
 
 
 function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
                      ns::Integer,  # 1|-1 for forward|backward averaging
-                     kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
@@ -175,27 +172,25 @@ function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
     T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
 
-    Itot = Vector{Int}()
-    Jtot = Vector{Int}()
-    Vtot = Vector{T}()
+    Itot = Vector{Int}(6M)
+    Jtot = Vector{Int}(6M)
+    Vtot = Vector{T}(6M)
 
-    for nv = nXYZ  # Cartesian compotent of output vector
-        istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
-
-        nw = mod1(nv+kdiag, 3)
-        jstr, joff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (column stride, column offset)
+    for nw = nXYZ  # Cartesian compotent of output vector
+        indstr, indoff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (row stride, row offset)
 
         I, J, V = create_minfo(gt, nw, ns, N, ∆l[nw], ∆l′[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
 
-        @. I = istr * I + ioff
-        @. J = jstr * J + joff
+        @. I = indstr * I + indoff
+        @. J = indstr * J + indoff
 
-        append!(Itot, I)
-        append!(Jtot, J)
-        append!(Vtot, V)
+        indₛ, indₑ = 2(nw-1)*M+1, 2nw * M
+        Itot[indₛ:indₑ] = I
+        Jtot[indₛ:indₑ] = J
+        Vtot[indₛ:indₑ] = V
     end
 
-    return sparse(Itot, Jtot, Vtot, 3M, 3M)
+    return sparse(Itot, Jtot, Vtot, 3M, 3M)  # 3M×3M matrix with 2 entries per row (so 6M entries for I, J, V)
 end
 
 
@@ -328,12 +323,12 @@ function param3d2mat(param3d::AbsArr{CFloat,5},
                      reorder::Bool=true)  # true for more tightly banded matrix
     M = prod(N)
     ns_in, ns_out = gt==PRIM ? (-1,1) : (1,-1)
-    Mout = create_mean(gt, ns_out, 0, N, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+    Mout = create_mean(gt, ns_out, N, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
 
     kdiag = 0
     p3dmat = create_param3dmat(param3d, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
     for kdiag = (1,-1)  # (superdiagonal, subdiagonal) components of ε tensor
-        Min = create_mean(gt, ns_in, kdiag, N, ∆l, ∆l′, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+        Min = create_mean(gt, ns_in, N, ∆l, ∆l′, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
         p3dmatₖ = create_param3dmat(param3d, kdiag, N, reorder=reorder)
         p3dmat += Mout * p3dmatₖ * Min
     end
