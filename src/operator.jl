@@ -58,21 +58,21 @@ end
 create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
          N::SVector{K,Int},  # size of grid
-         ∆w::AbsVecNumber,  # spatial discretization; vector of length N[nw]
-         ebc::EBC=BLOCH,  # boundary condition in w-direction
-         e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
-        ) where {K} =
-    (M = prod(N); sparse(create_∂info(nw, ns, N, ∆w, ebc, e⁻ⁱᵏᴸ)..., M, M))
-
-
-create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
-         ns::Integer,  # 1|-1 for forward|backward difference
-         N::SVector{K,Int},  # size of grid
          ∆w::Number=1.0,  # spatial discretization; vector of length N[nw]
          ebc::EBC=BLOCH,  # boundary condition in w-direction
          e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
         ) where {K} =
     create_∂(nw, ns, N, fill(∆w, N[nw]), ebc, e⁻ⁱᵏᴸ)  # fill: create vector of ∆w
+
+
+create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
+         ns::Integer,  # 1|-1 for forward|backward difference
+         N::SVector{K,Int},  # size of grid
+         ∆w::AbsVecNumber,  # spatial discretization; vector of length N[nw]
+         ebc::EBC=BLOCH,  # boundary condition in w-direction
+         e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
+        ) where {K} =
+    (M = prod(N); sparse(create_∂info(nw, ns, N, ∆w, ebc, e⁻ⁱᵏᴸ)..., M, M))
 
 
 # I need to figure out whether the ±1 entries of the backward difference operator is always
@@ -255,7 +255,7 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     T = promote_type(eltype(∆w), eltype(∆w′), eltype(e⁻ⁱᵏᴸ))
     withcongbc = (gt==PRIM && ebc==PPC) || (gt==DUAL && ebc==PDC)  # bc type is congruent with field type
 
-    # Align ∆w and ∆w′ in the w-direction.
+    # Align ∆w and ∆w′ in the w-direction by reshape.
     vec1 =  @SVector ones(Int,K)
     sizew = @. !ŵ * vec1 + ŵ * N  # [1,Ny,1] for w == YY
     ∆W = reshape(∆w, sizew.data)
@@ -263,7 +263,7 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
 
     # Construct the row indices and values of nonzero diagonal entries of the matrix.
     I₀ = reshape(collect(1:M), N.data)  # row and column indices of diagonal entries
-    V₀ = fill(T(0.5), N.data) .* ∆W ./∆W′  # values of diagonal entries
+    V₀ = fill(T(0.5), N.data) .* ∆W ./ ∆W′  # values of diagonal entries
 
     # Construct the row and column indices and values of nonzero off-diagonal entries of the
     # matrix.
@@ -308,7 +308,7 @@ end
 
 
 param3d2mat(param3d::AbsArr{CFloat,5},
-            gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+            gt::GridType,  # PRIM|DUAL for primal|dual field
             N::AbsVecInteger,  # size of grid
             ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
             ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
@@ -319,7 +319,7 @@ param3d2mat(param3d::AbsArr{CFloat,5},
 
 
 function param3d2mat(param3d::AbsArr{CFloat,5},
-                     gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
+                     gt::GridType,  # PRIM|DUAL for primal|dual field
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
