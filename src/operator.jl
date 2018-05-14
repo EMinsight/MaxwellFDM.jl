@@ -106,18 +106,18 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
                      ) where {K}
     M = prod(N)
     Nw = N[nw]
-    ŵ = SVector(ntuple(identity,Val{K})) .== nw  # [0,true,0] for w == YY
+    ŵ = SVector(ntuple(identity,Val{K})) .== nw  # [0,true,0] for w == Ŷ
 
     # Construct the row and column indices of nonzero entries of the matrix.
     I₀ = reshape(collect(1:M), N.data)  # row and column indices of diagonal entries
     Iₛ = reshape(collect(1:M), N.data)  # row indices of off-diagonal entries
     Jₛ = reshape(collect(1:M), N.data)  # column indices of off-diagonal entries
-    shifts = -ns * ŵ  # [0,-1,0] for w == YY and ns = +1
+    shifts = -ns * ŵ  # [0,-1,0] for w == Ŷ and ns = +1
     Jₛ = circshift(Jₛ, shifts.data)
 
     # Align ∆w in the w-direction.
     vec1 =  @SVector ones(Int,K)
-    sizew = @. !ŵ * vec1 + ŵ * N  # [1,Ny,1] for w == YY
+    sizew = @. !ŵ * vec1 + ŵ * N  # [1,Ny,1] for w == Ŷ
     ∆W = reshape(∆w, sizew.data)
 
     # Construct the values of the diagonal and off-diagonal nonzero entries of the matrix.
@@ -246,13 +246,13 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
                      ) where {K}
     M = prod(N)
     Nw = N[nw]
-    ŵ = SVector(ntuple(identity,Val{K})) .== nw  # [0,true,0] for w == YY
+    ŵ = SVector(ntuple(identity,Val{K})) .== nw  # [0,true,0] for w == Ŷ
     T = promote_type(eltype(∆w), eltype(∆w′), eltype(e⁻ⁱᵏᴸ))
     withcongbc = (gt==PRIM && ebc==PPC) || (gt==DUAL && ebc==PDC)  # bc type is congruent with field type
 
     # Align ∆w and ∆w′ in the w-direction by reshape.
     vec1 =  @SVector ones(Int,K)
-    sizew = @. !ŵ * vec1 + ŵ * N  # [1,Ny,1] for w == YY
+    sizew = @. !ŵ * vec1 + ŵ * N  # [1,Ny,1] for w == Ŷ
     ∆W = reshape(∆w, sizew.data)
     ∆W′ = reshape(∆w′, sizew.data)
 
@@ -266,7 +266,7 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     Jₛ = reshape(collect(1:M), N.data)  # column indices of off-diagonal entries
     Vₛ = fill(T(0.5), N.data) .* ∆W  # values of off-diagonal entries (division later)
 
-    shifts = -ns * ŵ  # [0,-1,0] for w == YY and ns = +1
+    shifts = -ns * ŵ  # [0,-1,0] for w == Ŷ and ns = +1
     Jₛ = circshift(Jₛ, shifts.data)
     Vₛ = circshift(Vₛ, shifts.data)
     Vₛ ./= ∆W′

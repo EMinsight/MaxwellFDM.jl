@@ -20,7 +20,7 @@ end
 # Then, for a voxel center l[gt][i], the voxel bounds are lvxlbounds[[i,i+1]], regardless of
 # the value of gt.
 struct Grid{K}
-    axis::SVector{K,Axis}  # axes of this grid (one of XX, YY, ZZ, the instances of Axis)
+    axis::SVector{K,Axis}  # axes of this grid (one of X̂, Ŷ, Ẑ, the instances of Axis)
     unit::PhysUnit  # set of physical units used on computational grid
     N::SVector{K,Int}  # N[k] = number of grid cells in k-direction
     L::SVector{K,Float}  # L[k] = length of grid (domain) in k-direction

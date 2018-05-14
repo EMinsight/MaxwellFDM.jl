@@ -162,7 +162,7 @@ end
 # This is the innermost function that is customized for MaxwellFDM (i.e., it takes arrays
 # of specific element types).
 function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
-                           nw::Integer,  # w = XX (1), YY (2), ZZ (3), grid node (4)
+                           nw::Integer,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
                            param3d_cmp::AbsArr{CFloat,5},  # parameter array to set
                            obj3d_cmp::AbsArr{Object3,3},  # object array to set
                            pind3d_cmp::AbsArr{ParamInd,3},  # material parameter index array to set

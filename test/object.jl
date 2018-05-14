@@ -197,9 +197,9 @@ end  # @testset "periodize"
 # @testset "flip" begin
 #     b = Box(((0,1),(0,1),(0,1)))
 #     lsf0 = lsf(b)
-#     lsf_x = flip(lsf0, XX, 0)
-#     lsf_y = flip(lsf0, YY, 0)
-#     lsf_z = flip(lsf0, ZZ, 0)
+#     lsf_x = flip(lsf0, X̂, 0)
+#     lsf_y = flip(lsf0, Ŷ, 0)
+#     lsf_z = flip(lsf0, Ẑ, 0)
 #
 #     @test all(contains.(lsf0, [(x,y,z) for x = 0:1, y = 0:1, z = 0:1]))
 #     @test all(contains.(lsf_x, [(x,y,z) for x = -1:0, y = 0:1, z = 0:1]))
@@ -210,9 +210,9 @@ end  # @testset "periodize"
 # @testset "shift" begin
 #     b = Box(((0,1),(0,1),(0,1)))
 #     lsf0 = lsf(b)
-#     lsf_x = shift(lsf0, XX, -1)
-#     lsf_y = shift(lsf0, YY, -1)
-#     lsf_z = shift(lsf0, ZZ, -1)
+#     lsf_x = shift(lsf0, X̂, -1)
+#     lsf_y = shift(lsf0, Ŷ, -1)
+#     lsf_z = shift(lsf0, Ẑ, -1)
 #
 #     @test all(contains.(lsf0, [(x,y,z) for x = 0:1, y = 0:1, z = 0:1]))
 #     @test all(contains.(lsf_x, [(x,y,z) for x = -1:0, y = 0:1, z = 0:1]))

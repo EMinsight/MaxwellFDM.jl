@@ -27,7 +27,7 @@ unit = PhysUnit(L₀)
     l₀ = L / 2
     lprim = cumsum([-l₀; ∆ldual])
 
-    g1 = Grid(XX, unit, lprim, Npml, ebc)
+    g1 = Grid(X̂, unit, lprim, Npml, ebc)
 
     @test g1.unit == unit
     @test g1.N == [M]
@@ -77,7 +77,7 @@ end  # @testset "Grid{1}, primal boundary"
     ∆ldual = ∆ldual[2:end]
     L = sum(∆lprim)
 
-    g1 = Grid(XX, unit, lprim, Npml, ebc)
+    g1 = Grid(X̂, unit, lprim, Npml, ebc)
 
     @test g1.unit == unit
     @test g1.N == [M]
@@ -182,7 +182,7 @@ end  # @testset "Grid{3}"
 #     lprim = (-).(map(x->[0; cumsum(x)], ∆ldual), l₀)
 #
 #     g3 = Grid3D(unit, lprim, Npml, ebc)
-#     normal_axis = YY
+#     normal_axis = Ŷ
 #     h, v = Int.(next3(normal_axis))
 #     g2 = Grid2D(g3, normal_axis)
 #
@@ -194,7 +194,7 @@ end  # @testset "Grid{3}"
 #     Npml = (Npml[h], Npml[v])
 #     l₀ = (l₀[h], l₀[v])
 #
-#     @test g2.normal_axis == YY
+#     @test g2.normal_axis == Ŷ
 #     @test unit_(g2) == unit
 #     @test g2.N == M
 #     @test g2.L ≈ L

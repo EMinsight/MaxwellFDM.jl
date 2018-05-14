@@ -10,13 +10,13 @@ const nXYZ, nYZX, nZXY = SVector(nX,nY,nZ), SVector(nY,nZ,nX), SVector(nZ,nX,nY)
 const CYC_nAXES = (nYZX, nZXY, nXYZ)  # not (nXYZ, nYZX, nZXY)
 const nXZY, nYXZ, nZYX = SVector(nX,nZ,nY), SVector(nY,nX,nZ), SVector(nZ,nY,nX)
 const ACYC_nAXES = (nZYX, nXZY, nYXZ)  # not (nXZY, nYXZ, nZYX)
-@enum Axis XX=nX YY ZZ
-const XYZ, YZX, ZXY = SVector(XX,YY,ZZ), SVector(YY,ZZ,XX), SVector(ZZ,XX,YY)
+@enum Axis X̂=nX Ŷ Ẑ
+const XYZ, YZX, ZXY = SVector(X̂,Ŷ,Ẑ), SVector(Ŷ,Ẑ,X̂), SVector(Ẑ,X̂,Ŷ)
 const CYC_AXES = (YZX, ZXY, XYZ)  # not (XYZ, YZX, ZXY)
-const XZY, YXZ, ZYX = SVector(XX,ZZ,YY), SVector(YY,XX,ZZ), SVector(ZZ,YY,XX)
+const XZY, YXZ, ZYX = SVector(X̂,Ẑ,Ŷ), SVector(Ŷ,X̂,Ẑ), SVector(Ẑ,Ŷ,X̂)
 const ACYC_AXES = (ZYX, XZY, YXZ)  # not (XZY, YXZ, ZYX)
 for ins in instances(Axis); @eval export $(Symbol(ins)); end  # export all instances
-Base.string(ins::Axis) = ins==XX ? "x" : (ins==YY ? "y" :"z")
+Base.string(ins::Axis) = ins==X̂ ? "x" : (ins==Ŷ ? "y" :"z")
 
 next3(ins::Axis) = CYC_AXES[Int(ins)]
 next2(ins::Axis) = (n3 = next3(ins); SVector(n3[1], n3[2]))

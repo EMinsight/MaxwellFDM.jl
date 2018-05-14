@@ -58,7 +58,7 @@ function smooth_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
     for ngt = nPD
         param3d_gt = param3d[ngt]
         gt = PD[ngt]
-        for nw = 1:4  # w = XX, YY, ZZ, grid node
+        for nw = 1:4  # w = X̂, Ŷ, Ẑ, grid node
             # Set the grid types of the x-, y-, z-locations of Fw.
             gt_cmp = SVector(gt, gt, gt)
             gt_cmp = broadcast((k,w,g)->(k==w ? alter(g) : g), nXYZ, nw, gt_cmp)  # no change if nw = 4
@@ -88,9 +88,9 @@ function smooth_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
     return nothing
 end
 
-# Below, XXX_cmp has size N, whereas XXX_cmp′ has size N+1 (and corresponds to voxel corners).
+# Below, X̂X_cmp has size N, whereas X̂X_cmp′ has size N+1 (and corresponds to voxel corners).
 function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
-                           nw::Int,  # w = XX (1), YY (2), ZZ (3), grid node (4)
+                           nw::Int,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
                            param3d_gt::AbsArr{CFloat,5},  # parameter array to smooth
                            obj3d_cmp′::AbsArr{<:Object3,3},  # object array (does not change)
                            pind3d_cmp′::AbsArr{ParamInd,3},  # material parameter index array (does not chaneg)

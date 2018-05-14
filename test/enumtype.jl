@@ -1,7 +1,7 @@
 @testset "enumtype" begin
 
 @testset "instances" begin
-    @test instances(Axis) == (XX, YY, ZZ)
+    @test instances(Axis) == (X̂, Ŷ, Ẑ)
     @test instances(Dir) == (HRZ, VRT)
     @test instances(GridType) == (PRIM, DUAL)
     @test instances(FieldType) == (EE, HH)
@@ -30,29 +30,29 @@ end
 end
 
 @testset "next and alter" begin
-    @test next3(XX) == [YY, ZZ, XX]
-    @test next3(YY) == [ZZ, XX, YY]
-    @test next3(ZZ) == [XX, YY, ZZ]
+    @test next3(X̂) == [Ŷ, Ẑ, X̂]
+    @test next3(Ŷ) == [Ẑ, X̂, Ŷ]
+    @test next3(Ẑ) == [X̂, Ŷ, Ẑ]
 
-    @test next2(XX) == [YY, ZZ]
-    @test next2(YY) == [ZZ, XX]
-    @test next2(ZZ) == [XX, YY]
+    @test next2(X̂) == [Ŷ, Ẑ]
+    @test next2(Ŷ) == [Ẑ, X̂]
+    @test next2(Ẑ) == [X̂, Ŷ]
 
-    @test next1(XX) == YY
-    @test next1(YY) == ZZ
-    @test next1(ZZ) == XX
+    @test next1(X̂) == Ŷ
+    @test next1(Ŷ) == Ẑ
+    @test next1(Ẑ) == X̂
 
-    @test prev3(XX) == [ZZ, YY, XX]
-    @test prev3(YY) == [XX, ZZ, YY]
-    @test prev3(ZZ) == [YY, XX, ZZ]
+    @test prev3(X̂) == [Ẑ, Ŷ, X̂]
+    @test prev3(Ŷ) == [X̂, Ẑ, Ŷ]
+    @test prev3(Ẑ) == [Ŷ, X̂, Ẑ]
 
-    @test prev2(XX) == [ZZ, YY]
-    @test prev2(YY) == [XX, ZZ]
-    @test prev2(ZZ) == [YY, XX]
+    @test prev2(X̂) == [Ẑ, Ŷ]
+    @test prev2(Ŷ) == [X̂, Ẑ]
+    @test prev2(Ẑ) == [Ŷ, X̂]
 
-    @test prev1(XX) == ZZ
-    @test prev1(YY) == XX
-    @test prev1(ZZ) == YY
+    @test prev1(X̂) == Ẑ
+    @test prev1(Ŷ) == X̂
+    @test prev1(Ẑ) == Ŷ
 
     @test alter(HRZ) == VRT
     @test alter(VRT) == HRZ
