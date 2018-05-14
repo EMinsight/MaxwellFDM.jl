@@ -42,4 +42,4 @@ as
 
 MaxwellFDM is still a project under development.
 
-<!---Mention Ian's work.--->
+<!---Mention Ian Williamson's repository.--->
