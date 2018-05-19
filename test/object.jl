@@ -167,7 +167,7 @@ end  # @testset "Object vector"
     A = [1 0 0; 0 1 0; 0 0 5]'
     obj_array = periodize(c_eSi, A, b)
 
-    @test length(obj_array) == (11-2)^2
+    @test length(obj_array) == 11^2
     @test all(map(x->(x==max∆l(c_eSi)), max∆l.(obj_array)))
     @test all(map(x->(x==matparam(c_eSi,PRIM)), matparam.(obj_array,PRIM)))
     @test all(map(x->(x==matparam(c_eSi,DUAL)), matparam.(obj_array,DUAL)))
