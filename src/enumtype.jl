@@ -87,7 +87,7 @@ alter(n::Int) = 3-n
 # const IDict = ImmutableDict
 #
 # function array2dict(et::Type{T}, t::AbsArr{S,1}) where {T<:Enum,S}
-#     length(instances(et)) != length(t) && throw(ArgumentError("# of instances of type of et = $et is different from # of entries of $t."))
+#     length(instances(et)) == length(t) || throw(ArgumentError("# of instances of type of et = $et is different from # of entries of $t."))
 #
 #     d = IDict{et,eltype(t)}()
 #     for ie in zip(instances(et), t)  # it: (instance of enumtype, element of tuple)

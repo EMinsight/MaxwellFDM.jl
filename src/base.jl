@@ -170,8 +170,8 @@ function newtsol(x₀::Number, f::Function, f′::Function=(x,fₙ)->f′fwd(f,x
     while abs(fₙ) > τf
         # info("n = $n")
 
-        # abs(xₙ/x₀) > 1e3 && (isconverged = false; break)
-        # abs(xₙ/x₀) > 1e3 && throw(ErrorException("Solution xₙ = $xₙ has diverged from x₀ = $x₀."))
+        # abs(xₙ/x₀) ≤ 1e3 || (isconverged = false; break)
+        # abs(xₙ/x₀) ≤ 1e3 || throw(ErrorException("Solution xₙ = $xₙ has diverged from x₀ = $x₀."))
 
         λ = 1.
         nls = 0  # line search iteration counter
@@ -181,8 +181,8 @@ function newtsol(x₀::Number, f::Function, f′::Function=(x,fₙ)->f′fwd(f,x
         # Avoid too large Newton steps.
         s = -fₙ/f′ₙ
         # info("fₙ = $fₙ, f′ₙ = $f′ₙ, xₙ = $xₙ, s = $s")
-        abs(s) > maxs && (isconverged = false; break)
-        # abs(s) > maxs && throw(ErrorException("Newton step s = $s is larger than maximum step size $maxs."))
+        abs(s) ≤ maxs || (isconverged = false; break)
+        # abs(s) ≤ maxs || throw(ErrorException("Newton step s = $s is larger than maximum step size $maxs."))
         xₙ₊₁ = xₙ + λ*s
         fₙ₊₁ = f(xₙ₊₁)
 
@@ -198,8 +198,8 @@ function newtsol(x₀::Number, f::Function, f′::Function=(x,fₙ)->f′fwd(f,x
             nls += 1
 
             # Too many iteration steps in line search
-            nls > maxitls && (isconverged = false; break)
-            # nls > maxitls && throw(ErrorException("Line search fails in $nls iteration steps."))
+            nls ≤ maxitls || (isconverged = false; break)
+            # nls ≤ maxitls || throw(ErrorException("Line search fails in $nls iteration steps."))
         end
 
         # Step accepted; continue the Newton method.
@@ -207,8 +207,8 @@ function newtsol(x₀::Number, f::Function, f′::Function=(x,fₙ)->f′fwd(f,x
         n += 1
 
         # Too many iteration steps in Newton's method.
-        n > maxit && (isconverged = false; break)
-        # n > maxit && throw(ErrorException("Newton method fails to converge in $n iteration steps."))
+        n ≤ maxit || (isconverged = false; break)
+        # n ≤ maxit || throw(ErrorException("Newton method fails to converge in $n iteration steps."))
 
         fₙ = f(xₙ)
         # info("fₙ = $fₙ")

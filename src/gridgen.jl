@@ -65,12 +65,12 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
                         lprim₀::AbsVecReal,  # default points to take as primal grid planes; copied internally
                         ldual₀::AbsVecReal)  # default points to take as dual grid planes; copied internally
 
-    # (length(Lpml)≠2 || any(Lpml.<0)) && throw(ArgumentError("Lpml = $Lpml must be length-2 and nonnegative."))
-    # sum(Lpml) > L_(domain) && throw(ArgumentError("sum(Lpml) = $(sum(Lpml)) must be ≤ L_(domain) = $(L_(domain))."))
+    # (length(Lpml)==2 && all(Lpml.≥0)) || throw(ArgumentError("Lpml = $Lpml must be length-2 and nonnegative."))
+    # sum(Lpml) ≤ L_(domain) || throw(ArgumentError("sum(Lpml) = $(sum(Lpml)) must be ≤ L_(domain) = $(L_(domain))."))
 
     # The following is not necessary, because we will simply ignore points outside the domain.
-    # !all(contains.(domain, lprim0)) && throw(ArgumentError("Entries of lprim0 = $lprim0 must be all inside domain = $domain."))
-    # !all(contains.(domain, ldual0)) && throw(ArgumentError("Entries of ldual0 = $ldual0 must be all inside domain = $domain."))
+    # all(contains.(domain, lprim0)) || throw(ArgumentError("Entries of lprim0 = $lprim0 must be all inside domain = $domain."))
+    # all(contains.(domain, ldual0)) || throw(ArgumentError("Entries of ldual0 = $ldual0 must be all inside domain = $domain."))
 
     ∆lmax = max∆l(domain)
     L = length(domain)
@@ -247,9 +247,9 @@ end
 
 function findfirst_stiff_∆∆l(∆l::AbsVecReal, rt::Real)
     n = length(∆l)
-    n < 2 && throw(ArgumentError("∆l = $∆l must be length-2 or longer."))
+    n ≥ 2 || throw(ArgumentError("∆l = $∆l must be length-2 or longer."))
 
-    rt < 1.0 && (rt = 1/rt)  # make rt greater than 1
+    rt ≥ 1.0 || (rt = 1/rt)  # make rt greater than 1
 
     for ind = 1:n-1
         (∆l[ind]/∆l[ind+1] > rt || ∆l[ind]/∆l[ind+1] < 1/rt) && return ind
@@ -259,7 +259,7 @@ function findfirst_stiff_∆∆l(∆l::AbsVecReal, rt::Real)
 end
 
 function issmooth(∆l::AbsVecReal, rt::Real)
-    return findfirst_stiff_∆∆l(∆l, rt) == 0
+    return findfirst_stiff_∆∆l(∆l, rt) == 0  # no stiff_∆∆l
 end
 
 function fill_constant(∆lout::Real, gap::AbsVecReal, ∆lt::Real, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
@@ -268,25 +268,32 @@ function fill_constant(∆lout::Real, gap::AbsVecReal, ∆lt::Real, rt::Real=R_T
     # ∆lout: ∆l outside gap
     # ∆lt: target constant ∆l inside gap
 
-    ∆lout > ∆lt && ∆lout ≉ ∆lt && throw(ArgumentError("∆lout = $∆lout must be less than or equal to ∆lt = $∆lt."))
-    !issmooth(SVector(∆lout, ∆lt), rt) && throw(ArgumentError("∆lout = $∆lout and ∆lt = $∆lt must not be too different."))
-    rt > rmax && throw(ArgumentError("rt = $rt must be less than or equal to rmax = $rmax"))
+    ∆lout ≤ ∆lt || ∆lout ≈ ∆lt || throw(ArgumentError("∆lout = $∆lout must be less than or equal to ∆lt = $∆lt."))
+    issmooth(SVector(∆lout, ∆lt), rt) || throw(ArgumentError("∆lout = $∆lout and ∆lt = $∆lt must not be too different."))
+    rt ≤ rmax || throw(ArgumentError("rt = $rt must be less than or equal to rmax = $rmax"))
 
-    length(gap) ≠ 2 && throw(ArgumentError("gap = $gap must be length-2."))
-    (L = diff(gap)[1]) ≤ 0 && throw(ArgumentError("gap[2] = $(gap[2]) must be strictly greater than gap[1] = $(gap[1])."))
+    length(gap) == 2 || throw(ArgumentError("gap = $gap must be length-2."))
+    (L = diff(gap)[1]) > 0 || throw(ArgumentError("gap[2] = $(gap[2]) must be strictly greater than gap[1] = $(gap[1])."))
 
+    # Below, by taking [floor(), ceil()] instead of [floor(), floor()+1] or [ceil()-1, ceil()],
+    # we ensure only one ∆l is considered when L is an exact multiple of ∆lt.
     ns = SVector(floor(Int, L/∆lt), ceil(Int, L/∆lt))  # candidate numbers of grid cells
-    ∆l = L ./ ns  # ∆l[1] ≈ ∆l[2] ≈ ∆lt, but ∆l[1] is coarser than ∆l[2]
+    ∆l = L ./ ns  # ∆l[1] ≈ ∆l[2] ≈ ∆lt, but ∆l[1] is coarser grid spacing than ∆l[2]
 
-    # ∆l[1] might be greater than ∆lt and thus ∆l[1]/∆lout > rt, but still ∆l[1]/∆lout ≤ rmax may hold.
-    !issmooth(SVector(∆lout, ∆l[1]), rmax) && !issmooth(SVector(∆lout, ∆l[2]), rmax) &&
+    # ∆lt must be a smooth change from ∆lout (with a rate of change ≤ rt).  We construct
+    # ∆l[1] and ∆l[2] close to ∆lt, but neither of them is likely to be exactly ∆lt and
+    # therefore could be a slightly stiff change from ∆lout (with a rate of change slightly
+    # greater than rt).  Still, if the rate of change is ≤ rmax, we consider ∆l[1] or ∆l[2]
+    # acceptable.  If both ∆l[1] and ∆l[2] has a rate of change > rmax from ∆lout, generate
+    # a warning.
+    issmooth(SVector(∆lout, ∆l[1]), rmax) || issmooth(SVector(∆lout, ∆l[2]), rmax) ||
         # throw(ArgumentError("Cannot find ∆l whose multiple fits in gap = $gap while being close to ∆lt = $∆lt and varying smoothly from ∆lout = $∆lout."))
         warn("Cannot find ∆l whose multiple fits in gap = $gap while being close to ∆lt = $∆lt and varying smoothly from ∆lout = $∆lout.")
 
-    # Unless the coarser grid fails to generate smoothly varying grid, gives priority to it.
+    # Unless the coarser grid fails to generate smoothly varying grid, give it a preference.
     i = issmooth(SVector(∆lout, ∆l[1]), rmax) ? 1 : 2
     n = ns[i]
-    # ∆l[i] > ∆lt && warn("gap = $gap will be filled with ∆l = $(∆l[i]), which is slightly greater than ∆lt = $∆lt.")
+    # ∆l[i] ≤ ∆lt || warn("gap = $gap will be filled with ∆l = $(∆l[i]), which is slightly greater than ∆lt = $∆lt.")
 
     filler = linspace(gap[1], gap[2], n+1)  # in exact arithmetic, equivalent to gap[1]:∆l:gap[end], which may not include gap[end] due to round-off error
 
@@ -305,8 +312,8 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
     # rt: target ratio of geometric sequence
     # rmax: maximum ratio of geometric sequence
 
-    ∆lt < ∆lsym && ∆lt ≉ ∆lsym && throw(ArgumentError("∆lt = $∆lt must be greater than or equal to ∆lsym = $∆lsym."))
-    (L = diff(gap)[1]) ≤ 0 && throw(ArgumentError("gap[2] = $(gap[2]) must be strictly greater than gap[1] = $(gap[1])."))
+    ∆lt ≥ ∆lsym || ∆lt ≈ ∆lsym || throw(ArgumentError("∆lt = $∆lt must be greater than or equal to ∆lsym = $∆lsym."))
+    (L = diff(gap)[1]) > 0 || throw(ArgumentError("gap[2] = $(gap[2]) must be strictly greater than gap[1] = $(gap[1])."))
 
     if issmooth(SVector(∆lsym, ∆lt), rt)
         filler = fill_constant(∆lsym, gap, ∆lt, rt, rmax)
@@ -379,7 +386,7 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
                 ∆l_array = ∆lmin * (r.^[1:n; n:-1:1])
             end
             assert(r ≤ rt)
-            r < 1/rt && throw(ArgumentError("gap = $gap is too small for ∆lsym = $∆lsym to grow geometrically to ∆lt = $∆lt with geometric ratio ≤ rt = $rt."))
+            r ≥ 1/rt || throw(ArgumentError("gap = $gap is too small for ∆lsym = $∆lsym to grow geometrically to ∆lt = $∆lt with geometric ratio ≤ rt = $rt."))
 
             ∆l_filler = ∆l_array
         else  # 2L_graded ≤ L
@@ -432,9 +439,9 @@ function fill_geometric(∆ln::Real, gap::AbsVecReal, ∆lt::Real, ∆lp::Real, 
     # rt: target ratio of geometric sequence
     # rmax: maximum ratio of geometric sequence
 
-    ((∆lt < ∆ln && ∆lt ≉ ∆ln) || (∆lt < ∆lp && ∆lt ≉ ∆lp)) &&
+    ((∆lt ≥ ∆ln || ∆lt ≈ ∆ln) && (∆lt ≥ ∆lp || ∆lt ≈ ∆lp)) ||
         throw(ArgumentError("∆lt = $∆lt must be greater than or equal to ∆ln = $∆ln and ∆lp = $∆lp."))
-    (L = diff(gap)[1]) ≤ 0 && throw(ArgumentError("gap[2] = $(gap[2]) must be strictly greater than gap[1] = $(gap[1])."))
+    (L = diff(gap)[1]) > 0 || throw(ArgumentError("gap[2] = $(gap[2]) must be strictly greater than gap[1] = $(gap[1])."))
 
     if ∆ln ≈ ∆lp
         filler = fill_geometric_sym(∆ln, gap, ∆lt, rt, rmax)
@@ -449,7 +456,7 @@ function fill_geometric(∆ln::Real, gap::AbsVecReal, ∆lt::Real, ∆lp::Real, 
 
         # Slightly underfill the gap with ∆lmax and the above generated graded ∆l's.
         L_graded = sum(∆l_array)  # ∆lmin * (r^1 + ... + r^n)
-        L_graded > L && throw(ArgumentError("gap = $gap is too small for min(∆ln,∆lp) = $(min(∆ln,∆lp)) to grow geometrically to max(∆ln,∆lp) = $(max(∆ln,∆lp)) with geometric ratio ≤ rt = $rt."))
+        L_graded ≤ L || throw(ArgumentError("gap = $gap is too small for min(∆ln,∆lp) = $(min(∆ln,∆lp)) to grow geometrically to max(∆ln,∆lp) = $(max(∆ln,∆lp)) with geometric ratio ≤ rt = $rt."))
         if ∆ln < ∆lp
             filler_n = cumsum([gap[1]; ∆l_array])
             gap_sym = [filler_n[end]; gap[2]]
@@ -499,26 +506,28 @@ julia> lprim = comp_lprim1d(sublprim);
 function comp_lprim1d(sublprim::AbsVec{<:AbsVecReal}, rt::Real=R_TARGET_DEFAULT, rmax::Real=R_MAX_DEFAULT)
     # Check inputs.
     nentry = length(sublprim)
-    iseven(nentry) && throw(ArgumentError("sublprim = $sublprim must have odd number of entries."))
+    if nentry == 1
+        lprim = sublprim[1]
+        return lprim
+    end
 
-    composites = Array{Array{Array{Float,1},1},1}(nentry÷2 + 1)  # array whose elements are [subgrid, [∆lt]], except for last element being [subgrid]
+    isodd(nentry) || throw(ArgumentError("sublprim = $sublprim must have odd number of entries."))
+
+    composites = Vector{Vector{VecFloat}}(nentry÷2 + 1)  # array whose elements are [subgrid, [∆lt]], except for last element being [subgrid]
     ind = 0
     for i = 1:2:nentry
         curr = i==nentry ? sublprim[[i]] : sublprim[[i,i+1]]
 
-        length(curr[1]) < 2 && throw(ArgumentError("Entry #$(i) of sublprim, $(curr[1]), must be length-2 or longer."))
-        !issorted(curr[1]) && throw(ArgumentError("Entry #$(i) of sublprim, $(curr[1]), must be sorted in ascending order."))
-        i < nentry && length(curr[2]) ≠ 1 && throw(ArgumentError("Entry #$(i+1) of sublprim, $(curr[2]), must be length-1."))
-        isdefined(:prev) && prev[1][end] ≥ curr[1][1] && throw(ArgumentError("Last entry of subgrid $(prev[1]) must be strictly less than first entry of subgrid $(curr[1]) of sublprim."))
+        length(curr[1]) ≥ 2 || throw(ArgumentError("Entry #$(i) of sublprim, $(curr[1]), must be length-2 or longer."))
+        issorted(curr[1]) || throw(ArgumentError("Entry #$(i) of sublprim, $(curr[1]), must be sorted in ascending order."))
+        i == nentry || length(curr[2]) == 1 || throw(ArgumentError("Entry #$(i+1) of sublprim, $(curr[2]), must be length-1."))
+        info("isdefined(:prev) = $(isdefined(:prev))")
+        (~isdefined(:prev) || prev[1][end] < curr[1][1]) || throw(ArgumentError("Last entry of subgrid $(prev[1]) must be strictly less than first entry of subgrid $(curr[1]) of sublprim."))
 
         composites[ind+=1] = curr
         prev = curr
     end
 
-    if nentry == 1
-        lprim = composites[1][1]
-        return lprim
-    end
 
     # Fill gaps between neighboring subgrids.
     nsubgrid = length(composites)
@@ -529,7 +538,7 @@ function comp_lprim1d(sublprim::AbsVec{<:AbsVecReal}, rt::Real=R_TARGET_DEFAULT,
         ∆ln = lprim[end] - lprim[end-1]  # == curr[end] - curr[end-1]; ∆l of current subgrid
         next = composites[i]  #  next == [subgrid, [∆lt]] or next == [subgrid]
         ∆lp = next[1][2] - next[1][1]  # ∆l of next subgrid
-        gap = [lprim[end], next[1][1]]  # == [curr[end], next[1][1]]; gap between neighboring subgrids
+        gap = [lprim[end], next[1][1]]  # gap range between neighboring subgrids
         ∆lt = curr[2][1]
         try
             filler = fill_geometric(∆ln, gap, ∆lt, ∆lp, rt, rmax)
@@ -549,7 +558,7 @@ function comp_lprim1d(sublprim::AbsVec{<:AbsVecReal}, rt::Real=R_TARGET_DEFAULT,
 
     ∆lprim = diff(lprim)
     ind = findfirst_stiff_∆∆l(∆lprim, rmax)
-    ind ≠ 0 && throw(ErrorException("Grid generation failed: grid nodes $(lprim[ind:ind+2])
+    ind == 0 || throw(ErrorException("Grid generation failed: grid nodes $(lprim[ind:ind+2])
         are separated by $(∆lprim[ind:ind+1]), which do not vary smoothly."))
 
     return lprim

@@ -25,7 +25,7 @@ struct PhysUnit
     u::Float
 
     function PhysUnit(L₀::Real)
-        L₀ ≤ 0 && throw(DomainError());
+        L₀ > 0 || throw(ArgumentError("L₀ = $L₀ must be positive."));
         L = L₀;
         ω = c₀ / L;  # frequency in rad/s (L0-dependent)
         ε = ε₀;  # permittivity in eps0
