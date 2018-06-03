@@ -177,8 +177,8 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
 
     # For each space between primal nodes, find the smallest ∆l suggested by intervals.
     nprim0 = length(lprim0)
-    btwn_lprim0 = Vector{Float}(nprim0-1)  # midpoints between primal nodes
-    ∆lprim0 = Vector{Float}(nprim0-1)
+    btwn_lprim0 = VecFloat(nprim0-1)  # midpoints between primal nodes
+    ∆lprim0 = VecFloat(nprim0-1)
     for i = 1:nprim0-1
         btwn_lprim0[i] = (lprim0[i] + lprim0[i+1]) / 2
         ∆lprim0[i] = lprim0[i+1] - lprim0[i]
@@ -186,7 +186,7 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
     # btwn_lprim0 = (lprim0[1:end-1] + lprim0[2:end]) / 2  # points between primal nodes
     # ∆lprim0 = diff(lprim0)
 
-    ∆lmm_array = Vector{Float}(nprim0-1)  # lmm for each space between primal nodes
+    ∆lmm_array = VecFloat(nprim0-1)  # lmm for each space between primal nodes
     for j = 1:nprim0-1
         l = btwn_lprim0[j]
         ∆lmm = min(∆lmax, ∆lprim0[j])  # minimax: minimum of maximum ∆lprim's allowed
@@ -337,7 +337,7 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
             # ∆lmin * (rt^1 + ... + rt^n + ... + rt^1) ≥ L; note rt^n is added once.
             # Similarly, n[2] is such that ceil(n[2]) is the smallest integer satisfying
             # ∆lmin * (rt^1 + ... + rt^n + rt^n ... + rt^1) ≥ L; note rt^n is added twice.
-            ns = Vector{Float}(2)
+            ns = VecFloat(2)
             # n[1] = fzero(n -> ∆lmin*rt * (rt^(n-1) + 2(rt^(n-1) - 1)/(rt-1)) - L, 1)
             # n[2] = fzero(n -> ∆lmin*rt * 2(rt^n - 1)/(rt-1) - L, 1)
             ns[1], isconverged = newtsol(

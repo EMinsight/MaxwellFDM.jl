@@ -331,7 +331,7 @@ gt_cmp = map((k,g)->(k==nw ? alter(g) : g), nXYZ, gt_cmp)  # no change if nw = 0
 ind_cmp = t_ind(ind, gt_cmp)
 
 # Prepare the circularly shifted locations of the field components.
-τlcmp = view.(t_ind(τl,gt_cmp), ind_cmp)  # Tuple3{Vector{Float}}: locations of Fw = Uw or Vw
+τlcmp = view.(t_ind(τl,gt_cmp), ind_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
 
 # Prepare the circularly shifted viewes of various arrays to match the sorted
 # τl.  Even though all arrays are for same locations, param3d_cmp contains gt

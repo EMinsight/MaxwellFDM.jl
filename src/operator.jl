@@ -26,8 +26,8 @@ function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
     T = promote_type(eltype.(∆l)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
 
-    Itot = Vector{Int}()
-    Jtot = Vector{Int}()
+    Itot = VecInt()
+    Jtot = VecInt()
     Vtot = Vector{T}()
 
     for nv = nXYZ  # Cartesian compotent of output vector
@@ -172,8 +172,8 @@ function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
     T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
 
-    Itot = Vector{Int}(6M)
-    Jtot = Vector{Int}(6M)
+    Itot = VecInt(6M)
+    Jtot = VecInt(6M)
     Vtot = Vector{T}(6M)
 
     for nw = nXYZ  # Cartesian compotent of output vector
@@ -344,9 +344,9 @@ function create_param3dmat(param3d::AbsArr{CFloat,5},
     # Note that param3d's i, j, k indices run from 1 to N+1 rather than to N, so we should
     # not iterate those indices from 1 to end.
     M = prod(N)
-    I = Vector{Int}(3M)
-    J = Vector{Int}(3M)
-    V = Vector{CFloat}(3M)
+    I = VecInt(3M)
+    J = VecInt(3M)
+    V = VecComplex(3M)
     n = 0
     for nv = nXYZ  # row index of tensor
         istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)

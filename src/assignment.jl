@@ -4,9 +4,9 @@
 # retrieve objects from a map from this IDs to objects.  I could use oid3d in smoothing as
 # well, by constructing an 8-vector oid3d_vxl, like pind3d_vxl and oind3d_vxl.
 #
-# The rationale for this trick is that assigning an Int to Vector{Int} is faster than
-# assigning a concrete Object (like Box) to Vector{Object3}.  In my test,
-#   setindex!(::Vector{Int}, ::Int, <index>)
+# The rationale for this trick is that assigning an Int to VecInt is faster than assigning a
+# concrete Object (like Box) to Vector{Object3}.  In my test,
+#   setindex!(::VecInt, ::Int, <index>)
 # was about twice as fast as
 #   setindex!(::Vector{Object3}, ::Box, <index>), though both took only a few nanoseconds.
 #
@@ -139,7 +139,7 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
             psub_cmp = t_ind(psub, gt_cmp)
 
             # Prepare the circularly shifted locations of the field components.
-            τlcmp = view.(t_ind(τl,gt_cmp), sub_cmp)  # Tuple3{Vector{Float}}: locations of Fw = Uw or Vw
+            τlcmp = view.(t_ind(τl,gt_cmp), sub_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
 
             # Prepare the circularly shifted viewes of various arrays to match the sorted
             # τl.  Even though all arrays are for same locations, param3d_cmp contains gt

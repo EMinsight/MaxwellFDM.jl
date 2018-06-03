@@ -2,10 +2,10 @@ export Grid  # types
 export isproperebc, lghost  # functions
 
 struct Ghosted{K}
-    l::Tuple2{NTuple{K,Vector{Float}}}  # l[PRIM][k] = primal vertex locations with ghost points in k-direction
-    τl::Tuple2{NTuple{K,Vector{Float}}}  # l[PRIM][k] = primal vertex locations with transformed ghost points in k-direction
-    τind::Tuple2{NTuple{K,Vector{Int}}}  # τind[PRIM][k] = indices of Ghosted.l corresponding to transformed points by boundary conditions
-    ∆τ::Tuple2{NTuple{K,Vector{Float}}}  # ∆[PRIM][k] = amount of shift to get points shifted by BLOCH boundary conditions (Doesn't care transformation by reflection)
+    l::Tuple2{NTuple{K,VecFloat}}  # l[PRIM][k] = primal vertex locations with ghost points in k-direction
+    τl::Tuple2{NTuple{K,VecFloat}}  # l[PRIM][k] = primal vertex locations with transformed ghost points in k-direction
+    τind::Tuple2{NTuple{K,VecInt}}  # τind[PRIM][k] = indices of Ghosted.l corresponding to transformed points by boundary conditions
+    ∆τ::Tuple2{NTuple{K,VecFloat}}  # ∆[PRIM][k] = amount of shift to get points shifted by BLOCH boundary conditions (Doesn't care transformation by reflection)
 end
 
 # Consider storing lvxlbounds, which is
@@ -24,8 +24,8 @@ struct Grid{K}
     unit::PhysUnit  # set of physical units used on computational grid
     N::SVector{K,Int}  # N[k] = number of grid cells in k-direction
     L::SVector{K,Float}  # L[k] = length of grid (domain) in k-direction
-    l::Tuple2{NTuple{K,Vector{Float}}}  # l[PRIM][k] = primal vertex locations in k-direction
-    ∆l::Tuple2{NTuple{K,Vector{Float}}}  # ∆l[PRIM][k] = (∆l at primal vertices in w) == diff(l[DUAL][k] including ghost point)
+    l::Tuple2{NTuple{K,VecFloat}}  # l[PRIM][k] = primal vertex locations in k-direction
+    ∆l::Tuple2{NTuple{K,VecFloat}}  # ∆l[PRIM][k] = (∆l at primal vertices in w) == diff(l[DUAL][k] including ghost point)
     Npml::Tuple2{SVector{K,Int}}  # Npml[NEG][k] = number of cells inside PML at (-) end in k-direction
     Lpml::Tuple2{SVector{K,Float}}  # Lpml[NEG][k] = thickness of PML at (-) end in k-direction
     lpml::Tuple2{SVector{K,Float}}  # lpml[NEG][k] = location of PML interface at (-) end in k-direction
@@ -64,7 +64,7 @@ function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}
     # If ebc[k] = PDC, lprim[k] is from outside the negative boundary to outside the positive boundary.
     boundstype = map(e->(e≠PDC ? PRIM : DUAL), ebc)  # SVector{K,GridType}
 
-    ldual = movingavg.(lprim)  # NTuple{K,Vector{Float}}
+    ldual = movingavg.(lprim)  # NTuple{K,VecFloat}
     lbound = map((b,p,d)->(b==PRIM ? p : d), boundstype, SVector(lprim), SVector(ldual))  # SVector{K,Vector{<:Real}}
 
     # Set bounds, L, lpml, Lpml, and center.
@@ -111,14 +111,14 @@ function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}
     bcb = ebc.==BLOCH
 
     # Construct an instance of Ghosted.
-    τind = (map(n->collect(1:n+1), N.data), map(n->collect(1:n+1), N.data))  # Tuple23{Vector{Int}}
+    τind = (map(n->collect(1:n+1), N.data), map(n->collect(1:n+1), N.data))  # Tuple23{VecInt}
     τindg_prim = .!bcb.*N + 1 - bcd  # SVec3Int: N+1 for PPC; N for PDC; 1 for BLOCH
     τindg_dual = bcb.*N + 1 + bcp  # SVec3Int: 2 for PPC; 1 for PDC; N+1 for BLOCH
     τindg = (τindg_prim, τindg_dual)  # Tuple2{SVec3Int}
 
     τl = (deepcopy(lprim), deepcopy(ldual))
 
-    ∆τ = (zeros.((N+1).data), zeros.((N+1).data))  # Tuple23{Vector{Float}}
+    ∆τ = (zeros.((N+1).data), zeros.((N+1).data))  # Tuple23{VecFloat}
 
     for k = 1:K
         τind[nPR][k][end] = τindg[nPR][k]

@@ -100,9 +100,9 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                            σcmp::Tuple3{AbsVec{Bool}},  # false if on symmetry boundary
                            ∆τcmp′::Tuple3{AbsVecReal})  # amount of shift by BLOCH boundary conditions
     Nx, Ny, Nz = length.(lcmp)
-    pind_vxl = Vector{Int}(8)  # material parameter indices inside voxel
-    oind_vxl = Vector{Int}(8)  # object indices inside voxel
-    ind_c = Vector{Int}(8)  # corner indices inside voxel
+    pind_vxl = VecInt(8)  # material parameter indices inside voxel
+    oind_vxl = VecInt(8)  # object indices inside voxel
+    ind_c = VecInt(8)  # corner indices inside voxel
 
     for k = 1:Nz, j = 1:Ny, i = 1:Nx
         ijk_cmp = SVector(i,j,k)
