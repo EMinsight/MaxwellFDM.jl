@@ -62,8 +62,8 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
                         domaintype::GridType,
                         intvprim::AbsVec{ClosedInterval},  # object boundaries to fit to primal grid planes; does not change
                         intvdual::AbsVec{ClosedInterval},  # object boundaries to fit to dual grid planes; does not change
-                        lprim₀::AbsVecReal,  # default points to take as primal grid planes; copied internally
-                        ldual₀::AbsVecReal)  # default points to take as dual grid planes; copied internally
+                        lprim₀::AbsVecFloat,  # default points to take as primal grid planes; copied internally
+                        ldual₀::AbsVecFloat)  # default points to take as dual grid planes; copied internally
 
     # (length(Lpml)==2 && all(Lpml.≥0)) || throw(ArgumentError("Lpml = $Lpml must be length-2 and nonnegative."))
     # sum(Lpml) ≤ L_(domain) || throw(ArgumentError("sum(Lpml) = $(sum(Lpml)) must be ≤ L_(domain) = $(L_(domain))."))
