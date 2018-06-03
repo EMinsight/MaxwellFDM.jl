@@ -128,7 +128,7 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
     nprim0 = length(lprim0)
     lprimset_about_ldual0 = SortedSet(Float[])
     for j in eachindex(ldual0)
-        l = ldual0[j]
+        l::Float = ldual0[j]
         ind₋ = findlast(x->x<l, lprim0)  # to find interval ∆lprim0[ind] containing ldual0[j]
 
         # Below, ind₊ is findfirst(x->x>l, lprim0), but because l cannot be one of the

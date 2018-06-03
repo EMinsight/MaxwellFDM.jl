@@ -2,6 +2,18 @@
 rt = R_TARGET_DEFAULT  # 1.9
 rmax = R_MAX_DEFAULT  # 2.0
 
+@testset "gen_sublprim1d stability" begin
+    domain = OpenInterval((-100,100),10)
+    intvprim = [ClosedInterval((-100,-20)), ClosedInterval((20,100)), ClosedInterval((-30,30),1)]
+    intvdual = ClosedInterval[]
+
+    lprim0 = Float64[-75, 75]
+    ldual0 = Float64[-10,0,10]
+
+    sublprim = MaxwellFDM.gen_sublprim1d(domain, DUAL, intvprim, intvdual, lprim0, ldual0)
+    @test @inferred(MaxwellFDM.gen_sublprim1d(domain, DUAL, intvprim, intvdual, lprim0, ldual0)) == sublprim
+end  # @testset "gen_sublprim1d stability"
+
 @testset "gen_lprim1d for fixed intervals to fail" begin
     domain = OpenInterval((-3.,1.), Inf)
     lprim0 = Float64[]
