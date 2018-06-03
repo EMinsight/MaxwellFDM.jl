@@ -511,49 +511,46 @@ function comp_lprim1d(sublprim::AbsVec{<:AbsVecReal}, rt::Real=R_TARGET_DEFAULT,
         return lprim
     end
 
+    # Now nentry ≥ 2.
     isodd(nentry) || throw(ArgumentError("sublprim = $sublprim must have odd number of entries."))
 
-    composites = Vector{Vector{VecFloat}}(nentry÷2 + 1)  # array whose elements are [subgrid, [∆lt]], except for last element being [subgrid]
-    ind = 0
-    for i = 1:2:nentry
-        curr = i==nentry ? sublprim[[i]] : sublprim[[i,i+1]]
+    i = 1
+    sublprim_curr = sublprim[i]  # [l₁, ..., lₙ]
+    length(sublprim_curr) ≥ 2 || throw(ArgumentError("Entry #$(i) of sublprim, $(sublprim_curr), must be length-2 or longer."))
+    issorted(sublprim_curr) || throw(ArgumentError("Entry #$(i) of sublprim, $(sublprim_curr), must be sorted in ascending order."))
 
-        length(curr[1]) ≥ 2 || throw(ArgumentError("Entry #$(i) of sublprim, $(curr[1]), must be length-2 or longer."))
-        issorted(curr[1]) || throw(ArgumentError("Entry #$(i) of sublprim, $(curr[1]), must be sorted in ascending order."))
-        i == nentry || length(curr[2]) == 1 || throw(ArgumentError("Entry #$(i+1) of sublprim, $(curr[2]), must be length-1."))
-        info("isdefined(:prev) = $(isdefined(:prev))")
-        (~isdefined(:prev) || prev[1][end] < curr[1][1]) || throw(ArgumentError("Last entry of subgrid $(prev[1]) must be strictly less than first entry of subgrid $(curr[1]) of sublprim."))
+    lprim = copy(sublprim_curr)
+    for i = 3:2:nentry
+        sublprim_next = sublprim[i]  # [l₁, ..., lₙ]
+        ∆lt = sublprim[i-1]  # [∆l]
 
-        composites[ind+=1] = curr
-        prev = curr
-    end
+        length(sublprim_next) ≥ 2 || throw(ArgumentError("Entry #$(i) of sublprim, $(sublprim_next), must be length-2 or longer."))
+        issorted(sublprim_next) || throw(ArgumentError("Entry #$(i) of sublprim, $(sublprim_next), must be sorted in ascending order."))
+        length(∆lt) == 1 || throw(ArgumentError("Entry #$(i-1) of sublprim, $(∆lt), must be length-1."))
+        sublprim_curr[end] < sublprim_next[1] || throw(ArgumentError("Last entry of subgrid $(sublprim_curr) must be strictly less than first entry of subgrid $(sublprim_next) of sublprim."))
 
-
-    # Fill gaps between neighboring subgrids.
-    nsubgrid = length(composites)
-    assert(nsubgrid ≥ 2)
-    curr = composites[1]  # curr == [subgrid, [∆lt]] or curr == [subgrid]
-    lprim = curr[1]
-    for i = 2:nsubgrid
-        ∆ln = lprim[end] - lprim[end-1]  # == curr[end] - curr[end-1]; ∆l of current subgrid
-        next = composites[i]  #  next == [subgrid, [∆lt]] or next == [subgrid]
-        ∆lp = next[1][2] - next[1][1]  # ∆l of next subgrid
-        gap = [lprim[end], next[1][1]]  # gap range between neighboring subgrids
-        ∆lt = curr[2][1]
+        ∆ln = lprim[end] - lprim[end-1]  # == sublprim_curr[end] - sublprim_curr[end-1]; ∆l of current subgrid
+        ∆lp = sublprim_next[2] - sublprim_next[1]  # ∆l of next subgrid
+        gap = [lprim[end], sublprim_next[1]]  # gap range between neighboring subgrids
         try
-            filler = fill_geometric(∆ln, gap, ∆lt, ∆lp, rt, rmax)
+            filler = fill_geometric(∆ln, gap, ∆lt[1], ∆lp, rt, rmax)
 
             # Below, note that the provided subgrids are preserved despite round-off
             # errors in `filler`.  This is important for assiging materials and
             # sources at intended locations.  For example, failure to maintain the
             # provided subgrids can result in warnings in Shape.generate_kernel().
-            lprim = [lprim[1:end]; filler[2:end-1]; next[1]]
-            curr = next
+            assert(filler[1]≈sublprim_curr[end] && filler[end]≈sublprim_next[1])
+            append!(lprim, @view(filler[2:end-1]))
+            append!(lprim, sublprim_next)
+
+            sublprim_curr = sublprim_next
         catch err
             isa(err, ArgumentError) ?
-                throw(ErrorException("Grid generation failed between subgrids $(curr[1]) and $(next[1]) with target ∆l = $(curr[2][1]): " * err.msg)) :
+                throw(ErrorException("Grid generation failed between subgrids $(sublprim_curr) and $(sublprim_next) with target ∆l = $(∆lt): " * err.msg)) :
                 throw(err)
         end
+
+        sublprim_prev = sublprim_curr
     end
 
     ∆lprim = diff(lprim)
@@ -563,6 +560,7 @@ function comp_lprim1d(sublprim::AbsVec{<:AbsVecReal}, rt::Real=R_TARGET_DEFAULT,
 
     return lprim
 end
+
 
 function gen_lprim1d(domain::OpenInterval,
                      domaintype::GridType,

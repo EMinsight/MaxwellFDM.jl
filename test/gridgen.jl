@@ -3,15 +3,18 @@ rt = R_TARGET_DEFAULT  # 1.9
 rmax = R_MAX_DEFAULT  # 2.0
 
 @testset "gen_lprim1d for fixed intervals to fail" begin
-    domain = OpenInterval((-3.155830993045275,1.1707739814306768),0.13507892645230862)
-    intvprim = [ClosedInterval((-0.186399,0.502855),0.0689254), ClosedInterval((-0.330103,1.17077),0.150088)]
-    intvdual = ClosedInterval[]
-
+    domain = OpenInterval((-3.,1.), Inf)
     lprim0 = Float64[]
     ldual0 = Float64[]
+    intvdual = ClosedInterval[]
 
+    intvprim = [ClosedInterval((-0.2,0.5), 0.05), ClosedInterval((-0.3,1.2), 0.15)]
     sublprim = MaxwellFDM.gen_sublprim1d(domain, PRIM, intvprim, intvdual, lprim0, ldual0)
     # info("sublprim = $sublprim")
+    @test_throws ArgumentError MaxwellFDM.gen_lprim1d(domain, PRIM, intvprim, intvdual, lprim0, ldual0, rt, rmax)
+
+    intvprim = [ClosedInterval((-3.,-0.1), 1.0), ClosedInterval((0.1,1.), 1.0)]
+    sublprim = MaxwellFDM.gen_sublprim1d(domain, PRIM, intvprim, intvdual, lprim0, ldual0)
     @test_throws ErrorException MaxwellFDM.gen_lprim1d(domain, PRIM, intvprim, intvdual, lprim0, ldual0, rt, rmax)
 end  # @testset "gen_lprim1d for fixed intervals to fail"
 
