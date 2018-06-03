@@ -86,7 +86,7 @@ function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o
     return nothing
 end
 
-function GeometryPrimitives.periodize(o::Object{K}, A::AbstractMatrix, ∆range::Shape{K}) where {K}
+function GeometryPrimitives.periodize(o::Object{K}, A::AbsMat, ∆range::Shape{K}) where {K}
     shp_array = periodize(o.shape, A, ∆range)
     N = length(shp_array)
     obj_array = Vector{Object{K}}(N)

@@ -30,7 +30,7 @@ struct Grid{K}
     Lpml::Tuple2{SVector{K,Float}}  # Lpml[NEG][k] = thickness of PML at (-) end in k-direction
     lpml::Tuple2{SVector{K,Float}}  # lpml[NEG][k] = location of PML interface at (-) end in k-direction
     ebc::SVector{K,EBC}  # ebc[k] = internal boundary condition in k-direction
-    σ::Tuple2{NTuple{K,Vector{Bool}}}  # false for non-ghost points exactly on symmetric boundary (PPC or PDC)
+    σ::Tuple2{NTuple{K,VecBool}}  # false for non-ghost points exactly on symmetric boundary (PPC or PDC)
     boundstype::SVector{K,GridType}  # boundstype[k] = grid type of k-normal boundary planes
     bounds::Tuple2{SVector{K,Float}}  # bounds[NEG][k] = boundary of domain at (-) end in k-direction
     center::SVector{K,Float}  # center of grid without PML

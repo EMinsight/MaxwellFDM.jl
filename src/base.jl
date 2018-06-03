@@ -40,8 +40,8 @@ import Base:isapprox, dot
 # getindex(t::Tuple3{T}, ind::Tuple3{Int}) where {T} = (t[ind[1]], t[ind[2]], t[ind[3]])
 # getindex(t::Tuple32{T}, i::Int, j::Int, k::Int) where {T} = (t[1][i], t[2][j], t[3][k])  # i, j, k = 1 or 2
 # getindex(t::Tuple23{T}, i::Int, j::Int, k::Int) where {T} = (t[i][1], t[j][2], t[k][3])  # i, j, k = 1 or 2
-# getindex(t::Tuple3{AbstractVector{T}}, i::Int, j::Int, k::Int) where {T} = (t[1][i], t[2][j], t[3][k])
-# getindex(t::Tuple3{AbstractVector{T}}, i::Tuple2{Int}, j::Tuple2{Int}, k::Tuple2{Int}) where {T} =
+# getindex(t::Tuple3{AbsVec{T}}, i::Int, j::Int, k::Int) where {T} = (t[1][i], t[2][j], t[3][k])
+# getindex(t::Tuple3{AbsVec{T}}, i::Tuple2{Int}, j::Tuple2{Int}, k::Tuple2{Int}) where {T} =
 #     ((t[1][i[1]], t[1][i[2]]), (t[2][j[1]], t[2][j[2]]), (t[3][k[1]], t[3][k[2]]))
 
 # rand3() = (rand(), rand(), rand())
@@ -74,7 +74,7 @@ import Base:isapprox, dot
 #         else
 #             return abs(x-y)
 #         end
-#     elseif (isa(x,AbstractArray) && isa(y,Tuple)) || (isa(x,Tuple) && isa(y,AbstractArray))
+#     elseif (isa(x,AbsArr) && isa(y,Tuple)) || (isa(x,Tuple) && isa(y,AbsArr))
 #         return Inf
 #     else
 #         sx, sy = start(x), start(y)
