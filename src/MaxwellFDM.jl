@@ -1,6 +1,7 @@
 module MaxwellFDM
 
-using GeometryPrimitives, StaticArrays
+using Reexport
+@reexport using GeometryPrimitives, StaticArrays
 using DataStructures  # SortedSet in gridgen.jl
 
 export SVec3Complex, SMat3Complex, ParamInd, ObjInd
