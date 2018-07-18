@@ -217,18 +217,18 @@ function amean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{SVec3Int
     p = SMat3Complex(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
         o = obj3d_cmp′[ic,jc,kc]
-        p += matparam(o.data.mat::EncodedMaterial, gt)
+        p += matparam(o, gt)
     end
-    return p / length(ovec)
+    return p / 8
 end
 
 function hmean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{SVec3Int}, gt::GridType)
     p = SMat3Complex(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
         o = obj3d_cmp′[ic,jc,kc]
-        p += inv(matparam(o.data.mat::EncodedMaterial, gt))
+        p += inv(matparam(o, gt))
     end
-    return inv(p / length(ovec))
+    return inv(p / 8)
 end
 
 function kottke_input_simple(ind_c::AbsVecInteger, n_change::Integer, obj_fg::Object3, obj_bg::Object3, gt::GridType)
