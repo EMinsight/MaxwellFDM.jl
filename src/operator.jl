@@ -109,8 +109,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     ŵ = SVector(ntuple(identity,Val{K})) .== nw  # unit vector in w-direction; [0,true,0] for w == y
 
     # Construct the row and column indices of nonzero entries of the matrix.
-    I₀ = reshape(collect(1:M), N.data)  # row and column indices of diagonal entries
-    Iₛ = reshape(collect(1:M), N.data)  # row indices of off-diagonal entries
+    I₀ = reshape(collect(1:M), N.data)  # row and column indices of diagonal entries; row indices of off-diagonal entries
     Jₛ = reshape(collect(1:M), N.data)  # column indices of off-diagonal entries
     shifts = -ns * ŵ  # [0,-1,0] for w == y and ns = +1
     Jₛ = circshift(Jₛ, shifts.data)
@@ -186,9 +185,14 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
         Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0
     end
 
-    I = [I₀[:]; Iₛ[:]]  # row indices of [diagonal; off-diagonal]
-    J = [I₀[:]; Jₛ[:]]  # column indices of [diagonal; off-diagonal]
-    V = [V₀[:]; Vₛ[:]]  # matrix entries of [diagonal, off-diagonal]
+    i₀ = reshape(I₀, M)
+    jₛ = reshape(Jₛ, M)
+    v₀ = reshape(V₀, M)
+    vₛ = reshape(Vₛ, M)
+
+    I = [i₀; i₀]  # row indices of [diagonal; off-diagonal]
+    J = [i₀; jₛ]  # column indices of [diagonal; off-diagonal]
+    V = [v₀; vₛ]  # matrix entries of [diagonal, off-diagonal]
 
     return I, J, V
 end
@@ -300,12 +304,11 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     ∆W′ = reshape(∆w′, sizew.data)
 
     # Construct the row indices and values of nonzero diagonal entries of the matrix.
-    I₀ = reshape(collect(1:M), N.data)  # row and column indices of diagonal entries
+    I₀ = reshape(collect(1:M), N.data)  # row and column indices of diagonal entries; row indices of off-diagonal entries
     V₀ = fill(T(0.5), N.data) .* ∆W ./ ∆W′  # values of diagonal entries
 
     # Construct the row and column indices and values of nonzero off-diagonal entries of the
     # matrix.
-    Iₛ = reshape(collect(1:M), N.data)  # row indices of off-diagonal entries
     Jₛ = reshape(collect(1:M), N.data)  # column indices of off-diagonal entries
     Vₛ = fill(T(0.5), N.data) .* ∆W  # values of off-diagonal entries (division later)
 
@@ -405,9 +408,14 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
         Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0
     end
 
-    I = [I₀[:]; Iₛ[:]]  # row indices of [diagonal; off-diagonal]
-    J = [I₀[:]; Jₛ[:]]  # column indices of [diagonal; off-diagonal]
-    V = [V₀[:]; Vₛ[:]]  # matrix entries of [diagonal, off-diagonal]
+    i₀ = reshape(I₀, M)
+    jₛ = reshape(Jₛ, M)
+    v₀ = reshape(V₀, M)
+    vₛ = reshape(Vₛ, M)
+
+    I = [i₀; i₀]  # row indices of [diagonal; off-diagonal]
+    J = [i₀; jₛ]  # column indices of [diagonal; off-diagonal]
+    V = [v₀; vₛ]  # matrix entries of [diagonal, off-diagonal]
 
     return I, J, V
 end
