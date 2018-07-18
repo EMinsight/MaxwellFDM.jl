@@ -94,7 +94,7 @@ create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
 #
 # For the backward differce operater to be the transpose of the forward difference operator,
 # I need to create the forward difference operator such that Uₛ is zeroed.  This turns out
-# to work.  See the notes on Sep/06/2017 in RN - MaxwellFDM.jl.nb.
+# to work.  See the notes on Sep/06/2017 in RN - MaxwellFDM.jl.
 
 # Creates the w-directional difference matrix, with division by ∆w's.
 function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
@@ -125,22 +125,65 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     V₀ = -ns .* ones(T, N.data) ./ ∆W  # values of diagonal entries
     Vₛ = ns .* ones(T, N.data) ./ ∆W  # values of off-diagonal entries
 
-    # Modify I, J, V according to the boundary condition; see my notes on September 6, 2017.
+    # Modify I, J, V according to the boundary condition.  What we do is basically to take
+    # the operator for BLOCH as a template and then modify it for PPC and PDC by zeroing
+    # some diagonal and off-diagonal entries.
+    #
+    # Here are the details of what we do for ns = +1 (forward differentiation).  Note that
+    # the operators for ns = +1 are applied to primal fields parallel to the boundaries.
+    #
+    # - For PPC, our goal is to make sure the primal fields on the boundaries do not
+    # contribute to the derivatives at the first (nonghost) and last dual grid points.
+    # For the derivatives at the first dual grid points, the goal is achieved by zeroing the
+    # BLOCH operator's (diagonal) entries multiplied with the primal fields defined on the
+    # negative end.
+    # For the derivatives at the last dual grid points, the goal is achieved by zeroing the
+    # BLOCH operator's off-diagonal entries multiplied with the same fields as above,
+    # because these fields are periodically wrapped around and used as the (ghost) primal
+    # fields defined on the positive end.
+    #
+    # - For PDC, our goal is to make sure the resulting derivatives are zero at the dual
+    # grid points on both the negative- and positive-end boundaries, because the primal
+    # fields are symmetric around the PDC boundaries.
+    # For the derivatives at the dual grid points on the positive-end boundary, the goal is
+    # achieved by zeroing the BLOCH operator's both entries multiplied with the two primal
+    # fields fed to the operator. (One entry is on the diagonal, and the other is on the
+    # off-diagonal.)
+    # For the derivatives at the dual grid points on the negative-end boundary, we don't have
+    # to do anything because these dual grid points are ghost points and therefore the
+    # derivatives are not evaluated there.  (When the derivatives are requested at these
+    # ghost dual grid points, we directly deduce they are zero due to the boundary condition.)
+    #
+    # For the final sparsity patterns of the operators, see my notes on September 6, 2017 in
+    # RN - MaxwellFDM.jl.
+    #
+    # Below, Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] mimics the implementation of slicedim
+    # and basically means Vₛ[:,iw,:] for w = y.
     if ebc == BLOCH
         iw = ns<0 ? 1 : Nw  # ghost points at negative end for ns < 0
-        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns  # mimic implementation of slicedim
+        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
     else  # ebc ≠ BLOCH
-        # Set up the diagonal entries.  (This is independent of ns.)
-        # Because the way to set up the diagonal entries doesn't depend on ns, the operators
-        # for ns = +1 and –1 are the transpose of each other.
+        # Zero the diagonal entries multiplied with the fields on the boundary.
+        #
+        # Note that the code below is independent of ns.  When the grid is uniorm, the
+        # operators for the same boundary condition but for the opposite ns' must be the
+        # minus of the transpose of each other, so the diagonals of two operators must have
+        # zeros at the same locations.  This means the locations of zeros on the diagonal
+        # must be independent of ns.
         iw = ebc==PPC ? 1 : Nw
-        V₀[Base.setindex(indices(V₀), iw, nw)...] .= 0  # mimic implementation of slicedim
+        V₀[Base.setindex(indices(V₀), iw, nw)...] .= 0
 
-        # Set up the off-diagonal entries.  (This is indepent of boundary condition.)
-        # The construction here guarantees the off-diagonal parts for ns = +1 and -1 are the
-        # transpose of each other, regardless of boundary condition.
+        # Zero the off-diagonal entries multiplied with the fields on the boundary.
+        #
+        # Note that the code below is indepent of the boundary condition.  When the grid is
+        # uniform, this means that for the same ns, the operators for the PPC and PDC
+        # boundary conditions will have the same off-diagonal entries, except for the
+        # opposite signs.  Therefore, if we verify that the off-diagonal entries for ns = +1
+        # and -1 are minus the transpose of each other for the PPC boundary condition (and
+        # this is indeed the case), then we don't have to check this symmetry for the PDC
+        # boundary condition.
         iw = ns<0 ? 1 : Nw
-        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0  # mimic implementation of slicedim
+        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0
     end
 
     I = [I₀[:]; Iₛ[:]]  # row indices of [diagonal; off-diagonal]
@@ -271,27 +314,95 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     Vₛ = circshift(Vₛ, shifts.data)
     Vₛ ./= ∆W′
 
-    # Modify I, J, V according to the boundary condition; see my notes on September 6, 2017.
+    # Modify I, J, V according to the boundary condition.  What we do is basically to take
+    # the operator for BLOCH as a template and then modify it for PPC and PDC by replacing
+    # ±1's with 0's and 2's.
+    #
+    # Note that the operators for ns = -1 (backward averaging) and ns = +1 (forward
+    # averaging) can be created for both the primal and dual fields.  (That is why
+    # create_minfo takes an additional argument gt::GridType that specifies the type of the
+    # field compared to create_∂info.)  The difference between the operators for ns = ±1 is
+    # that one is for averaging the regular primal or dual fields, whereas the other is for
+    # averaging the primal or dual fields already averaged at their corresponding voxel
+    # corners.  Which of ns = +1 and -1 correspond to the regular and already-averaged
+    # fields depends on whether the fields are primal or dual.  (This is easy to figure out.)
+    #
+    # Here are the details of what we do for ns = -1 (backward averaging) for primal fields.
+    #
+    # - For PPC, our goal is to make sure symmetry around the PPC boundary is correctly
+    # accounted for during averaging.
+    # For the averages at the primal grid point on the negative-end boundary, the goal is
+    # achieved by substituting 2's for the BLOCH operator's (diagonal) 1's that are
+    # multiplied with the first (nonghost) primal fields (defined on the dual grid points),
+    # and 0's for the BLOCH operator's (off-diagonal) 1's that are multiplied with the ghost
+    # primal fields, which are copied from the last (nonghost) primal fields.
+    # For the averages at the primal grid point on the positive-end boundary, we don't have
+    # to do anything because these primal grid points are ghost points and therefore the
+    # averages are neither evaluated nor requested there.  (For example, the averaging of Ex
+    # in the x-direction is performed to find the contribution of Ex to Dz and Dy, but Dz
+    # and Dy on the ghost primal grid points on the positive-end boundary are ghost fields,
+    # so the contribution of Ex to them are not requested during the equation construction.)
+    #
+    # - For PDC, our goal is to make sure the primal fields defined at the dual grid points
+    # on the boundary do not contribute to the averages (beacuse those fields are zero there
+    # since their sign changes as they cross the boundary).
+    # For the averages at the last (nonghost) primal grid points (which are adjacent to the
+    # positive-end boundary), the goal is achieved by zeroing the BLOCH operator's (diagonal)
+    # entries multiplied with the primal fields defined on the negative end.
+    # For the averages at the first primal grid points, the goal is achieved by zeroing the
+    # BLOCH operator's off-diagonal entries multiplied with the same fields as above,
+    # because these fields are periodically wrapped around and used as the (ghost) dual
+    # fields defined on the negative end.
+    #
+    # For ns = +1 (forward averaging) for primal fields, it turns out that we only need to
+    # replace entries with 0's, not with 2's.  This causes an asymmetry issue between the
+    # ns = ±1 operators.  (For example, if the y-boundaries are PPC, the backward averaging
+    # operators with 2's are multiplied to the right of ξxy to average the input Uy fields,
+    # but the forward averaging operators without 2's are multiplied to the left of ξ_yx to
+    # average the output [ξU]y fields.  Even if ξxy = ξyx, the resulting material parameter
+    # matrix is not symmetric.)  However, it turns out that we can still use 2's in the
+    # forward averaging operators to recover symmetry, because the fields to be multiplied
+    # with these "wrong" 2's in the forward avegaring operator are guaranteed to be zero.
+    # (In the above example, the output [ξU]y fields are created by ξyx Ux and ξyz Uz, but
+    # Ux and Uz are zeros on the PPC y-boundaries, so the [ξU]y to average is already zero.)
+    #
+    # For more details and the final sparsity patterns of the operators, see my notes
+    # entitled [Beginning of the part added on Sep/21/2017] in RN - Subpixel Smoothing.  See
+    # also the notes on September 6, 2017 in RN - MaxwellFDM.jl for the matrices created by
+    # create_∂info, because overall similar principles are used.
+    #
+    # Below, Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] mimics the implementation of slicedim
+    # and basically means Vₛ[:,iw,:] for w = y.
     if ebc == BLOCH
         iw = ns<0 ? 1 : Nw  # ghost points at negative end for ns < 0
-        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns  # mimic implementation of slicedim
+        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
     else  # ebc ≠ BLOCH
-        # Set up the diagonal entries.  (This is independent of ns.)
-        # Because the way to set up the diagonal entries doesn't depend on ns, the operators
-        # for ns = +1 and –1 are the transpose of each other.
-
+        # Replace some diagonal entries with 0 or 2.
+        #
+        # Note that the code below is independent of ns.  When the grid is uniorm, the
+        # operators for the same boundary condition but for the opposite ns' must be the
+        # minus of the transpose of each other, so the diagonals of two operators must have
+        # zeros at the same locations.  This means the locations of zeros on the diagonal
+        # must be independent of ns.
+        #
         # The part below is the same as create_∂info if withcongbc == false; otherwise, it
         # is different from create_∂info: 2 instead of 0 is used.  See my notes entitled
         # [Beginning of the part added on Sep/21/2017] in RN - Subpixel Smoothing.
         iw = ebc==PPC ? 1 : Nw
         val = withcongbc ? 2 : 0
-        V₀[Base.setindex(indices(V₀), iw, nw)...] .*= val  # mimic implementation of slicedim
+        V₀[Base.setindex(indices(V₀), iw, nw)...] .*= val
 
-        # Set up the off-diagonal entries.  (This is indepent of boundary condition.)
-        # The construction here guarantees the off-diagonal parts for ns = +1 and -1 are the
-        # transpose of each other, regardless of boundary condition.
+        # Replace some off-diagonal entries with 0.
+        #
+        # Note that the code below is indepent of the boundary condition.  When the grid is
+        # uniform, this means that for the same ns, the operators for the PPC and PDC
+        # boundary conditions will have the same off-diagonal entries, except for the
+        # opposite signs.  Therefore, if we verify that the off-diagonal entries for ns = +1
+        # and -1 are minus the transpose of each other for the PPC boundary condition (and
+        # this is indeed the case), then we don't have to check this symmetry for the PDC
+        # boundary condition.
         iw = ns<0 ? 1 : Nw
-        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0  # mimic implementation of slicedim
+        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0
     end
 
     I = [I₀[:]; Iₛ[:]]  # row indices of [diagonal; off-diagonal]
@@ -322,13 +433,34 @@ function param3d2mat(param3d::AbsArr{CFloat,5},
                      e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
     M = prod(N)
+
+    # For primal fields, the input averaging is backward averaging (ns = -1) and the output
+    # averaging is forward averaging (ns = +1).
     ns_in, ns_out = gt==PRIM ? (-1,1) : (1,-1)
+
+    # For the output averaging, ∆l and ∆l′ are not supplied to create_mean in order to
+    # create a simple arithmetic averaging operator.  This is because the area factor matrix
+    # multiplied for symmetry to the left of the material parameter matrix multiplies the
+    # same area factor to the two fields being averaged.  (See my notes on Jul/18/2018 in
+    # MaxwellFDM in Agenda.)
     Mout = create_mean(gt, ns_out, N, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
 
     kdiag = 0
     p3dmat = create_param3dmat(param3d, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
     for kdiag = (1,-1)  # (superdiagonal, subdiagonal) components of ε tensor
+        # For the input averaging, ∆l and ∆l′ are supplied to create min in order to create
+        # a line integral averaging operator.  This is because the inverse of the length
+        # factor matrix multiplied for symmetry to the right of the material parameter
+        # matrix divides the two fields being averaged by different (= nonuniform) line
+        # segments.  The ∆l factors multiplied inside create_minfo cancel the effect of this
+        # multiplication with the nonuniform line segments.  (See my notes on Jul/18/2018 in
+        # MaxwellFDM in Agenda.)
         Min = create_mean(gt, ns_in, N, ∆l, ∆l′, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+
+        # Below, we use block-diagonal averaging matrices but either block-diagonal (kdiag
+        # = 0), block-superdiagonal (kdiag = +1), or block-subdiagonal (kdiag = -1) material
+        # parameter matrices.  See my bullet point entitled [Update (May/13/2018)] in
+        # RN - Subpixel Smoothing.
         p3dmatₖ = create_param3dmat(param3d, kdiag, N, reorder=reorder)
         p3dmat += Mout * p3dmatₖ * Min
     end
