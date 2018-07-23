@@ -88,18 +88,21 @@ function smooth_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
     return nothing
 end
 
-# Below, X̂X_cmp has size N, whereas X̂X_cmp′ has size N+1 (and corresponds to voxel corners).
+# Below, XXX_cmp has size N, whereas XXX_cmp′ has size N+1 (and corresponds to voxel corners).
 function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                            nw::Int,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
                            param3d_gt::AbsArr{CFloat,5},  # parameter array to smooth
-                           obj3d_cmp′::AbsArr{<:Object3,3},  # object array (does not change)
+                           obj3d_cmp′::AbsArr{O,3},  # object array (does not change)
                            pind3d_cmp′::AbsArr{ParamInd,3},  # material parameter index array (does not chaneg)
                            oind3d_cmp′::AbsArr{ObjInd,3},  # object index array (does not change)
                            lcmp::Tuple3{AbsVecReal},  # location of field components
                            lcmp′::Tuple3{AbsVecReal},  # location of voxel corners without transformation by boundary conditions
                            σcmp::Tuple3{AbsVec{Bool}},  # false if on symmetry boundary
-                           ∆τcmp′::Tuple3{AbsVecReal})  # amount of shift by BLOCH boundary conditions
+                           ∆τcmp′::Tuple3{AbsVecReal}  # amount of shift by BLOCH boundary conditions
+                          ) where {O<:Object3}
     Nx, Ny, Nz = length.(lcmp)
+
+    obj_vxl = Vector{O}(8)  # object inside voxel
     pind_vxl = VecInt(8)  # material parameter indices inside voxel
     oind_vxl = VecInt(8)  # object indices inside voxel
     ind_c = VecInt(8)  # corner indices inside voxel
@@ -108,12 +111,20 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
         ijk_cmp = SVector(i,j,k)
         ijk_vxl = (ijk_cmp, ijk_cmp+1)  # Tuple2{SVec3Int}
 
-        # Get objects at voxel corners.
+        # Retrieve the elements assigned to voxel corners from 3D arrays.
+        #
+        # Unlike the rest of the code that is performed only where subpixel smoothing is
+        # performed, the following for loop is performed at all grid points.  Therefore, the
+        # number of assignments to perform in the following for loop can easily reach
+        # several millions even for a simple 3D problem.  Simple assignment can
+        # be surprisingly time-consuming when peformed such a large number of times.  The
+        # use of @inbounds helps reducing assignment time significantly.
         c = 0
         for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
             c += 1
-            pind_vxl[c] = pind3d_cmp′[ic,jc,kc]
-            oind_vxl[c] = oind3d_cmp′[ic,jc,kc]
+            @inbounds obj_vxl[c] = obj3d_cmp′[ic,jc,kc]
+            @inbounds pind_vxl[c] = pind3d_cmp′[ic,jc,kc]
+            @inbounds oind_vxl[c] = oind3d_cmp′[ic,jc,kc]
         end
 
         is_vxl_uniform = (pind_vxl[1]==pind_vxl[2]==pind_vxl[3]==pind_vxl[4]
@@ -130,11 +141,9 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
             rvol = 0.0
             if  Nparam_vxl == 2
                 # Attempt to apply Kottke's subpixel smoothing algorithm.
-                ind_c1, ind_c2 = ind_c[8], ind_c[1]::Int  # indices of corners with two material parameters
-                sub_c1, sub_c2 = ind2sub((2,2,2), ind_c1), ind2sub((2,2,2), ind_c2)  # subscritpts of corners ind_c1 and ind_c2
-                obj_c1, obj_c2 = obj3d_cmp′[t_ind(ijk_vxl, sub_c1).data...], obj3d_cmp′[t_ind(ijk_vxl, sub_c2).data...]
-
-                with2objs = true
+                with2objs = true  # even if Nparam_vxl = 2, there could be more than 2 objects, so will be updated
+                ind_c1, ind_c2 = ind_c[8], ind_c[1]::Int  # indices of corners of two different material parameters
+                obj_c1, obj_c2 = obj_vxl[ind_c1], obj_vxl[ind_c2]
                 oind_c1, oind_c2 = oind_vxl[ind_c1], oind_vxl[ind_c2]
 
                 # Because the voxel has two different material parameters, it has either two
@@ -159,11 +168,11 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                 # Find which of obj_c1 and obj_c2 are the foreground and background objects.
                 if oind_c1 > oind_c2
                     obj_fg, obj_bg = obj_c1, obj_c2
-                    sub_fg = sub_c1
-                else
+                    ind_fg = ind_c1
+                else  # obj_c2 is foreground
                     assert(oind_c1≠oind_c2)
                     obj_fg, obj_bg = obj_c2, obj_c1
-                    sub_fg = sub_c2
+                    ind_fg = ind_c2
                 end
 
                 # Find
@@ -183,6 +192,8 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                     x₀ = t_ind(lcmp, ijk_cmp)  # SVec3Float: location of center of smoothing voxel
                     σvxl = t_ind(σcmp, ijk_cmp)
                     lvxl = t_ind(lcmp′, (ijk_cmp, ijk_cmp+1))
+
+                    sub_fg = ind2sub((2,2,2), ind_fg)  # subscritpt of corner ind_fg
                     ∆fg = t_ind(∆τcmp′, ijk_cmp + SVector(sub_fg) - 1)  # SVec3Float; nonzero if corner ind_fg is outside periodic boundary
 
                     # See "Overall smoothing algorithm" above.
