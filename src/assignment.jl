@@ -1,3 +1,8 @@
+# Below, obj3d and oind3d are different: obj3d stores references to Object3 instances,
+# whereas oind3d stores object indices.  The reason for this is to handle multiple objects
+# forming essentially a single object by being connected through a periodic boundary.  In
+# that case, we assign the same object index to those distinct objects.
+#
 # I could enhance the assignment performance by constructing oid3d (not oind3d), which stores
 # unique object IDs rather than the reference itself.  This array is different from oind3d
 # in that it distinguishes objects repeated by periodic boundary condition.  Then, I can

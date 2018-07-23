@@ -63,10 +63,21 @@ end
 
 # When I put an periodic array of an object, consider assigning the same object index to the
 # periodized objects.  That way, I can treat two of objects over a periodic boundary as the
-# same object.
-# This does not apply to the periodict objects in the supercell (e.g., holes in a photonic
-# crystal slab), because they are different objects: they are not the same object over a
-# periodic boundary.
+# same object.  (This is not implemented yet.)
+#
+# In other words, when assigning the same object index to distinct objects, we have to make
+# sure that the two objects have the same surface normal directions at the equivalent points
+# on the two objects, at least on the boundaries.  Therefore, for example if we put a cubic
+# across a periodic boundary such that it is bisected by the boundary, we should not put one
+# non-cubic box that is tangential to one end of the domain and another non-cubic box that
+# is tengential to the other end of the domain.  Instead, we should create two cubics and
+# place each of them centered on each boundary, such thay they stick out of the domain.
+# (We can put two non-cubic boxes that stick out of the domain, too, because they have to
+# produce the same surface normals only at equivalent points on the boundaries.)
+#
+# Assigining the same object index is specifically to treat an object across a periodic
+# boundary.  Therefore, we should not assign the same object index to the dintinct periodic
+# objects in the domain (e.g., holes in a photonic crystal slab).
 function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
     # Assign the object index to o.
     o.oind = isempty(ovec) ? 1 : objind(ovec[end])+1  # not just length(ovec)+1 to handle periodized objects (see comments above)

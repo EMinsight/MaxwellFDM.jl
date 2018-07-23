@@ -23,12 +23,21 @@ end
 
     return ind
 end
+
+# Given a vector `v` of comparable objects and vector `ind` of indices that sort `v`, return
+# the number `c` of different objects in `v` and the index `nₑ` of `ind` where the last new
+# object occurs (i.e., v[ind[nₑ]] is the last new object).
+#
+# If v is uniform, nₑ = length(v) + 1 (i.e., it is out of bound).
+#
+# For efficiency, this function assumes `v` is a vector of objects assigned to a voxel, i.e.,
+# length(v) = 8.
 @inline function countdiff(ind::AbsVecInteger, v::AbsVec)
     c, nₑ = 1, 9
     @simd for n = 2:8
         @inbounds v[ind[n-1]] ≠ v[ind[n]] && (c += 1; nₑ = n)
     end
-    return c, nₑ  # nₑ: last n where v[ind[n]] changed
+    return c, nₑ  # c: number of changes in v; nₑ: last n where v[ind[n]] changed
 end
 
 const NOUT_VXL =  # vectors from corners to center
@@ -127,18 +136,29 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
             @inbounds oind_vxl[c] = oind3d_cmp′[ic,jc,kc]
         end
 
+        # We could use Nparam_vxl calculated below instead of is_vxl_uniform: if Nparam_vxl
+        # = 1, then is_vxl_uniform = true.  However, calculating Nparam_vxl requires calling
+        # sort8! and countdiff, which are costly when called for all voxels.  Therefore,
+        # by using is_vxl_uniform, we avoid calling those functions when unnecessary.
         is_vxl_uniform = (pind_vxl[1]==pind_vxl[2]==pind_vxl[3]==pind_vxl[4]
                         ==pind_vxl[5]==pind_vxl[6]==pind_vxl[7]==pind_vxl[8])
 
-        if !is_vxl_uniform  # smoothing only when nonuniform
+        if !is_vxl_uniform  # perform smoothing only when voxel is nonuniform
             # Find Nparam_vxl (number of different material parameters inside the voxel).
             sort8!(ind_c, pind_vxl)  # pind_vxl[ind_c[n]] ≤ pind_vxl[ind_c[n+1]]
             Nparam_vxl, n_change = countdiff(ind_c, pind_vxl)  # n_change: last n where pind_vxl[ind_c[n]] changed
 
-            # Depending on the value of Nparam_vxl, calculate param_cmp (averaged material
-            # parameter for Fw).
             nout = @SVector zeros(3)
             rvol = 0.0
+
+            # Calculate param_cmp (averaged material parameter for Fw) when the voxel is
+            # composed of two material parameters (Nparam_vxl = 2).  This includes cases
+            # where the voxel is composed of two material parameters but more than two
+            # objects (i.e., more than one object in the voxel have the same material).
+            #
+            # If the voxel is composed of more than two material parameters (Nparam_vxl ≥ 3),
+            # give up subpixel smoothing.  This can happen, e.g., at the junction of three
+            # materials.
             if  Nparam_vxl == 2
                 # Attempt to apply Kottke's subpixel smoothing algorithm.
                 with2objs = true  # even if Nparam_vxl = 2, there could be more than 2 objects, so will be updated
@@ -146,27 +166,43 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                 obj_c1, obj_c2 = obj_vxl[ind_c1], obj_vxl[ind_c2]
                 oind_c1, oind_c2 = oind_vxl[ind_c1], oind_vxl[ind_c2]
 
-                # Because the voxel has two different material parameters, it has either two
-                # objects (when each parameter is composed of a single object), or more than
-                # two objects (if either of the two parameters is composed of two or more
-                # objects).
-
-                # Check if param_c1 is composed of more than one object (such that the voxel
-                # has more than two objects).
-                for n = n_change:7  # n = 8 corresponds to oind_c1 and is omitted
+                # The corners ind_c[n_change:8] are occupied with one material parameter
+                # because ind_c is sorted for pind_vxl.  However, those corners can still be
+                # occupied with more than one object.  In that case, the voxel is composed
+                # of more than two objects.
+                #
+                # Note that not two objects can logically mean one object or more than two
+                # objects, but because Nparam_vxl ≥ 2, with2objs = false means more than two
+                # objects inside the voxel.
+                for n = 7:-1:n_change  # n = 8 corresponds to oind_c1 and is omitted
                     (with2objs = oind_vxl[ind_c[n]]==oind_c1) || break
                 end
 
-                if with2objs  # single object for param_fg
-                    # Check if param_c2 is composed of more than one object (such that the
-                    # voxel has more than two objects).
+                # If corners ind_c[n_change:8] are composed of more than one objects, we
+                # already know the voxel has more than two objects because the corners
+                # ind_c[1:n_change-1] are guaranteed to have a different object than those
+                # occupying the corners ind_c[n_change:8], so we don't have to test further
+                # to see if the voxel has more than two objects.
+                if with2objs  # single object for corners ind_c[n_change:8]
+                    # The corners ind_c[1:n_change-1] are occupied with one material
+                    # parameter because ind_c is sorted for pind_vxl, but those corners can
+                    # still be occupied with more than one object.  In that case, the voxel
+                    # is composed of more than two objects.
                     for n = 2:n_change-1  # n = 1 corresponds oind_c2 and is omitted
                         (with2objs = oind_vxl[ind_c[n]]==oind_c2) || break
                     end
                 end
 
                 # Find which of obj_c1 and obj_c2 are the foreground and background objects.
-                if oind_c1 > oind_c2
+                #
+                # When multiple objects have the same object index (because they are
+                # essentially the same object across a periodic boundary), it doesn't matter
+                # which object to choose as the foreground (or background) object, we
+                # translate points properly across the domain (by ∆fg below) in order to
+                # evaluate the surface normal direction on the correct object.  (At least
+                # that is the intention, but this needs to be tested after assigning the
+                # same object index is actually implemented.)
+                if oind_c1 > oind_c2  # obj_c1 is foreground
                     obj_fg, obj_bg = obj_c1, obj_c2
                     ind_fg = ind_c1
                 else  # obj_c2 is foreground
@@ -182,11 +218,11 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                 # - rvol (volume fraction of the foreground object inside the voxel).
                 if !with2objs  # two material parameters but more than two objects in voxel
                     # In this case, the interface between two materials is not defined by
-                    # the surface of a single object, so we have to estimate nout from the
+                    # the surface of a single object, so we estimate nout simply from the
                     # locations of the corners occupied by the two materials.
                     param_fg, param_bg, nout, rvol =
                         kottke_input_simple(ind_c, n_change, obj_fg, obj_bg, gt)::Tuple{SMat3Complex,SMat3Complex,SVec3Float,Float}
-                else  # Nobj_vxl == 2 (because Nobj_vxl ≠ 1 when Nparam_vxl == 2)
+                else  # two objects
                     # When Nparam_vxl == Nobj_vxl == 2, different material parameters
                     # must correspond to different objects.
                     x₀ = t_ind(lcmp, ijk_cmp)  # SVec3Float: location of center of smoothing voxel
@@ -199,7 +235,7 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                     # See "Overall smoothing algorithm" above.
                     param_fg, param_bg, nout, rvol =
                         kottke_input_accurate(x₀, σvxl, lvxl, ∆fg, obj_fg, obj_bg, gt)::Tuple{SMat3Complex,SMat3Complex,SVec3Float,Float}
-                end  # if Nobj_vxl
+                end  # if !with2objs
 
                 if iszero(nout)  # includes case of Nparam_vxl ≥ 3
                     # Give up Kottke's subpixel smoothing and take simple averaging.
