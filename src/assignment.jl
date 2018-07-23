@@ -229,7 +229,9 @@ assign_val_shape!(array::AbsArr{T,5}, val::AbsMat{T}, shape::Shape{3}, τlcmp::T
     assign_val_shape!((array,), (val,), shape, τlcmp)
 
 # Given a shape, assign value at the points within the shape.
-# Get a variable-length list of (array, value, function)'s.
+#
+# This function is written to handle a variable-length list of (array, value, function)'s in
+# assign_param_cmp, but the usage is suppressed for performance.
 function assign_val_shape!(arrays::Tuple,
                            vals::Tuple,
                            shape::Shape{3},
@@ -257,12 +259,14 @@ end
 
 
 # Could be named Base.setindex!, but didn't want this to be exported, so named different.
-assign_val!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}} =
-    (array[subs...] = scalar; nothing)
+function assign_val!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
+    @inbounds array[subs...] = scalar
+    return nothing
+end
 
 function assign_val!(array::AbsArr{T,5}, tensor::AbsMat{T}, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
     for nc = nXYZ, nr = next2(nc)  # column- and row-indices
-        array[subs..., nr, nc] = tensor[nr,nc]
+        @inbounds array[subs..., nr, nc] = tensor[nr,nc]
     end
     return nothing
 end
