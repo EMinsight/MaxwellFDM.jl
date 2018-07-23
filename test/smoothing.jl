@@ -17,6 +17,10 @@ end  # @testset "sort8!"
 #     @test obj_array == [obj, obj, obj]
 # end  # @testset "Object"
 
+# Need to test non-box object, such as a sphere and see if subpixel smoothing generates
+# the expected smoothed material parameters (instead of simply using kottke_input_simple or
+# amean_param or hmean_param.)
+
 @testset "smoothing, box with odd number of voxels" begin
     # Create a grid.
     L₀ = 1e-9
