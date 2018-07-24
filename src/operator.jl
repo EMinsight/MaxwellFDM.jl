@@ -102,7 +102,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
                       N::SVector{K,Int},  # size of grid
                       ∆w::AbsVecNumber,  # spatial discretization; vector of length N[nw]
                       ebc::EBC,  # boundary condition in w-direction
-                      e⁻ⁱᵏᴸ::Number  # BLOCH phase factor
+                      e⁻ⁱᵏᴸ::Number  # Bloch phase factor
                      ) where {K}
     M = prod(N)
     Nw = N[nw]
@@ -159,6 +159,10 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     # Below, Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] mimics the implementation of slicedim
     # and basically means Vₛ[:,iw,:] for w = y.
     if ebc == BLOCH
+        # - For ns = +1, multiply the negative-end field with e⁻ⁱᵏᴸ to bring it to the ghost
+        # point at the positive end.
+        # - For ns = -1, divide the positive-end field by e⁻ⁱᵏᴸ to bring it to the ghost
+        # point at the negative end.
         iw = ns<0 ? 1 : Nw  # ghost points at negative end for ns < 0
         Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
     else  # ebc ≠ BLOCH
@@ -377,6 +381,10 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     # Below, Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] mimics the implementation of slicedim
     # and basically means Vₛ[:,iw,:] for w = y.
     if ebc == BLOCH
+        # - For ns = +1, multiply the negative-end field with e⁻ⁱᵏᴸ to bring it to the ghost
+        # point at the positive end.
+        # - For ns = -1, divide the positive-end field by e⁻ⁱᵏᴸ to bring it to the ghost
+        # point at the negative end.
         iw = ns<0 ? 1 : Nw  # ghost points at negative end for ns < 0
         Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
     else  # ebc ≠ BLOCH

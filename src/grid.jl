@@ -168,7 +168,13 @@ end
 Base.ndims(::Grid{K}) where {K} = K
 Base.in(l::SVector{K}, g::Grid{K}) where {K} = all(g.bounds[nN] .≤ l .≤ g.bounds[nP])
 
-# isproperebc: check if two ends are both BLOCH or both non-BLOCH, and if both BLOCH check if e⁻ⁱᵏᴸ is a purely phase factor, and if both non-BLOCH check if e⁻ⁱᵏᴸ = 1.
+# Check if two ends are both BLOCH or both non-BLOCH.  If both are BLOCH, check if e⁻ⁱᵏᴸ is
+# a phase factor (i.e., amplitude = 1).  If both are non-BLOCH, check if e⁻ⁱᵏᴸ = 1.
+#
+# e⁻ⁱᵏᴸ is the accumulated phase from the negative-end boundary to the positive-end one.  L
+# is the distance between the boundaries (= domain size).  It is exp(-ikL), not exp(+ikL),
+# because we assume the exp(+iωt) time dependence and thus the position dependence is
+# exp(-ik⋅r).
 isproperebc(ebc::EBC, e⁻ⁱᵏᴸ::Number=1) = (ebc==BLOCH && abs(e⁻ⁱᵏᴸ)==1) || (ebc≠BLOCH && e⁻ⁱᵏᴸ==1)
 isproperebc(ebc::SVector{K,EBC}, e⁻ⁱᵏᴸ::SVector{K,<:Number}=@SVector(ones(K))) where {K} =
     all(ntuple(k->isproperebc(ebc[k], e⁻ⁱᵏᴸ[k]), Val{K}))
