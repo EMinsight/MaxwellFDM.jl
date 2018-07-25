@@ -279,9 +279,9 @@ lprim = (xprim, yprim, zprim)
 L₀ = 1e-9
 unit = PhysUnit(L₀)
 Npml = ([10,10,10], [10,10,10])
-ebc = [BLOCH, BLOCH, BLOCH]
+isbloch = [true, true, true]
 
-g3 = Grid(unit, lprim, Npml, ebc)
+g3 = Grid(unit, lprim, Npml, isbloch)
 
 # Create materials.
 εvac = 1.0
@@ -321,17 +321,17 @@ ngt = Int(gt)
 ngt′ = alter(ngt)
 
 M = length.(τl[nPR])  # N+1
-ind = (map((m,e)->circshift(1:m, e==BLOCH), M, g3.ebc.data),
-       map((m,e)->circshift(1:m, -(e==BLOCH)), M, g3.ebc.data))
+ind = (map((m,b)->circshift(1:m, b), M, g3.isbloch.data),
+       map((m,b)->circshift(1:m, -b), M, g3.isbloch.data))
 
 gt_cmp = SVector(gt, gt, gt)
 gt_cmp = map((k,g)->(k==nw ? alter(g) : g), nXYZ, gt_cmp)  # no change if nw = 0
 
 # Choose the circularly shifted indices to use.
-ind_cmp = t_ind(ind, gt_cmp)
+ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 
 # Prepare the circularly shifted locations of the field components.
-τlcmp = view.(t_ind(τl,gt_cmp), ind_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
+τlcmp = view.(MaxwellFDM.t_ind(τl,gt_cmp), ind_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
 
 # Prepare the circularly shifted viewes of various arrays to match the sorted
 # τl.  Even though all arrays are for same locations, param3d_cmp contains gt
@@ -359,15 +359,15 @@ println("# of objects = $(length(ovec))")
 
 
 # @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec, τlcmp)
-# @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
+# @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
 
-@time assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
+@time assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
 
 # gt_cmp′ = alter.(gt_cmp)
-# lcmp = t_ind(g3.l, gt_cmp)
-# σcmp = t_ind(g3.σ, gt_cmp)
-# lcmp′ = t_ind(g3.ghosted.l, gt_cmp′)
-# ∆τcmp′ = t_ind(g3.ghosted.∆τ, gt_cmp′)
+# lcmp = MaxwellFDM.t_ind(g3.l, gt_cmp)
+# σcmp = MaxwellFDM.t_ind(g3.σ, gt_cmp)
+# lcmp′ = MaxwellFDM.t_ind(g3.ghosted.l, gt_cmp′)
+# ∆τcmp′ = MaxwellFDM.t_ind(g3.ghosted.∆τ, gt_cmp′)
 #
 # param3d_gt = param3d[ngt]
 # obj3d_cmp′ = obj3d[ngt][nw]
@@ -382,7 +382,7 @@ println("# of objects = $(length(ovec))")
 # # Construct arguments and call assign_param!.
 # kd = KDTree(ovec)
 # param3d = create_default_param3d(g3.N)
-# @time assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.ebc)
-# @btime assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.ebc)
-# @profile assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.ebc)
-# @code_warntype assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.ebc)
+# @time assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.isbloch)
+# @btime assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.isbloch)
+# @profile assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.isbloch)
+# @code_warntype assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.isbloch)

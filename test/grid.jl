@@ -1,22 +1,21 @@
 # The following without the qualifier MaxwellFDM cannot find the Grid constructor of MaxwellFDM.
-# Grid(axis::Axis, unit::PhysUnit, lprim::AbsVecReal, Npml::NTuple{2,Int}, ebc::EBC) =
-#     MaxwellFDM.Grid((axis,), unit, (lprim,), ([Npml[nN]], [Npml[nP]]), (ebc,))
+# Grid(axis::Axis, unit::PhysUnit, lprim::AbsVecReal, Npml::NTuple{2,Int}, isbloch::Bool) =
+#     MaxwellFDM.Grid((axis,), unit, (lprim,), ([Npml[nN]], [Npml[nP]]), (isbloch,))
 
-# Calculate ghost points from l, L, and ebc.
+# Calculate ghost points from l, L, and isbloch.
 lghost(l::NTuple{2,NTuple{K,AbstractVector{<:Real}}},  # grid point locations
        L::SVector{K,Float64},  # domain size
-       ebc::SVector{K,EBC}  # encoded boundary condition
+       isbloch::SVector{K,Bool}  # boundary condition
       ) where {K} =
-    (map((ebcₖ,lprimₖ,ldualₖ,Lₖ) -> (ebcₖ==PDC ? 2ldualₖ[end]-lprimₖ[end] : lprimₖ[1]+Lₖ), ebc, SVector(l[nPR]), SVector(l[nDL]), L),  # lg[PRIM]
-     map((ebcₖ,lprimₖ,ldualₖ,Lₖ) -> (ebcₖ==PPC ? 2lprimₖ[1]-ldualₖ[1] : ldualₖ[end]-Lₖ), ebc, SVector(l[nPR]), SVector(l[nDL]), L))  # lg[DUAL]
+    (map((lprimₖ,Lₖ) -> lprimₖ[1]+Lₖ, SVector(l[nPR]), L),  # lg[PRIM]
+     map((isblochₖ,lprimₖ,ldualₖ,Lₖ) -> (isblochₖ ? ldualₖ[end]-Lₖ : 2lprimₖ[1]-ldualₖ[1]), isbloch, SVector(l[nPR]), SVector(l[nDL]), L))  # lg[DUAL]
 
 @testset "grid" begin
 L₀ = 1e-9
 unit = PhysUnit(L₀)
 
 @testset "Grid{1}, BLOCH boundary" begin
-    ebc = BLOCH
-    boundstype = PRIM
+    isbloch = true
     Npmln = 5
     Npmlp = 7
     Npml = (Npmln, Npmlp)
@@ -27,26 +26,25 @@ unit = PhysUnit(L₀)
     l₀ = L / 2
     lprim = cumsum([-l₀; ∆ldual])
 
-    g1 = Grid(X̂, unit, lprim, Npml, ebc)
+    g1 = Grid(X̂, unit, lprim, Npml, isbloch)
 
     @test g1.unit == unit
     @test g1.N == [M]
     @test g1.L ≈ [L]
     @test all(SVector.(lprim) .∈ g1)  # `∈` supports only SVector
-    ldual = movingavg(lprim)
+    ldual = MaxwellFDM.movingavg(lprim)
     pop!(lprim)
     @test g1.l ≈ ((lprim,), (ldual,))
     ∆lprim = [ldual[1]+L-ldual[end]; diff(ldual)]
     @test g1.∆l ≈ ((∆lprim,), (∆ldual,))
-    @test g1.ebc == [ebc]
-    @test g1.boundstype == [boundstype]
+    @test g1.isbloch == [isbloch]
     @test g1.Npml == ([Npmln], [Npmlp])
     @test g1.Lpml ≈ ([sum(∆ldual[1:Npmln])], [sum(∆ldual[end-Npmlp+1:end])])
     @test g1.lpml ≈ ([sum(∆ldual[1:Npmln])-l₀], [sum(∆ldual)-sum(∆ldual[end-Npmlp+1:end])-l₀])
     @test g1.bounds ≈ ([lprim[1]], [lprim[end]+∆ldual[end]])
     @test g1.center ≈ [(lprim[1]+g1.Lpml[nN][1] + lprim[end]+∆ldual[end]-g1.Lpml[nP][1]) / 2]
     @test SVector(-l₀) ∈ g1  # `∈` supports only SVector
-    lg = lghost(((lprim,),(ldual,)), SVector(L), SVector(ebc))
+    lg = lghost(((lprim,),(ldual,)), SVector(L), SVector(isbloch))
     lprim_g = g1.ghosted.l[nPR][1]
     ldual_g = g1.ghosted.l[nDL][1]
     @test lprim_g[1:end-1]≈lprim && lprim_g[end]≈lg[nPR][1] && ldual_g[2:end]≈ldual && ldual_g[1]≈lg[nDL][1]
@@ -61,76 +59,24 @@ unit = PhysUnit(L₀)
     @test iszero(∆τprim_g[1:end-1]) && ∆τprim_g[end]≈-L && iszero(∆τdual_g[2:end]) && ∆τdual_g[1]≈L
 end  # @testset "Grid{1}, primal boundary"
 
-@testset "Grid{1}, dual boundary" begin
-    ebc = PDC
-    boundstype = DUAL
-    Npmln = 5
-    Npmlp = 7
-    Npml = (Npmln, Npmlp)
-    N = 10
-    M = N + Npmln + Npmlp
-    ∆ldual = rand(M+1)
-    l₀ = rand()
-    lprim = cumsum([-l₀; ∆ldual])
-    ldual = (lprim[1:end-1] + lprim[2:end]) / 2
-    ∆lprim = diff(ldual)
-    ∆ldual = ∆ldual[2:end]
-    L = sum(∆lprim)
-
-    g1 = Grid(X̂, unit, lprim, Npml, ebc)
-
-    @test g1.unit == unit
-    @test g1.N == [M]
-    @test g1.L ≈ [L]
-    @test all(SVector.(ldual) .∈ g1)  # `∈` supports only SVector
-    pop!(lprim)
-    deleteat!(lprim, 1)
-    deleteat!(ldual, 1)
-    @test g1.l ≈ ((lprim,), (ldual,))
-    @test g1.∆l ≈ ((∆lprim,), (∆ldual,))
-    @test g1.ebc == [ebc]
-    @test g1.boundstype == [boundstype]
-    @test g1.Npml == ([Npmln], [Npmlp])
-    @test g1.Lpml ≈ ([sum(∆lprim[1:Npmln])], [sum(∆lprim[end-Npmlp+1:end])])
-    ldual₀ = ldual[1]-∆lprim[1]
-    @test g1.lpml ≈ ([ldual₀+sum(∆lprim[1:Npmln])], [ldual₀+sum(∆lprim)-sum(∆lprim[end-Npmlp+1:end])])
-    @test g1.bounds ≈ ([ldual₀], [ldual[end]])
-    @test g1.center ≈ [(ldual₀+g1.Lpml[nN][1] + ldual[end]-g1.Lpml[nP][1]) / 2]
-    @test SVector(ldual₀) ∈ g1  # `∈` supports only SVector
-    lg = lghost(((lprim,),(ldual,)), SVector(L), SVector(ebc))
-    lprim_g = g1.ghosted.l[nPR][1]
-    ldual_g = g1.ghosted.l[nDL][1]
-    @test lprim_g[1:end-1]≈lprim && lprim_g[end]≈lg[nPR][1] && ldual_g[2:end]≈ldual && ldual_g[1]≈lg[nDL][1]
-    τlprim_g = g1.ghosted.τl[nPR][1]
-    τldual_g = g1.ghosted.τl[nDL][1]
-    @test τlprim_g[1:end-1]≈lprim && τlprim_g[end]≈lprim[end] && τldual_g[2:end]≈ldual && τldual_g[1]≈lg[nDL][1]
-    τindprim_g = g1.ghosted.τind[nPR][1]
-    τinddual_g = g1.ghosted.τind[nDL][1]
-    @test all(τindprim_g[1:end-1].==1:M) && τindprim_g[end]==M && all(τinddual_g[2:end].==2:M+1) && τinddual_g[1]==1
-    ∆τprim_g = g1.ghosted.∆τ[nPR][1]
-    ∆τdual_g = g1.ghosted.∆τ[nDL][1]
-    @test iszero(∆τprim_g) && iszero(∆τdual_g)
-end  # @testset "Grid{1}, dual boundary"
 
 @testset "Grid{3}" begin
     Npml = ([10,5,1], [9,6,4])
     N = [10, 12, 1]
     M = sum(Npml) + N
     ∆ldual = ntuple(d->rand(M[d]), numel(Axis))
-    ebc = [PPC, PPC, BLOCH]
-    boundstype = [PRIM, PRIM, PRIM]
-    M = M .- (boundstype.==DUAL)
+    isbloch = [false, false, true]
 
     L = SVector(sum.(∆ldual))  # SVec3Float
     l₀ = L ./ 2  # SVec3Float
     lprim = map(x->[0; cumsum(x)], ∆ldual) .- (l₀...)  # tuple of vectors
 
-    g3 = Grid(unit, lprim, Npml, ebc)
+    g3 = Grid(unit, lprim, Npml, isbloch)
 
     @test g3.unit == unit
     @test g3.N == M
     @test g3.L ≈ L
-    ldual = movingavg.(lprim)
+    ldual = MaxwellFDM.movingavg.(lprim)
     pop!.(lprim)
     @test g3.l ≈ (lprim, ldual)
     ∆lprim = diff.(ldual)
@@ -138,8 +84,7 @@ end  # @testset "Grid{1}, dual boundary"
     prepend!(∆lprim[nY], 2(ldual[nY][1]-lprim[nY][1]))
     prepend!(∆lprim[nZ], ldual[nZ][1]+L[nZ]-ldual[nZ][end])
     @test g3.∆l ≈ (∆lprim, ∆ldual)
-    @test g3.ebc == ebc
-    @test g3.boundstype == boundstype
+    @test g3.isbloch == isbloch
     @test g3.Npml == Npml
     @test g3.Lpml ≈ (
         [sum(∆ldual[d][1:Npml[nN][d]]) for d = nXYZ],
@@ -155,7 +100,7 @@ end  # @testset "Grid{1}, dual boundary"
     )
     @test -l₀ ∈ g3
     @test all(g3.bounds .∈ g3)
-    lg = lghost((lprim,ldual), L, g3.ebc)
+    lg = lghost((lprim,ldual), L, g3.isbloch)
     lprim_g = g3.ghosted.l[nPR]
     ldual_g = g3.ghosted.l[nDL]
     @test pop!.(lprim_g)≈lg[nPR].data && shift!.(ldual_g)≈lg[nDL].data && lprim_g≈lprim && ldual_g≈ldual
@@ -171,8 +116,7 @@ end  # @testset "Grid{1}, dual boundary"
 end  # @testset "Grid{3}"
 
 # @testset "Grid{2}" begin
-#     ebc = (PPC, PPC, BLOCH)
-#     boundstype = (PRIM, PRIM)
+#     isbloch = (false, false, true)
 #     Npml = ((10,9), (5,6), (1,4))
 #     N = (10, 12, 1)
 #     M = (+).(sum.(Npml), N)
@@ -181,7 +125,7 @@ end  # @testset "Grid{3}"
 #     l₀ = (/).(L, 2)
 #     lprim = (-).(map(x->[0; cumsum(x)], ∆ldual), l₀)
 #
-#     g3 = Grid3D(unit, lprim, Npml, ebc)
+#     g3 = Grid3D(unit, lprim, Npml, isbloch)
 #     normal_axis = Ŷ
 #     h, v = Int.(next3(normal_axis))
 #     g2 = Grid2D(g3, normal_axis)
@@ -190,7 +134,7 @@ end  # @testset "Grid{3}"
 #     ∆ldual = (∆ldual[h], ∆ldual[v])
 #     M = (M[h], M[v])
 #     L = (L[h], L[v])
-#     ebc = (ebc[h], ebc[v])
+#     isbloch = (isbloch[h], isbloch[v])
 #     Npml = (Npml[h], Npml[v])
 #     l₀ = (l₀[h], l₀[v])
 #
@@ -209,8 +153,7 @@ end  # @testset "Grid{3}"
 #         [2(ldual[nVRT][1]-lprim[nVRT][1]); diff(xdual)]
 #     )
 #     @test ∆l_(g2) ≈ (∆lprim, ∆ldual)
-#     @test ebc_(g2) == ebc
-#     @test boundstype_(g2) == boundstype
+#     @test isbloch_(g2) == isbloch
 #     @test Npml_(g2) == Npml
 #     @test Lpml_(g2) ≈ (
 #         (sum(∆ldual[nHRZ][1:Npml[nHRZ][nN]]), sum(∆ldual[nHRZ][end-Npml[nHRZ][nP]+1:end])),
@@ -232,14 +175,11 @@ end  # @testset "Grid{3}"
 #     # @test voxel_edges(g2, withpml=true) ≈ ((ldual[1],lprim[1]), (ldual[2],lprim[2]))
 # end  # @testset "Grid{2}"
 
-@testset "isproperebc" begin
-    @test isproperebc(BLOCH, 1im)
-    @test isproperebc(BLOCH, cos(π/0.9)+sin(π/0.9)im)
-    @test isproperebc(PPC)
-    @test isproperebc(PDC)
-    @test !isproperebc(BLOCH, 2.)
-    @test !isproperebc(PPC, 2.)
-    @test !isproperebc(PDC, 2.)
+@testset "isproper_blochphase" begin
+    @test isproper_blochphase(1im, true)
+    @test isproper_blochphase(cos(π/0.9)+sin(π/0.9)im, true)
+    @test !isproper_blochphase(2., true)
+    @test !isproper_blochphase(2., false)
 end
 
 end  # @testset "grid"

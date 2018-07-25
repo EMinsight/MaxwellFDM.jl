@@ -1,4 +1,4 @@
-export Axis, Dir, GridType, FieldType, Sign, BC, EBC, PML  # enumerated types
+export Axis, Dir, GridType, FieldType, Sign, BC, PML  # enumerated types
 export XYZ, NP, PD
 export nX, nY, nZ, nHRZ, nVRT, nN, nP, nPR, nDL  # integer values of instances of enumerated types
 export nXYZ, nHV, nNP, nPD
@@ -68,11 +68,6 @@ alter(ins::FieldType) = ins==EE ? HH : EE
 @enum BC PERIODIC=1 PEC PMC
 for ins in instances(BC); @eval export $(Symbol(ins)); end  # export all instances
 Base.string(ins::BC) = ins==PEC ? "PEC" : (ins==PMC ? "PMC" : "periodic")
-
-# Interpreted boundary conditions
-@enum EBC BLOCH=1 PPC PDC
-for ins in instances(EBC); @eval export $(Symbol(ins)); end  # export all instances
-Base.string(ins::EBC) = ins==PPC ? "perfect primal conductor" : (ins==PDC ? "perfect dual conductor" : "Bloch")
 
 # PML types
 @enum PML SCPML=1 UPML

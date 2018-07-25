@@ -4,10 +4,10 @@ export create_∂, create_curl, create_m, create_mean, create_param3dmat, param3
 create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
             N::AbsVecInteger,  # size of grid
             ∆l::Tuple3{AbsVecNumber}=ones.((N...)),  # ∆l[w]: distances between grid planes in x-direction
-            ebc::AbsVec{EBC}=fill(BLOCH,length(N)),  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # BLOCH phase factor in x, y, z
+            isbloch::AbsVec{Bool}=fill(true,length(N)),  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
-    (K = length(N); create_curl(gt, SVector{K}(N), ∆l, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
+    (K = length(N); create_curl(gt, SVector{K}(N), ∆l, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 
 # I need to create create_curl_info! first.  Then, from there it is easy to eliminate some
@@ -19,8 +19,8 @@ create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
 function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # ∆l[w]: distances between grid planes in x-direction
-                     ebc::SVector{3,EBC},  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+                     isbloch::SVector{3,Bool},  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # Bloch phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
     ns = gt==PRIM ? 1 : -1
     T = promote_type(eltype.(∆l)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
@@ -36,7 +36,7 @@ function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
         for nw = next2(nv)  # direction of differentiation
             nw′ = 6 - nv - nw  # Cantesian component of input vector; 6 = nX + nY + nZ
             jstr, joff = reorder ? (3, nw′-3) : (1, M*(nw′-1))  # (column stride, column offset)
-            I, J, V = create_∂info(nw, ns, N, ∆l[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
+            I, J, V = create_∂info(nw, ns, N, ∆l[nw], isbloch[nw], e⁻ⁱᵏᴸ[nw])
 
             @. I = istr * I + ioff
             @. J = jstr * J + joff
@@ -59,20 +59,20 @@ create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
          N::SVector{K,Int},  # size of grid
          ∆w::Number=1.0,  # spatial discretization; vector of length N[nw]
-         ebc::EBC=BLOCH,  # boundary condition in w-direction
-         e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
+         isbloch::Bool=true,  # boundary condition in w-direction
+         e⁻ⁱᵏᴸ::Number=1.0  # Bloch phase factor
         ) where {K} =
-    create_∂(nw, ns, N, fill(∆w, N[nw]), ebc, e⁻ⁱᵏᴸ)  # fill: create vector of ∆w
+    create_∂(nw, ns, N, fill(∆w, N[nw]), isbloch, e⁻ⁱᵏᴸ)  # fill: create vector of ∆w
 
 
 create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
          N::SVector{K,Int},  # size of grid
          ∆w::AbsVecNumber,  # spatial discretization; vector of length N[nw]
-         ebc::EBC=BLOCH,  # boundary condition in w-direction
-         e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
+         isbloch::Bool=true,  # boundary condition in w-direction
+         e⁻ⁱᵏᴸ::Number=1.0  # Bloch phase factor
         ) where {K} =
-    (M = prod(N); sparse(create_∂info(nw, ns, N, ∆w, ebc, e⁻ⁱᵏᴸ)..., M, M))
+    (M = prod(N); sparse(create_∂info(nw, ns, N, ∆w, isbloch, e⁻ⁱᵏᴸ)..., M, M))
 
 
 # I need to figure out whether the ±1 entries of the backward difference operator is always
@@ -80,17 +80,17 @@ create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
 # factors are different, though.)  This was the case in the MATLAB code, but in the Julia
 # code I changed the treatment of PDC, so let's make sure about this again.
 #
-# For PPC, assuming U with correctly zero at the negative boundary is supplied to the forward
-# difference operator, the ±1 pattern of the difference operator must be the same as that of
-# the BLOCH boundary, because 0 at the negative boundary is used for the value at the
-# positive boundary.
+# For the symmetry boundary, assuming U with correctly zero at the negative boundary is
+# supplied to the forward difference operator, the ±1 pattern of the difference operator
+# must be the same as that of the Bloch boundary, because 0 at the negative boundary is used
+# for the value at the positive boundary.
 #
 # Now, let's think about the backward difference operator for V.  Because the boundary is
-# PPC, the ghost V₀, which is before the negative boundary, must be the same as the
-# non-ghost Vₛ.  Therefore, this leads to the first difference being Vₛ-V₀ = Vₛ-Vₛ = 0,
-# which means that the first row of the backward difference operator must be empty.
-# However, when the forward difference operator for PPC is created the same as that for
-# BLOCH, its transpose does not have an empty first row!
+# the symmetry boundary, the ghost V₀, which is before the negative boundary, must be the
+# same as the non-ghost Vₛ.  Therefore, this leads to the first difference being Vₛ-V₀ =
+# Vₛ-Vₛ = 0, which means that the first row of the backward difference operator must be
+# empty.  However, when the forward difference operator for the symmetry boundary is created
+# the same as that for Bloch, its transpose does not have an empty first row!
 #
 # For the backward differce operater to be the transpose of the forward difference operator,
 # I need to create the forward difference operator such that Uₛ is zeroed.  This turns out
@@ -101,7 +101,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
                       ns::Integer,  # 1|-1 for forward|backward difference
                       N::SVector{K,Int},  # size of grid
                       ∆w::AbsVecNumber,  # spatial discretization; vector of length N[nw]
-                      ebc::EBC,  # boundary condition in w-direction
+                      isbloch::Bool,  # boundary condition in w-direction
                       e⁻ⁱᵏᴸ::Number  # Bloch phase factor
                      ) where {K}
     M = prod(N)
@@ -125,47 +125,34 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     Vₛ = ns .* ones(T, N.data) ./ ∆W  # values of off-diagonal entries
 
     # Modify I, J, V according to the boundary condition.  What we do is basically to take
-    # the operator for BLOCH as a template and then modify it for PPC and PDC by zeroing
-    # some diagonal and off-diagonal entries.
+    # the operator for Bloch as a template and then modify it for the symmetry boundary by
+    # zeroing some diagonal and off-diagonal entries.
     #
     # Here are the details of what we do for ns = +1 (forward differentiation).  Note that
     # the operators for ns = +1 are applied to primal fields parallel to the boundaries.
     #
-    # - For PPC, our goal is to make sure the primal fields on the boundaries do not
-    # contribute to the derivatives at the first (nonghost) and last dual grid points.
-    # For the derivatives at the first dual grid points, the goal is achieved by zeroing the
-    # BLOCH operator's (diagonal) entries multiplied with the primal fields defined on the
-    # negative end.
+    # our goal is to make sure the primal fields on the boundaries do not contribute to the
+    # derivatives at the first (nonghost) and last dual grid points.  For the derivatives at
+    # the first dual grid points, the goal is achieved by zeroing the Bloch operator's
+    # (diagonal) entries multiplied with the primal fields defined on the negative end.
     # For the derivatives at the last dual grid points, the goal is achieved by zeroing the
-    # BLOCH operator's off-diagonal entries multiplied with the same fields as above,
+    # Bloch operator's off-diagonal entries multiplied with the same fields as above,
     # because these fields are periodically wrapped around and used as the (ghost) primal
     # fields defined on the positive end.
-    #
-    # - For PDC, our goal is to make sure the resulting derivatives are zero at the dual
-    # grid points on both the negative- and positive-end boundaries, because the primal
-    # fields are symmetric around the PDC boundaries.
-    # For the derivatives at the dual grid points on the positive-end boundary, the goal is
-    # achieved by zeroing the BLOCH operator's both entries multiplied with the two primal
-    # fields fed to the operator. (One entry is on the diagonal, and the other is on the
-    # off-diagonal.)
-    # For the derivatives at the dual grid points on the negative-end boundary, we don't have
-    # to do anything because these dual grid points are ghost points and therefore the
-    # derivatives are not evaluated there.  (When the derivatives are requested at these
-    # ghost dual grid points, we directly deduce they are zero due to the boundary condition.)
     #
     # For the final sparsity patterns of the operators, see my notes on September 6, 2017 in
     # RN - MaxwellFDM.jl.
     #
     # Below, Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] mimics the implementation of slicedim
     # and basically means Vₛ[:,iw,:] for w = y.
-    if ebc == BLOCH
+    if isbloch
         # - For ns = +1, multiply the negative-end field with e⁻ⁱᵏᴸ to bring it to the ghost
         # point at the positive end.
         # - For ns = -1, divide the positive-end field by e⁻ⁱᵏᴸ to bring it to the ghost
         # point at the negative end.
         iw = ns<0 ? 1 : Nw  # ghost points at negative end for ns < 0
         Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
-    else  # ebc ≠ BLOCH
+    else  # symmetry boundary
         # Zero the diagonal entries multiplied with the fields on the boundary.
         #
         # Note that the code below is independent of ns.  When the grid is uniorm, the
@@ -173,18 +160,14 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
         # minus of the transpose of each other, so the diagonals of two operators must have
         # zeros at the same locations.  This means the locations of zeros on the diagonal
         # must be independent of ns.
-        iw = ebc==PPC ? 1 : Nw
+        iw = 1
         V₀[Base.setindex(indices(V₀), iw, nw)...] .= 0
 
         # Zero the off-diagonal entries multiplied with the fields on the boundary.
         #
         # Note that the code below is indepent of the boundary condition.  When the grid is
-        # uniform, this means that for the same ns, the operators for the PPC and PDC
-        # boundary conditions will have the same off-diagonal entries, except for the
-        # opposite signs.  Therefore, if we verify that the off-diagonal entries for ns = +1
-        # and -1 are minus the transpose of each other for the PPC boundary condition (and
-        # this is indeed the case), then we don't have to check this symmetry for the PDC
-        # boundary condition.
+        # uniform, this means that for the same ns, the operators for the symmetry boundary
+        # conditions will have the same off-diagonal entries, except for the opposite signs.
         iw = ns<0 ? 1 : Nw
         Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0
     end
@@ -206,10 +189,10 @@ end
 create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
             ns::Integer,  # 1|-1 for forward|backward averaging
             N::SVec3Int,  # size of grid
-            ebc::SVector{3,EBC},  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+            isbloch::SVector{3,Bool},  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::SVector{3,<:Number};  # Bloch phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
-    create_mean(gt, ns, N, ones.(N.data), ones.(N.data), ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+    create_mean(gt, ns, N, ones.(N.data), ones.(N.data), isbloch, e⁻ⁱᵏᴸ, reorder=reorder)
 
 
 function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
@@ -217,8 +200,8 @@ function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-                     ebc::SVector{3,EBC},  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+                     isbloch::SVector{3,Bool},  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # Bloch phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
     T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
@@ -230,7 +213,7 @@ function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
     for nw = nXYZ  # Cartesian compotent of output vector
         indstr, indoff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (row stride, row offset)
 
-        I, J, V = create_minfo(gt, nw, ns, N, ∆l[nw], ∆l′[nw], ebc[nw], e⁻ⁱᵏᴸ[nw])
+        I, J, V = create_minfo(gt, nw, ns, N, ∆l[nw], ∆l′[nw], isbloch[nw], e⁻ⁱᵏᴸ[nw])
 
         @. I = indstr * I + indoff
         @. J = indstr * J + indoff
@@ -258,10 +241,10 @@ create_m(gt::GridType,  # PRIM|DUAL for primal|dual field
          nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ns::Integer,  # 1|-1 for forward|backward difference
          N::SVector{K,Int},  # size of grid
-         ebc::EBC=BLOCH,  # boundary condition in w-direction
-         e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
+         isbloch::Bool=true,  # boundary condition in w-direction
+         e⁻ⁱᵏᴸ::Number=1.0  # Bloch phase factor
         ) where {K} =
-    (M = prod(N); sparse(create_minfo(gt, nw, ns, N, ebc, e⁻ⁱᵏᴸ)..., M, M))
+    (M = prod(N); sparse(create_minfo(gt, nw, ns, N, isbloch, e⁻ⁱᵏᴸ)..., M, M))
 
 
 create_m(gt::GridType,  # PRIM|DUAL for primal|dual field
@@ -270,20 +253,20 @@ create_m(gt::GridType,  # PRIM|DUAL for primal|dual field
          N::SVector{K,Int},  # size of grid
          ∆w::AbsVecNumber,  # line segments to multiply with; vector of length N[nw]
          ∆w′::AbsVecNumber,  # line segments to divide by; vector of length N[nw]
-         ebc::EBC=BLOCH,  # boundary condition in w-direction
-         e⁻ⁱᵏᴸ::Number=1.0  # BLOCH phase factor
+         isbloch::Bool=true,  # boundary condition in w-direction
+         e⁻ⁱᵏᴸ::Number=1.0  # Bloch phase factor
         ) where {K} =
-    (M = prod(N); sparse(create_minfo(gt, nw, ns, N, ∆w, ∆w′, ebc, e⁻ⁱᵏᴸ)..., M, M))
+    (M = prod(N); sparse(create_minfo(gt, nw, ns, N, ∆w, ∆w′, isbloch, e⁻ⁱᵏᴸ)..., M, M))
 
 
 create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
              nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
              ns::Integer,  # 1|-1 for forward|backward averaging
              N::SVector{K,Int},  # size of grid
-             ebc::EBC,  # boundary condition in w-direction
-             e⁻ⁱᵏᴸ::Number  # BLOCH phase factor
+             isbloch::Bool,  # boundary condition in w-direction
+             e⁻ⁱᵏᴸ::Number  # Bloch phase factor
             ) where {K} =
-    (∆w = ones(N[nw]); create_minfo(gt, nw, ns, N, ∆w, ∆w, ebc, e⁻ⁱᵏᴸ))
+    (∆w = ones(N[nw]); create_minfo(gt, nw, ns, N, ∆w, ∆w, isbloch, e⁻ⁱᵏᴸ))
 
 
 function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
@@ -292,14 +275,14 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
                       N::SVector{K,Int},  # size of grid
                       ∆w::AbsVecNumber,  # line segments to multiply with; vector of length N[nw]
                       ∆w′::AbsVecNumber,  # line segments to divide by; vector of length N[nw]
-                      ebc::EBC,  # boundary condition in w-direction
-                      e⁻ⁱᵏᴸ::Number  # BLOCH phase factor
+                      isbloch::Bool,  # boundary condition in w-direction
+                      e⁻ⁱᵏᴸ::Number  # Bloch phase factor
                      ) where {K}
     M = prod(N)
     Nw = N[nw]
     ŵ = SVector(ntuple(identity,Val{K})) .== nw  # [0,true,0] for w == y
     T = promote_type(eltype(∆w), eltype(∆w′), eltype(e⁻ⁱᵏᴸ))
-    withcongbc = (gt==PRIM && ebc==PPC) || (gt==DUAL && ebc==PDC)  # bc type is congruent with field type
+    withcongbc = (gt==PRIM && !isbloch)  # bc type is congruent with field type
 
     # Arrange ∆w and ∆w′ in the w-direction by reshape.
     vec1 =  @SVector ones(Int,K)
@@ -322,8 +305,8 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     Vₛ ./= ∆W′
 
     # Modify I, J, V according to the boundary condition.  What we do is basically to take
-    # the operator for BLOCH as a template and then modify it for PPC and PDC by replacing
-    # ±1's with 0's and 2's.
+    # the operator for Bloch as a template and then modify it for the symmetry boundary by
+    # replacing ±1's with 0's and 2's.
     #
     # Note that the operators for ns = -1 (backward averaging) and ns = +1 (forward
     # averaging) can be created for both the primal and dual fields.  (That is why
@@ -336,12 +319,12 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     #
     # Here are the details of what we do for ns = -1 (backward averaging) for primal fields.
     #
-    # - For PPC, our goal is to make sure symmetry around the PPC boundary is correctly
-    # accounted for during averaging.
+    # Our goal is to make sure symmetry around the symmetry boundary is correctly accounted
+    # for during averaging.
     # For the averages at the primal grid point on the negative-end boundary, the goal is
-    # achieved by substituting 2's for the BLOCH operator's (diagonal) 1's that are
+    # achieved by substituting 2's for the Bloch operator's (diagonal) 1's that are
     # multiplied with the first (nonghost) primal fields (defined on the dual grid points),
-    # and 0's for the BLOCH operator's (off-diagonal) 1's that are multiplied with the ghost
+    # and 0's for the Bloch operator's (off-diagonal) 1's that are multiplied with the ghost
     # primal fields, which are copied from the last (nonghost) primal fields.
     # For the averages at the primal grid point on the positive-end boundary, we don't have
     # to do anything because these primal grid points are ghost points and therefore the
@@ -350,28 +333,18 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     # and Dy on the ghost primal grid points on the positive-end boundary are ghost fields,
     # so the contribution of Ex to them are not requested during the equation construction.)
     #
-    # - For PDC, our goal is to make sure the primal fields defined at the dual grid points
-    # on the boundary do not contribute to the averages (beacuse those fields are zero there
-    # since their sign changes as they cross the boundary).
-    # For the averages at the last (nonghost) primal grid points (which are adjacent to the
-    # positive-end boundary), the goal is achieved by zeroing the BLOCH operator's (diagonal)
-    # entries multiplied with the primal fields defined on the negative end.
-    # For the averages at the first primal grid points, the goal is achieved by zeroing the
-    # BLOCH operator's off-diagonal entries multiplied with the same fields as above,
-    # because these fields are periodically wrapped around and used as the (ghost) dual
-    # fields defined on the negative end.
-    #
     # For ns = +1 (forward averaging) for primal fields, it turns out that we only need to
     # replace entries with 0's, not with 2's.  This causes an asymmetry issue between the
-    # ns = ±1 operators.  (For example, if the y-boundaries are PPC, the backward averaging
-    # operators with 2's are multiplied to the right of ξxy to average the input Uy fields,
-    # but the forward averaging operators without 2's are multiplied to the left of ξ_yx to
-    # average the output [ξU]y fields.  Even if ξxy = ξyx, the resulting material parameter
-    # matrix is not symmetric.)  However, it turns out that we can still use 2's in the
-    # forward averaging operators to recover symmetry, because the fields to be multiplied
-    # with these "wrong" 2's in the forward avegaring operator are guaranteed to be zero.
-    # (In the above example, the output [ξU]y fields are created by ξyx Ux and ξyz Uz, but
-    # Ux and Uz are zeros on the PPC y-boundaries, so the [ξU]y to average is already zero.)
+    # ns = ±1 operators.  (For example, if the y-boundaries are the symmetry boundaries, the
+    # backward averaging operators with 2's are multiplied to the right of ξxy to average
+    # the input Uy fields, but the forward averaging operators without 2's are multiplied to
+    # the left of ξ_yx to average the output [ξU]y fields.  Even if ξxy = ξyx, the resulting
+    # material parameter matrix is not symmetric.)  However, it turns out that we can still
+    # use 2's in the forward averaging operators to recover symmetry, because the fields to
+    # be multiplied with these "wrong" 2's in the forward avegaring operator are guaranteed
+    # to be zero. (In the above example, the output [ξU]y fields are created by ξyx Ux and
+    # ξyz Uz, but Ux and Uz are zeros on the symmetry y-boundaries, so the [ξU]y to average
+    # is already zero.)
     #
     # For more details and the final sparsity patterns of the operators, see my notes
     # entitled [Beginning of the part added on Sep/21/2017] in RN - Subpixel Smoothing.  See
@@ -380,14 +353,14 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
     #
     # Below, Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] mimics the implementation of slicedim
     # and basically means Vₛ[:,iw,:] for w = y.
-    if ebc == BLOCH
+    if isbloch
         # - For ns = +1, multiply the negative-end field with e⁻ⁱᵏᴸ to bring it to the ghost
         # point at the positive end.
         # - For ns = -1, divide the positive-end field by e⁻ⁱᵏᴸ to bring it to the ghost
         # point at the negative end.
         iw = ns<0 ? 1 : Nw  # ghost points at negative end for ns < 0
         Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
-    else  # ebc ≠ BLOCH
+    else  # symmetry bounndary
         # Replace some diagonal entries with 0 or 2.
         #
         # Note that the code below is independent of ns.  When the grid is uniorm, the
@@ -399,19 +372,12 @@ function create_minfo(gt::GridType,  # PRIM|DUAL for primal|dual field
         # The part below is the same as create_∂info if withcongbc == false; otherwise, it
         # is different from create_∂info: 2 instead of 0 is used.  See my notes entitled
         # [Beginning of the part added on Sep/21/2017] in RN - Subpixel Smoothing.
-        iw = ebc==PPC ? 1 : Nw
+        iw = isbloch ? Nw : 1
         val = withcongbc ? 2 : 0
         V₀[Base.setindex(indices(V₀), iw, nw)...] .*= val
 
-        # Replace some off-diagonal entries with 0.
-        #
-        # Note that the code below is indepent of the boundary condition.  When the grid is
-        # uniform, this means that for the same ns, the operators for the PPC and PDC
-        # boundary conditions will have the same off-diagonal entries, except for the
-        # opposite signs.  Therefore, if we verify that the off-diagonal entries for ns = +1
-        # and -1 are minus the transpose of each other for the PPC boundary condition (and
-        # this is indeed the case), then we don't have to check this symmetry for the PDC
-        # boundary condition.
+        # Replace some off-diagonal entries with 0.  Note that the code below is indepent of
+        # the boundary condition.
         iw = ns<0 ? 1 : Nw
         Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0
     end
@@ -434,10 +400,10 @@ param3d2mat(param3d::AbsArr{CFloat,5},
             N::AbsVecInteger,  # size of grid
             ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
             ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-            ebc::AbsVec{EBC},  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # BLOCH phase factor in x, y, z
+            isbloch::AbsVec{Bool},  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
-    (K = length(N); param3d2mat(param3d, gt, SVector{K}(N), ∆l, ∆l′, SVector{K}(ebc), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
+    (K = length(N); param3d2mat(param3d, gt, SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 
 function param3d2mat(param3d::AbsArr{CFloat,5},
@@ -445,8 +411,8 @@ function param3d2mat(param3d::AbsArr{CFloat,5},
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-                     ebc::SVector{3,EBC},  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # BLOCH phase factor in x, y, z
+                     isbloch::SVector{3,Bool},  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # Bloch phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
     M = prod(N)
 
@@ -459,7 +425,7 @@ function param3d2mat(param3d::AbsArr{CFloat,5},
     # multiplied for symmetry to the left of the material parameter matrix multiplies the
     # same area factor to the two fields being averaged.  (See my notes on Jul/18/2018 in
     # MaxwellFDM in Agenda.)
-    Mout = create_mean(gt, ns_out, N, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+    Mout = create_mean(gt, ns_out, N, isbloch, e⁻ⁱᵏᴸ, reorder=reorder)
 
     kdiag = 0
     p3dmat = create_param3dmat(param3d, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
@@ -471,7 +437,7 @@ function param3d2mat(param3d::AbsArr{CFloat,5},
         # segments.  The ∆l factors multiplied inside create_minfo cancel the effect of this
         # multiplication with the nonuniform line segments.  (See my notes on Jul/18/2018 in
         # MaxwellFDM in Agenda.)
-        Min = create_mean(gt, ns_in, N, ∆l, ∆l′, ebc, e⁻ⁱᵏᴸ, reorder=reorder)
+        Min = create_mean(gt, ns_in, N, ∆l, ∆l′, isbloch, e⁻ⁱᵏᴸ, reorder=reorder)
 
         # Below, we use block-diagonal averaging matrices but either block-diagonal (kdiag
         # = 0), block-superdiagonal (kdiag = +1), or block-subdiagonal (kdiag = -1) material

@@ -7,7 +7,6 @@
     @test instances(FieldType) == (EE, HH)
     @test instances(Sign) == (NEG, POS)
     @test instances(BC) == (PERIODIC, PEC, PMC)
-    @test instances(EBC) == (BLOCH, PPC, PDC)
     @test instances(PML) == (SCPML, UPML)
 end
 
@@ -18,7 +17,6 @@ end
     @test numel(FieldType) == 2
     @test numel(Sign) == 2
     @test numel(BC) == 3
-    @test numel(EBC) == 3
     @test numel(PML) == 2
 end
 

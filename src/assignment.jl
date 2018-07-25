@@ -84,30 +84,26 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
                        oind3d::Tuple24{AbsArr{ObjInd,3}},  # object index array to set
                        ovec::AbsArr{<:Object3},  # object vector; later object overwrites earlier.
                        τl::Tuple23{AbsVecReal},  # field component locations transformed by boundary conditions
-                       ebc::SVector{3,EBC})
-    # Circularly shift subscripts for BLOCH boundary condition.  This makes sure τl[sub[w]]
+                       isbloch::SVector{3,Bool})
+    # Circularly shift subscripts for Bloch boundary condition.  This makes sure τl[sub[w]]
     # is always sorted for all boundary conditions.  Sorted τl is necessary to use findfirst
     # and findlast in assign_param_obj!.
     #
     # Primal grid: ghost points are always at the positive end.
     # - Bloch: ghost points copy the values of non-ghost points at the negative end, so τl
     # must be circshifted to right in order to be sorted.
-    # - PPC: ghost points have own degrees of freedom at the positive end, so τl is already
-    # sorted.
-    # - PDC: ghost points copy the values of non-ghost points at the positive end, so τl is
+    # - symmetry: ghost points have own degrees of freedom at the positive end, so τl is
     # already sorted.
     # Therefore, the primal grid needs to be circshifted to right only for the Bloch BC.
     #
     # Dual grid: ghost points are always at the negative end.
     # - Bloch: ghost points copy the values of non-ghost points at the positive end, so τl
     # must be circshifted to left in order to be sorted.
-    # - PPC: ghost points copy the values of non-ghost points at the negative end, so τl is
+    # - symmetry: ghost points copy the values of non-ghost points at the negative end, so τl is
     # already sorted.
-    # - PDC: ghost points have own degrees of freedom at the negative end, so τl is already
-    # sorted.
     M = length.(τl[nPR])  # N+1
-    sub = (map((m,e)->circshift(1:m, e==BLOCH), M, ebc.data),
-           map((m,e)->circshift(1:m, -(e==BLOCH)), M, ebc.data))
+    sub = (map((m,b)->circshift(1:m, b), M, isbloch.data),
+           map((m,b)->circshift(1:m, -b), M, isbloch.data))
 
     # Subscripts for param3d are a bit different.  param3d always have ghost cells at the
     # positive end, regardless of the material parameter type.  Therefore, if the above sub
@@ -127,8 +123,8 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
     # Similarly, dual param3d must be circshifted to right if the dual τl is NOT circshifted
     # to left.  (This is also to send param3d's ghost points existing at the positive end to
     # the negative end, where the ghost points of the non-circshifted dual τl exist).
-    psub = (map((m,e)->circshift(1:m, e==BLOCH), M, ebc.data),  # primal grid
-            map((m,e)->circshift(1:m, e≠BLOCH), M, ebc.data))  # dual grid
+    psub = (map((m,b)->circshift(1:m, b), M, isbloch.data),  # primal grid
+            map((m,b)->circshift(1:m, !b), M, isbloch.data))  # dual grid
 
     ## Perform assignment.
     for ngt = nPD

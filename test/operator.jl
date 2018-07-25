@@ -63,21 +63,21 @@ Z = spzeros(M,M)
 
     # Construct Cu for a nonuniform grid and general boundaries.
     ∆ldual = rand.(N.data)
-    ebc = SVector(BLOCH, PPC, PDC)
+    isbloch = SVector(true, false, false)
     e⁻ⁱᵏᴸ = @SVector rand(Complex128, 3)
 
-    Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cu = create_curl(PRIM, N, ∆ldual, isbloch, e⁻ⁱᵏᴸ, reorder=false)
 
     # Examine Cu.
-    ∂x = (nw = 1; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
-    ∂y = (nw = 2; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
-    ∂z = (nw = 3; create_∂(nw, 1, N, ∆ldual[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂x = (nw = 1; create_∂(nw, 1, N, ∆ldual[nw], isbloch[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂y = (nw = 2; create_∂(nw, 1, N, ∆ldual[nw], isbloch[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂z = (nw = 3; create_∂(nw, 1, N, ∆ldual[nw], isbloch[nw], e⁻ⁱᵏᴸ[nw]))
     @test Cu == [Z -∂z ∂y;
                  ∂z Z -∂x;
                  -∂y ∂x Z]
 
     # Examine reordering.
-    Cu_reorder = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=true)
+    Cu_reorder = create_curl(PRIM, N, ∆ldual, isbloch, e⁻ⁱᵏᴸ, reorder=true)
     @test Cu_reorder == Cu[r,r]
 end  # @testset "create_curl for U"
 
@@ -99,21 +99,21 @@ end  # @testset "create_curl for U"
 
     # Construct Cv for a nonuniform grid and general boundaries.
     ∆lprim = rand.(N.data)
-    ebc = SVector(BLOCH, PPC, PDC)
+    isbloch = SVector(true, false, false)
     e⁻ⁱᵏᴸ = @SVector rand(Complex128, 3)
 
-    Cv = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cv = create_curl(DUAL, N, ∆lprim, isbloch, e⁻ⁱᵏᴸ, reorder=false)
 
     # Examine Cv.
-    ∂x = (nw = 1; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
-    ∂y = (nw = 2; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
-    ∂z = (nw = 3; create_∂(nw, -1, N, ∆lprim[nw], ebc[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂x = (nw = 1; create_∂(nw, -1, N, ∆lprim[nw], isbloch[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂y = (nw = 2; create_∂(nw, -1, N, ∆lprim[nw], isbloch[nw], e⁻ⁱᵏᴸ[nw]))
+    ∂z = (nw = 3; create_∂(nw, -1, N, ∆lprim[nw], isbloch[nw], e⁻ⁱᵏᴸ[nw]))
     @test Cv == [Z -∂z ∂y;
                  ∂z Z -∂x;
                  -∂y ∂x Z]
 
     # Examine reordering
-    Cv_reorder = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=true)
+    Cv_reorder = create_curl(DUAL, N, ∆lprim, isbloch, e⁻ⁱᵏᴸ, reorder=true)
     @test Cv_reorder == Cv[r,r]
 end  # @testset "create_curl for V"
 
@@ -121,11 +121,11 @@ end  # @testset "create_curl for V"
     # Construct Cu and Cv for a uniform grid and BLOCH boundaries.
     ∆ldual = ones.(N.data)
     ∆lprim = ones.(N.data)
-    ebc =  SVector(BLOCH, PPC, PDC)
+    isbloch =  SVector(true, false, false)
     e⁻ⁱᵏᴸ = @SVector ones(3)
 
-    Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
-    Cv = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    Cu = create_curl(PRIM, N, ∆ldual, isbloch, e⁻ⁱᵏᴸ, reorder=false)
+    Cv = create_curl(DUAL, N, ∆lprim, isbloch, e⁻ⁱᵏᴸ, reorder=false)
 
     # Test symmetry of each block.
     for i = nXYZ
@@ -135,9 +135,9 @@ end  # @testset "create_curl for V"
     end
 
     # Construct Cv * Cu for all BLOCH.
-    ebc =  @SVector fill(BLOCH, 3)
-    Cu = create_curl(PRIM, N, ∆ldual, ebc, e⁻ⁱᵏᴸ, reorder=false)
-    Cv = create_curl(DUAL, N, ∆lprim, ebc, e⁻ⁱᵏᴸ, reorder=false)
+    isbloch =  @SVector fill(true, 3)
+    Cu = create_curl(PRIM, N, ∆ldual, isbloch, e⁻ⁱᵏᴸ, reorder=false)
+    Cv = create_curl(DUAL, N, ∆lprim, isbloch, e⁻ⁱᵏᴸ, reorder=false)
     A = Cv * Cu
 
     # Test curl of curl.
@@ -197,11 +197,10 @@ end  # @testset "create_m"
     L₀ = 1e-9
     unit = PhysUnit(L₀)
     Npml = ([0,0,0], [0,0,0])
-    ebc = [BLOCH, BLOCH, BLOCH]
+    isbloch = [true, true, true]
+    # isbloch = [true, false, false]
     lprim = ([-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5])
-    # ebc = [BLOCH, PPC, PDC]
-    # lprim = ([-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5], [-2.0, -1.0, 0.0, 1.0, 2.0])
-    g3 = Grid(unit, lprim, Npml, ebc)
+    g3 = Grid(unit, lprim, Npml, isbloch)
     N = g3.N
 
     # Create materials.
@@ -227,12 +226,12 @@ end  # @testset "create_m"
     pind3d = create_n3d(ParamInd, N)
     oind3d = create_n3d(ObjInd, N)
 
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
+    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
     # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
 
     smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mξ = param3d2mat(param3d[nPR], PRIM, N, g3.∆l[nDL], g3.∆l[nPR], ebc, reorder=false)
+    Mξ = param3d2mat(param3d[nPR], PRIM, N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
 
     @test issymmetric(Mξ)
 
@@ -247,11 +246,10 @@ end  # @testset "param3d2mat"
     L₀ = 1e-9
     unit = PhysUnit(L₀)
     Npml = ([0,0,0], [0,0,0])
-    ebc = [BLOCH, BLOCH, BLOCH]
+    isbloch = [true, true, true]
+    # isbloch = [true, false, false]
     lprim = ([-1.5, -0.4, 0.3, 1.5], [-1.5, -0.4, 0.3, 1.5], [-1.5, -0.4, 0.3, 1.5])
-    # ebc = [BLOCH, PPC, PDC]
-    # lprim = ([-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5], [-2.0, -1.0, 0.0, 1.0, 2.0])
-    g3 = Grid(unit, lprim, Npml, ebc)
+    g3 = Grid(unit, lprim, Npml, isbloch)
     N = g3.N
 
     # Create materials.
@@ -277,12 +275,12 @@ end  # @testset "param3d2mat"
     pind3d = create_n3d(ParamInd, N)
     oind3d = create_n3d(ObjInd, N)
 
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
+    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
     # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
 
     smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mξ = param3d2mat(param3d[nPR], PRIM, N, g3.∆l[nDL], g3.∆l[nPR], ebc, reorder=false)
+    Mξ = param3d2mat(param3d[nPR], PRIM, N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
 
     # Ml
     ∆lprim = g3.∆l[nPR]

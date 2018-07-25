@@ -1,5 +1,4 @@
-export t_ind, rand3, randn3, isapprox, isapprox_wrt, movingavg, newtsol
-import Base:isapprox, dot
+# import Base:isapprox, dot
 
 # Below, t_ind returns
 # - a tuple if the first argument is a tuple of tuple, and

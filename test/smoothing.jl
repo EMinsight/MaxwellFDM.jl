@@ -26,11 +26,10 @@ end  # @testset "sort8!"
     L₀ = 1e-9
     unit = PhysUnit(L₀)
     Npml = ([0,0,0], [0,0,0])
-    ebc = [BLOCH, BLOCH, BLOCH]
+    isbloch = [true, true, true]
+    # isbloch = [true, false, false]
     lprim = ([-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5])
-    # ebc = [BLOCH, PPC, PDC]
-    # lprim = ([-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5], [-2.0, -1.0, 0.0, 1.0, 2.0])
-    g3 = Grid(unit, lprim, Npml, ebc)
+    g3 = Grid(unit, lprim, Npml, isbloch)
     N = g3.N
 
     # Create materials.
@@ -56,7 +55,7 @@ end  # @testset "sort8!"
     pind3d = create_n3d(ParamInd, N)
     oind3d = create_n3d(ObjInd, N)
 
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
+    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
     # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
 
     smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
@@ -136,8 +135,8 @@ end  # @testset "smoothing, box with odd number of voxels"
     unit = PhysUnit(L₀)
     lprim = ([-2,-1,0,1,2], [-2,-1,0,1,2], [-2,-1,0,1,2])
     Npml = ([0,0,0], [0,0,0])
-    ebc = [BLOCH, BLOCH, BLOCH]
-    g3 = Grid(unit, lprim, Npml, ebc)
+    isbloch = [true, true, true]
+    g3 = Grid(unit, lprim, Npml, isbloch)
     N = g3.N
 
     # Create materials.
@@ -163,7 +162,7 @@ end  # @testset "smoothing, box with odd number of voxels"
     pind3d = create_n3d(ParamInd, N)
     oind3d = create_n3d(ObjInd, N)
 
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
+    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
     smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
     ε3d = view(param3d[nPR], 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
@@ -360,8 +359,8 @@ end  # @testset "smoothing, box with even number of voxels"
 #     unit = PhysUnit(L₀)
 #     lprim = ([-0.5,0.5], [-2,-1,0,1,2], [-0.5,0.5])
 #     Npml = ([0,0,0], [0,0,0])
-#     ebc = [BLOCH, BLOCH, BLOCH]
-#     g3 = Grid(unit, lprim, Npml, ebc)
+#     isbloch = [true, true, true]
+#     g3 = Grid(unit, lprim, Npml, isbloch)
 #     N = g3.N
 #
 #     # Create materials.
@@ -387,7 +386,7 @@ end  # @testset "smoothing, box with even number of voxels"
 #     pind3d = create_n3d(ParamInd, N)
 #     oind3d = create_n3d(ObjInd, N)
 #
-#     assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.ebc)
+#     assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
 #     smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 #
 #     ε3d = view(param3d[nPR], 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
