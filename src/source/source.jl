@@ -67,6 +67,41 @@
 # We need to support both Je and Jm to realize unidirectional sources.
 
 export Source
+export add!
+
+abstract type Source end
+
+add!(j3d::AbsArr{<:Number,3}, gt::GridType, bounds::Tuple2{<:AbsVecReal}, l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, e⁻ⁱᵏᴸ::AbsVecNumber, srcs::Source...) =
+    add!(j3d, gt, SVec3Float.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVector3(e⁻ⁱᵏᴸ), srcs...)
+
+function add!(j3d::AbsArr{<:Number,3},  # 3D array of Je (electric current density) or Jm (magnetic current density)
+              gt::GridType,  # type of source (primal or dual)
+              bounds::Tuple2{SVec3Float},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
+              l::Tuple23{<:AbsVecFloat},  # l[PRIM][k] = primal vertex locations in k-direction
+              ∆l::Tuple23{<:AbsVecFloat},  # ∆l[PRIM][k] = (∆l at primal vertices in w) == diff(l[DUAL][k] including ghost point)
+              e⁻ⁱᵏᴸ::SVec3Number,  # Bloch phase factors
+              srcs::Source...)  # sources; sources put later overwrite sources put earlier
+    for src = srcs
+        add!(j3d, bounds, l, ∆l, gt, src)
+    end
+end
+
+# I could define distweights with more abstractly typed arguments, such as c::Real, bounds::AbsVecReal,
+# l::AbsVecReal, ∆l::AbsVecReal and let the type inference system create distweights for each
+# distinct set of types.  However, then I cannot control the behavior of the function perfectly.
+# because the two numbers used in division could be integer or float.  Therefore, I implement the
+# kernel for a specific type later, and here I define a wrapper that converts the arguments into
+# those specific type.
+#
+# Another advantage of this approach is that even though several different versions of the wrapper
+# will be generated, the kernel will be generated only once for the specific type.  This makes
+# the amount of compiled code minimal.
+#
+# Note that the situation here is a bit different from create_curl.  There, I wanted to create a
+# curl operator of differnt types, such as Float, CFloat, and even Int.  Therefore, I had to allow
+# generation of different kernel code for different argument types.
+distweights(c::Real, gt::GridType, bounds::AbsVecReal, l::AbsVecReal, ∆l::AbsVecReal, isbloch::Bool) =
+    distweights(float(c), gt, SVec2Float(bounds), float(l), float(∆l), isbloch)
 
 # In a given Cartesian direction, if the source is located between two grid points,
 # calculate the weights to distribute over the two points.  The output is in the form of
@@ -109,16 +144,15 @@ export Source
 # of source when all the sources are assigned and properly distributed with weight factors.
 # That way, we don't have to implement multiplication of the Bloch phase factors in every
 # source type.  However, this decision can change later if needed.
-function distweights(c::Real,  # location of point (c means center)
-                     domain::VecFloat,  # [lneg, lpos]: negative- and positive-end of the domain
-                     l::VecFloat,  # location of grid planes without ghost points
-                     ∆l::VecFloat,  # size of grid cell centered at l (not lg)
+function distweights(c::Float,  # location of point (c means center)
                      gt::GridType,  # type of the grid planes
+                     bounds::SVec2Float,  # [lneg, lpos]: negative- and positive-end boundaries of domain
+                     l::AbsVecFloat,  # location of grid planes without ghost points
+                     ∆l::AbsVecFloat,  # size of grid cell centered at l (not lg)
                      isbloch::Bool)  # boundary condition
-    length(domain)==2 || throw(ArgumentError("domain = $domain must be length-2."))
-    domain[1]≤c≤domain[2] || throw(ArgumentError("c = $c must be within domain = $domain."))
+    bounds[1]≤c≤bounds[2] || throw(ArgumentError("c = $c must be within bounds = $bounds."))
 
-    L = domain[2] - domain[1]
+    L = bounds[2] - bounds[1]
     N = length(l)
 
     # Below, what if N = 1?  I think N = 1 will work fine for Bloch, for which indn = indp
@@ -161,11 +195,11 @@ function distweights(c::Real,  # location of point (c means center)
         if c < l[indn]  # cannot happen for PRIM && Bloch
             ind₁ = indn
             ind₂ = N
-            bnd = domain[1]
+            bnd = bounds[1]
         else # c ≥ l[indp] (not >)
             ind₁ = indp
             ind₂ = 1
-            bnd = domain[2]
+            bnd = bounds[2]
         end
 
         ∆c1 = abs(l[ind₁] - c)
@@ -207,40 +241,5 @@ function distweights(c::Real,  # location of point (c means center)
     return (ind, wt)
 end
 
-abstract type Source end
-
-# When put a point source in space discretized by a finite-difference grid, the point source
-# must specify current dipole I d rather current I or current density J.
-#
-# - If it assigns current density J, it is assumed to flow uniformly through the area
-# element ∆a where J is centered, so the total current is I = J ∆a, which decreases with
-# increasing resolution.  If J is electric current and if it decreases into a half, the
-# induced magnetic field that circuits around I decreases into a half at the same distance
-# from I.  Therefore, in order to keep the simulation result independent of grid resolution
-# for sufficiently high resolution (i.e., in order to make the simulation result converges),
-# current I instead of current density J must be assigned.
-#
-# - Now, if it assigns current I, the current is assumed to flow uniformly in the edge
-# element ∆l along the direction of the current.  (The fact that this assumption is made in
-# finite difference is evident if we consider a loop of electric current formed along the
-# perimeter of a pixel: the magnetic current dipole induced by this electric current loop is
-# proportional to the line integral of the current, and on the finite-difference grid, this
-# line integral is calculated by assuming each edge has a uniform current over its length.)
-# For the same current I, if ∆l decreases, the current dipole I ∆l decreases.  When the
-# current dipole decreases, the E-field induced by the dipole decreases.
-#
-# In conclusion, a point source must specify the dipole current I d, and from that it must
-# recover J = I d / (∆a ∆l) to assign to the field point.
-mutable struct PointSrc <: Source
-    p::SVec3Float  # polarization direction
-    c::SVec3Float  # location (c menas center)
-    Id::Float  # dipole current I⋅d; default value = 1
-end
-
-
-mutable struct PlaneSrc <: Source
-    n::Axis  # direction normal to plane
-    ϕ::Float  # angle indicating polarization direction around n; ϕ = 0 is Cartesian direction cyclically next to n (e.g., for n = Ŷ, ϕ = 0 is z-direction)
-    c::Float  # intercept (c means center)
-    K::Float  # sheet current density (current per unit cross-sectional length in plane); default value = 1
-end
+include("pointsrc.jl")
+include("planesrc.jl")
