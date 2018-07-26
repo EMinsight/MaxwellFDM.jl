@@ -7,7 +7,13 @@ create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
             isbloch::AbsVec{Bool}=fill(true,length(N)),  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
-    (K = length(N); create_curl(gt, SVector{K}(N), ∆l, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
+    # I should not cast e⁻ⁱᵏᴸ into a complex vector, because then the entire curl matrix
+    # becomes a complex matrix.  Sometimes I want to keep it real (e.g., when no PML and
+    # Bloch phase factors are used).
+    #
+    # I should not cast ∆l to a vector of any specific type (e.g., Float, CFloat), either,
+    # because sometimes I would want to even create an integral curl operator.
+    (K = length(N); create_curl(gt, SVector{K,Int}(N), ∆l, SVector{K,Bool}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 
 # I need to create create_curl_info! first.  Then, from there it is easy to eliminate some
