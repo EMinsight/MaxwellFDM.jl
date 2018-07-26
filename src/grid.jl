@@ -1,3 +1,29 @@
+# About the construction of a grid:
+#
+# - The domain boundaries are always primal grid planes.
+#
+# - The dual grid planes are always mid-sections between adjacent primal grid planes.
+#
+# - In each Cartesian axis, the negative- and positive-end boundary conditions are always
+# chosen the same.  For example, if the negative end is Bloch, the positive end must be also
+# Bloch.  Similarly, if the negative end is PEC, the positive end is also PEC.
+#
+# - The primal and dual grid planes are not necessarily associated with the E- and H-field
+# planes.  Which of the primal and dual grid planes to use for the E- and H-fields is
+# decided by the choice of the boundary condition.
+#
+#       - The PEC and PMC symmetry boundary conditions are realized by putting the relavant
+#       fields on the domain boundary as the tangential components.  Therefore, we use the
+#       primal grid planes as the E-field planes for the PEC boundary condition, and as the
+#       H-field planes for the PMC boundary condition.
+#
+#       - On the other hand, for the Bloch boundary condition we can use the primal grid
+#       planes as either of the E- and H-field planes.  Note that Maxwell's equations are
+#       ∇_h × μ⁻¹ ∇_e × E - ω² ε E = -i ω J.  Once we decide that in the w-axis direciton
+#       (w = x,y,z) we are going to use the primal grid planes as the E-field planes, we can
+#       simply use the forward difference (which is for primal fields) as ∂/∂w in
+#       constructing ∇_e.
+
 export Grid  # types
 export isproper_blochphase, lghost  # functions
 
