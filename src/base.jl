@@ -24,8 +24,8 @@
 @inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::SVector{K,T}) where {K,T<:Union{GridType,Sign,Integer}} =  # ind₁₂[k] = 1 or 2
     map((t₁,t₂,i) -> Int(i)==1 ? t₁ : t₂, t[1], t[2], ind₁₂)  # SVector{K}
 
-# From a tuple of K vectors, construct a vector with K entries whose kth entry is taken from
-# the kth vector.
+# From a tuple of K vectors, construct a vector with K entries whose kth entry is the ind[k]-th
+# entry of the kth vector.
 @inline t_ind(t::Tuple3{AbsVec}, i::Int, j::Int, k::Int) = t_ind(t, (i,j,k))
 @inline t_ind(t::Tuple2{AbsVec}, i::Int, j::Int) = t_ind(t, (i,j))
 @inline t_ind(t::NTuple{K,AbsVec}, ind::NTuple{K,Int}) where {K} = t_ind(t, SVector(ind))
