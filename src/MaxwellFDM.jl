@@ -45,10 +45,18 @@ const AbsMatComplex = AbsMat{CFloat}
 const AbsMatReal = AbsMat{<:Real}
 const AbsMatNumber = AbsMat{<:Number}
 
-const SVec3Float = SVector{3,Float}
-const SVec2Int = SVector{2,Int}
-const SVec3Int = SVector{3,Int}
-const SVec3Complex = SVector{3,CFloat}
+const SVector2 = SVector{2}
+const SVector3 = SVector{3}
+
+const SVec2Bool = SVector2{Bool}
+const SVec3Bool = SVector3{Bool}
+const SVec2Float = SVector2{Float}
+const SVec3Float = SVector3{Float}
+const SVec2Int = SVector2{Int}
+const SVec3Int = SVector3{Int}
+const SVec3Complex = SVector3{CFloat}
+const SVec3Number = SVector3{<:Number}
+
 const SMat3Complex = SMatrix{3,3,CFloat,9}
 
 const MatParam = Union{Number,AbsVecNumber,AbsMatNumber}

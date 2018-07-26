@@ -84,7 +84,7 @@ function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to 
                        oind3d::Tuple24{AbsArr{ObjInd,3}},  # object index array to set
                        ovec::AbsArr{<:Object3},  # object vector; later object overwrites earlier.
                        τl::Tuple23{AbsVecReal},  # field component locations transformed by boundary conditions
-                       isbloch::SVector{3,Bool})
+                       isbloch::SVec3Bool)
     # Circularly shift subscripts for Bloch boundary condition.  This makes sure τl[sub[w]]
     # is always sorted for all boundary conditions.  Sorted τl is necessary to use findfirst
     # and findlast in assign_param_obj!.
@@ -234,10 +234,10 @@ function assign_val_shape!(arrays::Tuple,
                            τlcmp::Tuple3{AbsVecReal})
     # Set the location indices of object boundaries.
     assert(all(issorted.(τlcmp)))
-    bn, bp = bounds(shape)  # (SVector{3}, SVector{3})
+    bn, bp = bounds(shape)  # (SVector3, SVector3)
     subn = map((l,b) -> (n = findfirst(l.≥b); n==0 ? 1 : n), τlcmp, bn)  # SVec3Int
     subp = map((l,b) -> (n = findlast(l.≤b); n==0 ? length(l) : n), τlcmp, bp)  # SVec3Int
-    I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVector{3,UnitRange{Int}}
+    I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVector3{UnitRange{Int}}
 
     if shape isa Box{3,9} && (shape::Box{3,9}).p == @SMatrix(eye(3))  # shape is Cartesian box
         assign_val!.(arrays, vals, ((I,J,K),))

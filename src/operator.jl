@@ -19,8 +19,8 @@ create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
 function create_curl(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # ∆l[w]: distances between grid planes in x-direction
-                     isbloch::SVector{3,Bool},  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # Bloch phase factor in x, y, z
+                     isbloch::SVec3Bool,  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVec3Number;  # Bloch phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
     ns = gt==PRIM ? 1 : -1
     T = promote_type(eltype.(∆l)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
@@ -189,8 +189,8 @@ end
 create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
             ns::Integer,  # 1|-1 for forward|backward averaging
             N::SVec3Int,  # size of grid
-            isbloch::SVector{3,Bool},  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::SVector{3,<:Number};  # Bloch phase factor in x, y, z
+            isbloch::SVec3Bool,  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::SVec3Number;  # Bloch phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
     create_mean(gt, ns, N, ones.(N.data), ones.(N.data), isbloch, e⁻ⁱᵏᴸ, reorder=reorder)
 
@@ -200,8 +200,8 @@ function create_mean(gt::GridType,  # PRIM|DUAL for curl on primal|dual grid
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-                     isbloch::SVector{3,Bool},  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # Bloch phase factor in x, y, z
+                     isbloch::SVec3Bool,  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVec3Number;  # Bloch phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
     T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
@@ -411,8 +411,8 @@ function param3d2mat(param3d::AbsArr{CFloat,5},
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-                     isbloch::SVector{3,Bool},  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SVector{3,<:Number};  # Bloch phase factor in x, y, z
+                     isbloch::SVec3Bool,  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SVec3Number;  # Bloch phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
     M = prod(N)
 

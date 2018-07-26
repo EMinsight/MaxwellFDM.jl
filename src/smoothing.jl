@@ -291,7 +291,7 @@ function kottke_input_simple(ind_c::AbsVecInteger, n_change::Integer, obj_fg::Ob
     return param_fg, param_bg, nout, rvol
 end
 
-function kottke_input_accurate(x₀::SVec3Float, σvxl::SVector{3,Bool}, lvxl::Tuple2{SVec3Float}, ∆fg::SVec3Float, obj_fg::Object3, obj_bg::Object3, gt::GridType)
+function kottke_input_accurate(x₀::SVec3Float, σvxl::SVec3Bool, lvxl::Tuple2{SVec3Float}, ∆fg::SVec3Float, obj_fg::Object3, obj_bg::Object3, gt::GridType)
     param_fg, param_bg = matparam(obj_fg, gt), matparam(obj_bg, gt)
 
     r₀, nout = surfpt_nearby(x₀ + ∆fg, obj_fg.shape)
