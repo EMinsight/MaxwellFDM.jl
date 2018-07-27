@@ -71,10 +71,27 @@ export add!
 
 abstract type Source end
 
-add!(j3d::AbsArr{<:Number,3}, gt::GridType, bounds::Tuple2{<:AbsVecReal}, l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, e⁻ⁱᵏᴸ::AbsVecNumber, srcs::Source...) =
+# About the order of indices of j3d:
+#
+# Like param3d in assignment.jl, we index j3d as j3d[i,j,k,w], where (i,j,k) are positional
+# indices and w is the current component index.
+#
+# The reason for this choice is the same as param3d.  In assigning source values to j3d,
+# we usually fix a component first and then assign the same value to a range of (i,j,k).
+# This can be more efficiently done with j3d[i,j,k,w], because a contiguous range of (i,j,k)
+# actually corresponds to a contiguous memory block.
+#
+# I think I will need to index the E- and H-fields the same way for matrix-free operations.
+# When we perform curl operation on these field arrays, we implement the ∂/∂w operation as
+# fixing the component to differentiate first and then perform the differentiation.
+# Therefore, again the E[i,j,k,w] indexing scheme results in an operation on a more
+# contiguous block in memory space.
+create_field3d(N::SVec3Int) = zeros(CFloat, N.data)  # source.jl is not good place to define this, but good for now
+
+add!(j3d::AbsArr{<:Number,4}, gt::GridType, bounds::Tuple2{<:AbsVecReal}, l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, e⁻ⁱᵏᴸ::AbsVecNumber, srcs::Source...) =
     add!(j3d, gt, SVec3Float.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVector3(e⁻ⁱᵏᴸ), srcs...)
 
-function add!(j3d::AbsArr{<:Number,3},  # 3D array of Je (electric current density) or Jm (magnetic current density)
+function add!(j3d::AbsArr{<:Number,4},  # 4D array of Je (electric current density) or Jm (magnetic current density)
               gt::GridType,  # type of source (primal or dual)
               bounds::Tuple2{SVec3Float},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
               l::Tuple23{<:AbsVecFloat},  # l[PRIM][k] = primal vertex locations in k-direction
