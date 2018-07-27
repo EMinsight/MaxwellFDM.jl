@@ -118,8 +118,52 @@
     @test sum(wt_c₁) ≈ sum(wt_c₂) ≈ 1 / ∆ldual[1]
 end  # @testset "distweights"
 
+L₀ = 1e-9
+unit = PhysUnit(L₀)
+
 @testset "PlaneSrc" begin
-    src = PlaneSrc(Ẑ, 0, 0)
+    src = PlaneSrc(Ẑ, 0, X̂)  # x-polarized source in z-normal plane
+
+    Npml = ([0,0,0], [0,0,0])
+    isbloch = [true, true, true]
+
+    # Coarse grid
+    lprim = (collect(-10:10), collect(-10:10), collect(-10:10))
+    g3 = Grid(unit, lprim, Npml, isbloch)
+    ∆a = 1.0^2  # area element
+
+    j3d = create_field3d(g3.N)
+    add!(j3d, PRIM, g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
+
+    @test maximum(abs, j3d) == 1.0  # J = K / ∆z
+    @test all(j3d[:,:,:,nY] .== 0)  # Jy = 0
+    @test all(j3d[:,:,:,nZ] .== 0)  # Jz = 0
+
+    # Fine grid
+    lprim = (collect(-10:0.5:10), collect(-10:0.5:10), collect(-10:0.5:10))
+    g3_fine = Grid(unit, lprim, Npml, isbloch)
+
+    j3d_fine = create_field3d(g3_fine.N)
+    add!(j3d_fine, PRIM, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
+    ∆a_fine = 0.5^2  # area element
+
+    @test sum(j3d[1,:,:,nX]) * ∆a ≈ sum(j3d_fine[1,:,:,nX]) * ∆a_fine  # total current through x-normal cross section is independent of grid resolution
+    @test maximum(abs, j3d_fine) == 2.0  # J = K / ∆z
+
+    # Nonuniform grid in z
+    zprim = sort(rand(21)) * 20
+    z_avg = mean(zprim)
+    zprim -= z_avg  # z = 0 is within the z-range
+    lprim = (collect(-10:10), collect(-10:10), zprim)
+    g3_nu = Grid(unit, lprim, Npml, isbloch)
+
+    ∆yprim = g3_nu.∆l[nPR][nY]
+    ∆zprim = g3_nu.∆l[nPR][nZ]
+
+    j3d_nu = create_field3d(g3_nu.N)
+    add!(j3d_nu, PRIM, g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
+
+    @test sum(j3d[1,:,:,nX]) * ∆a ≈ sum(j3d_nu[1,:,:,nX] .* (∆yprim * ∆zprim.'))  # total current through x-normal cross section is independent of grid resolution
 
     # Verify if the total current does not change with the location of the intercept in 3D for Bloch.
 end  # @testset "PlaneSrc"
