@@ -67,7 +67,7 @@
 # We need to support both Je and Jm to realize unidirectional sources.
 
 export Source
-export add!
+export create_field3d, field3d2vec, add!
 
 abstract type Source end
 
@@ -86,7 +86,14 @@ abstract type Source end
 # fixing the component to differentiate first and then perform the differentiation.
 # Therefore, again the E[i,j,k,w] indexing scheme results in an operation on a more
 # contiguous block in memory space.
-create_field3d(N::SVec3Int) = zeros(CFloat, N.data)  # source.jl is not good place to define this, but good for now
+
+# source.jl is not good place to define this function, but this is good for now.
+create_field3d(N::SVec3Int) = zeros(CFloat, N.data..., 3)  # 3 = numel(Axis)
+
+# Below, permutedims(j3d, ...) create a new array, whereas reshape(j3d, :) doesn't.
+# Therefore, if implemented naively, this function creates a new array for reorder = true
+# whereas it doesn't for reorder = false.  Make sure to create a new array always.
+field3d2vec(j3d::AbsArr{<:Number,4}; reorder::Bool=true) = reorder ? reshape(permutedims(j3d, (4,nXYZ.data...)), :) : reshape(j3d,:)
 
 add!(j3d::AbsArr{<:Number,4}, gt::GridType, bounds::Tuple2{<:AbsVecReal}, l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, e⁻ⁱᵏᴸ::AbsVecNumber, srcs::Source...) =
     add!(j3d, gt, SVec3Float.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVector3(e⁻ⁱᵏᴸ), srcs...)
@@ -257,6 +264,9 @@ function distweights(c::Float,  # location of point (c means center)
 
     return (ind, wt)
 end
+
+# funciton calc_blochphase()
+# function j3d2j()
 
 include("pointsrc.jl")
 include("planesrc.jl")
