@@ -21,12 +21,44 @@
 
 export create_param3d, create_n3d, assign_param!, assign_val_shape!
 
+# About the order of indices of param3d:
+#
+# param3d has 5 indices: the first three are positional indices (i,j,k) and the last two are
+# material parameter tensor component indices (v,w).  This mean param3d[i,j,k,:,:] is the
+# 3×3 material tensor.
+
+# This is different from the conventional indexing scheme used for material parametetrs.
+# For example, we usually write the xy-component of ε at a location (i,j,k) as ε_xy[i,j,k],
+# where the tesnor component subscripts v = x and w = y comes earlier than the positional
+# indices (i,j,k).  Similarly, the x-component of the E-field is usually written E_x[i,j,k],
+# not E[i,j,k]_x.
+#
+# However, when assigning the material parameters in the code in this file, we ofter assign
+# the same value to a block of param3d.  This block is chosen differently for different
+# material tensor components, because different tensor components are evaluated at different
+# locations in Yee's grid.  Therefore, in this assignment, we first fix the material tensor
+# components v and w, determine the range of (i,j,k) to which the same material parameter
+# value to assign, and perform the assignment.
+#
+# Now, if we index param3d as param3d[v,w,i,j,k], v and w are the fastest-varing indices.
+# Therefore, fixing them and assigning for a contiguous range of (i,j,k) does not actually
+# assign in a contiguous memory block.  On the other hand, if we index param3d as
+# param3d[i,j,k,v,w], for fixed v and w a contiguous range of (i,j,k) actually assigns in
+# a more contiguous memory block.  (The entries with adjacent i for the same j,k,v,w are
+# actually adjacent in the memory space.)  Therefore, the latter indexing scheme results in
+# faster performance.  In my experiment of assigning 8 objects in 3D, the latter turns out
+# to be about 30% faster.
+#
+# For this reason, I use the less conventional indexing scheme of param3d[i,j,k,v,w].
+
 # Creates param3d of size N+1.  It is created with size N+1 to match the sizes of other
 # matrices created by create_n3d and hence to simplify the algorithm, but only the first N
 # portion is used.
 create_param3d(N::SVec3Int) =
-    (s = (N+1).data; (Array{CFloat}(s..., 3, 3), Array{CFloat}(s..., 3, 3)))  # 3 = numel(Axis)
+    (s = (N+1).data; (zeros(CFloat, s..., 3, 3), zeros(CFloat, s..., 3, 3)))  # 3 = numel(Axis)
 
+# Below, zeros cannot be used instead of Array{T}, because zero for the type T may not be
+# well-defined (e.g., T = Object3)
 create_n3d(::Type{T}, N::SVec3Int) where {T} =
     (s = (N+1).data; (Array{T}.((s,s,s,s)), Array{T}.((s,s,s,s))))  # Tuple24{Array{T,3}}
 
