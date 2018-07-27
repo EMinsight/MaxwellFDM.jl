@@ -1,6 +1,4 @@
 using MaxwellFDM
-using StaticArrays
-using GeometryPrimitives
 using Base.Test
 
 Base.isapprox(a::Tuple, b::Tuple; kws...) = all(p -> isapprox(p...; kws...), zip(a,b))

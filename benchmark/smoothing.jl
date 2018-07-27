@@ -1,4 +1,4 @@
-using MaxwellFDM, GeometryPrimitives, StaticArrays
+using MaxwellFDM
 using BenchmarkTools
 
 xprim = [

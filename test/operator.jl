@@ -191,8 +191,6 @@ end  # @testset "create_m"
 
 # Need to test symmetry of param3dmat for different boundary conditions.
 @testset "symmetry of param3d2mat, uniform grid" begin
-    using MaxwellFDM, GeometryPrimitives, StaticArrays
-
     # Create a grid.
     L₀ = 1e-9
     unit = PhysUnit(L₀)
@@ -240,8 +238,6 @@ end  # @testset "create_m"
 end  # @testset "param3d2mat"
 
 @testset "symmetry of param3d2mat, nonuniform grid" begin
-    using MaxwellFDM, GeometryPrimitives, StaticArrays
-
     # Create a grid.
     L₀ = 1e-9
     unit = PhysUnit(L₀)
