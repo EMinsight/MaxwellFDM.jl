@@ -1,3 +1,6 @@
+# Consider separating different operators into different files: differential.jl, integral.jl,
+# average.jl, etc.
+
 export create_∂, create_curl, create_m, create_mean, create_param3dmat, param3d2mat
 
 ## Discrete curl ##
