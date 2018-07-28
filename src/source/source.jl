@@ -67,33 +67,9 @@
 # We need to support both Je and Jm to realize unidirectional sources.
 
 export Source
-export create_field3d, field3d2vec, add!
+export add!
 
 abstract type Source end
-
-# About the order of indices of j3d:
-#
-# Like param3d in assignment.jl, we index j3d as j3d[i,j,k,w], where (i,j,k) are positional
-# indices and w is the current component index.
-#
-# The reason for this choice is the same as param3d.  In assigning source values to j3d,
-# we usually fix a component first and then assign the same value to a range of (i,j,k).
-# This can be more efficiently done with j3d[i,j,k,w], because a contiguous range of (i,j,k)
-# actually corresponds to a contiguous memory block.
-#
-# I think I will need to index the E- and H-fields the same way for matrix-free operations.
-# When we perform curl operation on these field arrays, we implement the ∂/∂w operation as
-# fixing the component to differentiate first and then perform the differentiation.
-# Therefore, again the E[i,j,k,w] indexing scheme results in an operation on a more
-# contiguous block in memory space.
-
-# source.jl is not good place to define this function, but this is good for now.
-create_field3d(N::SVec3Int) = zeros(CFloat, N.data..., 3)  # 3 = numel(Axis)
-
-# Below, permutedims(j3d, ...) create a new array, whereas reshape(j3d, :) doesn't.
-# Therefore, if implemented naively, this function creates a new array for reorder = true
-# whereas it doesn't for reorder = false.  Make sure to create a new array always.
-field3d2vec(j3d::AbsArr{<:Number,4}; reorder::Bool=true) = reorder ? reshape(permutedims(j3d, (4,nXYZ.data...)), :) : reshape(j3d,:)
 
 add!(j3d::AbsArr{<:Number,4}, gt::GridType, bounds::Tuple2{<:AbsVecReal}, l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, e⁻ⁱᵏᴸ::AbsVecNumber, srcs::Source...) =
     add!(j3d, gt, SVec3Float.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVector3(e⁻ⁱᵏᴸ), srcs...)
