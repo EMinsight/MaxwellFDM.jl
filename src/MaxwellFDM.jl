@@ -77,7 +77,7 @@ include("gridgen.jl")
 include("assignment.jl")
 include("smoothing.jl")
 # include("field.jl")
-include("operator.jl")
+include("matrix/matrix.jl")
 include("pml.jl")
 # include("equation.jl")
 
