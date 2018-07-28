@@ -110,7 +110,7 @@ create_n3d(::Type{T}, N::SVec3Int) where {T} =
 # dynamic dispatch.  To reduce the amount of dynamic dispatch, oind3d and pind3d must be set
 # up object-by-object rather than point-by-point.  This means that it is inevitable to
 # construct pind3d and oind3d arrays.
-function assign_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to set
+function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # parameter array to set
                        obj3d::Tuple24{AbsArr{<:Object3,3}},  # object array to set
                        pind3d::Tuple24{AbsArr{ParamInd,3}},  # material parameter index array to set
                        oind3d::Tuple24{AbsArr{ObjInd,3}},  # object index array to set
@@ -196,7 +196,7 @@ end
 # of specific element types).
 function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                            nw::Integer,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
-                           param3d_cmp::AbsArr{CFloat,5},  # parameter array to set
+                           param3d_cmp::AbsArrComplex{5},  # parameter array to set
                            obj3d_cmp::AbsArr{Object3,3},  # object array to set
                            pind3d_cmp::AbsArr{ParamInd,3},  # material parameter index array to set
                            oind3d_cmp::AbsArr{ObjInd,3},  # object index array to set

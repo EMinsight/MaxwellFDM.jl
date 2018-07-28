@@ -1,7 +1,7 @@
 export create_param3dmat, param3d2mat
 
 
-param3d2mat(param3d::AbsArr{CFloat,5},
+param3d2mat(param3d::AbsArrComplex{5},
             gt::GridType,  # PRIM|DUAL for primal|dual field
             N::AbsVecInteger,  # size of grid
             ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
@@ -12,7 +12,7 @@ param3d2mat(param3d::AbsArr{CFloat,5},
     (K = length(N); param3d2mat(param3d, gt, SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 
-function param3d2mat(param3d::AbsArr{CFloat,5},
+function param3d2mat(param3d::AbsArrComplex{5},
                      gt::GridType,  # PRIM|DUAL for primal|dual field
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
@@ -57,7 +57,7 @@ function param3d2mat(param3d::AbsArr{CFloat,5},
 end
 
 
-function create_param3dmat(param3d::AbsArr{CFloat,5},
+function create_param3dmat(param3d::AbsArrComplex{5},
                            kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
                            N::SVec3Int;  # size of grid
                            reorder::Bool=true)  # true for more tightly banded matrix

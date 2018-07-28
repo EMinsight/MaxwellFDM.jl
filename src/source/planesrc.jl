@@ -16,7 +16,7 @@ function PlaneSrc(n::Axis, c::Real, p::Axis, K::Number=1.0)
     return PlaneSrc(n, c, ϕ, K)
 end
 
-function add!(j3d::AbsArr{<:Number,4},  # 4D array of Je (electric current density) or Jm (magnetic current density)
+function add!(j3d::AbsArrNumber{4},  # 4D array of Je (electric current density) or Jm (magnetic current density)
               gt::GridType,  # type of source (primal or dual)
               bounds::Tuple2{SVec3Float},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
               l::Tuple23{<:AbsVecFloat},  # l[PRIM][k] = primal vertex locations in k-direction

@@ -45,6 +45,9 @@ const AbsMatComplex = AbsMat{CFloat}
 const AbsMatReal = AbsMat{<:Real}
 const AbsMatNumber = AbsMat{<:Number}
 
+const AbsArrComplex = AbsArr{CFloat}
+const AbsArrNumber{N} = AbsArr{<:Number,N}
+
 const SVector2 = SVector{2}
 const SVector3 = SVector{3}
 

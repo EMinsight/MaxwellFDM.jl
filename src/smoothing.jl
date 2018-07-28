@@ -56,7 +56,7 @@ SVector(1.,1.,-1.), SVector(-1.,1.,-1.), SVector(1.,-1.,-1.), SVector(-1.,-1.,-1
 #             - If the corner is outside the symmetry boundary, zero the nout componnent normal to the boundary (using σvxl).
 #             - ∆fg and σvxl can be obtained simply by looking at the indices and BC.
 
-function smooth_param!(param3d::Tuple2{AbsArr{CFloat,5}},  # parameter array to smooth
+function smooth_param!(param3d::Tuple2{AbsArrComplex{5}},  # parameter array to smooth
                        obj3d::Tuple24{AbsArr{<:Object3,3}},  # object array (does not change)
                        pind3d::Tuple24{AbsArr{ParamInd,3}},  # material parameter index array (does not chaneg)
                        oind3d::Tuple24{AbsArr{ObjInd,3}},  # object index array (does not change)
@@ -100,7 +100,7 @@ end
 # Below, XXX_cmp has size N, whereas XXX_cmp′ has size N+1 (and corresponds to voxel corners).
 function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                            nw::Int,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
-                           param3d_gt::AbsArr{CFloat,5},  # parameter array to smooth
+                           param3d_gt::AbsArrComplex{5},  # parameter array to smooth
                            obj3d_cmp′::AbsArr{O,3},  # object array (does not change)
                            pind3d_cmp′::AbsArr{ParamInd,3},  # material parameter index array (does not chaneg)
                            oind3d_cmp′::AbsArr{ObjInd,3},  # object index array (does not change)
