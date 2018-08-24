@@ -25,6 +25,9 @@ EncodedMaterial(ge::GridType, m::Material) = ge==PRIM ? EncodedMaterial(m.name, 
 string(em::EncodedMaterial) = em.name
 matparam(em::EncodedMaterial, gt::GridType) = em.param[Int(gt)]
 
+kottke_avg_param(param1::AbsMatNumber, param2::AbsMatNumber, n12::AbsVecReal, rvol1::Real) =
+    kottke_avg_param(SMat3Complex(param1), SMat3Complex(param2), SVec3Float(n12), rvol1)
+
 # Implement the averaging scheme between two local material parameter tensors developed in
 # the paper by Kottke, Farjadpour, Johnson entitled "Perturbation theory for anisotropic
 # dielectric interfaces, and application to subpixel smoothing of discretized numerical
