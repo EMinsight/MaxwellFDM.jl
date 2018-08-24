@@ -40,7 +40,7 @@
 
     smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mξ = param3d2mat(param3d[nPR], PRIM, N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
+    Mξ = param3d2mat(param3d[nPR], [PRIM,PRIM,PRIM], N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
 
     @test issymmetric(Mξ)
 
@@ -87,7 +87,7 @@ end  # @testset "param3d2mat"
 
     smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mξ = param3d2mat(param3d[nPR], PRIM, N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
+    Mξ = param3d2mat(param3d[nPR], [PRIM,PRIM,PRIM], N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
 
     # Ml
     ∆lprim = g3.∆l[nPR]

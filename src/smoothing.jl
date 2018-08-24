@@ -1,4 +1,12 @@
-# How do we handle TF/SF?  Need a capability to do subpixel smoothing only inside some region.
+# To-dos:
+#
+# - How do we handle TF/SF?  Need a capability to do subpixel smoothing only inside some
+# region.
+#
+# - When an object touching a symmetry boundary is flipped into the space behind the
+# boundary, the material axes must be flipped as well if the material is anisotropic.
+# Currently, let's leave it unsupported.  In other words, anisotropic materials must touch
+# the boundaries only when the boundary conditions are Bloch.
 
 export smooth_param!
 
@@ -157,7 +165,8 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
             # objects (i.e., more than one object in the voxel have the same material).
             #
             # If the voxel is composed of more than two material parameters (Nparam_vxl ≥ 3),
-            # give up subpixel smoothing.  This can happen, e.g., at the junction of three
+            # give up subpixel smoothing and leave the material parameters as originally
+            # assigned.  This can happen, e.g., at the junction of three
             # materials.
             if  Nparam_vxl == 2
                 # Attempt to apply Kottke's subpixel smoothing algorithm.
@@ -243,7 +252,7 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                                            hmean_param(obj3d_cmp′, ijk_vxl, gt)::SMat3Complex
                 else
                     # Perform Kottke's subpixel smoothing.
-                    param_cmp = kottke_avg_param(param_fg, param_bg, nout, rvol)
+                    param_cmp = kottke_avg_param(param_fg, param_bg, nout, rvol)  # defined in material.jl
                 end
             end  # if Nparam_vxl == 2
 
@@ -302,6 +311,22 @@ function kottke_input_accurate(x₀::SVec3Float, σvxl::SVec3Bool, lvxl::Tuple2{
     if !iszero(nout)
         rvol = volfrac(lvxl, nout, r₀)
     end
+
+    # The following block is to support the transformed anisotropic materials behind the
+    # symmetry boundaries.  S * param * S is the material parameter behind the symmetry
+    # boundary.  The code is trying to produce an averaged material parameter between the
+    # original material and the symmetry material.
+    #
+    # The simple arithmetic averaging taken between the original and symmetry materials
+    # below is not a very accurate treatment.  However, it produces the correct D-field
+    # from the E-field on the symmetry boundary (where only the normal E-field exists).
+    #
+    # Having zeros at the right location in the material parameter tensor is critical for
+    # achieving a symmetric matrix after field averaging!  See my notes entitled [Beginning
+    # of the part added on Aug/14/2018] in RN - Subpixel Smoothing.nb.
+    S = diagm(.!σvxl - σvxl)  # .!σvxl - σvxl = [1,-1,-1] for σvxl = [false,true,true] (x-normal symmetry boundary)
+    param_fg = 0.5 * (param_fg + S * param_fg * S)
+    param_bg = 0.5 * (param_bg + S * param_bg * S)
 
     return param_fg, param_bg, nout, rvol
 end
