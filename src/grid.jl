@@ -1,4 +1,4 @@
-# About the construction of a grid:
+# About the construction of a grid
 #
 # - The domain boundaries are always primal grid planes.
 #
@@ -6,7 +6,8 @@
 #
 # - In each Cartesian axis, the negative- and positive-end boundary conditions are always
 # chosen the same.  For example, if the negative end is Bloch, the positive end must be also
-# Bloch.  Similarly, if the negative end is PEC, the positive end is also PEC.
+# Bloch.  Similarly, if the negative end is PEC, the positive end is also PEC.  (More on
+# this below.)
 #
 # - The primal and dual grid planes are not necessarily associated with the E- and H-field
 # planes.  Which of the primal and dual grid planes to use for the E- and H-fields is
@@ -23,6 +24,58 @@
 #       (w = x,y,z) we are going to use the primal grid planes as the E-field planes, we can
 #       simply use the forward difference (which is for primal fields) as ∂/∂w in
 #       constructing ∇_e.
+#
+# - The notion of U, V, and ξ, η is now not appropriate.  I used U to indicate the primal
+# field, but there is no such thing like the primal field, because the E-field, for example,
+# does not have to be completely on the primal grid planes.  The notion makes sense only in
+# one Cartesian direction.
+
+
+# About the symmetry boundary condition
+#
+# - The symmetry boundary is used to implement PEC and PMC on the boundaries of the domain.
+# The symmetry boundary condition zeros the tangential fields to the boundary.  Because the
+# domain boundaries are always primal grid planes, this means that PEC is implemented by
+# using the primal grid planes as the E-tangential planes and the dual grid plane as the
+# H-tangential planes.
+#
+# - An important property of the symmetry boundary plane is that it simultaneously zeros the
+# tangential field and normal field defined on the boundary.  Here, the two fields are of
+# different kinds.  For example, if the primal grid planes are E-tangential planes, on the
+# boundary planes tangential E-fields and normal H-fields are defined.  The symmetry
+# boundary condition zeros both kinds of the fields.
+#
+# The fact that symmetry boundary condition zeros *any* fields defined on the boundary
+# greatly simplify the implementation of the effect of the boundary condition in
+# differential operators.  For example, for the PEC boundary condition, the forward
+# derivative operator subtracts fields between primal grid planes, but these fields can be
+# either tangential E-fields or normal H-fields.  We have to create the derivative operators
+# to handle the boundary conditions properly (such that they zero the fields that must be
+# zero), but this property allows us to use the same derivative operator for both E- and H-
+# fields.
+#
+# - You never need to mix the Bloch boundary condition and symmetry boundary condition like
+# PEC and PMC, because by using the symmetry boundary condition on both ends of the domain
+# your domain is automatically repeated to infinity.  (In other words, symmetry boundary
+# condition is a way to simulate a periodic structure whose unit cell is mirror-symmetric.
+# Note that inside a mirror-symmetric structure, the field distribution can be mirror-
+# symmetric or antisymmetric.)
+#
+# In some cases you may want to put PEC on one end and PMC on the other end of the domain to
+# simulate a half of a mirror-symmetric unit cell of a periodic structure where the field
+# distribution is symmetric at the center plane of the unhalved unit cell but antisymmetric
+# at the boundaries of the unit cell.  At first glance, supporting such a mixed symmetry
+# boundary condition would be difficult to support, because PEC and PMC are realized by
+# zeroing the tangential E- and H-fields.  Implementing PEC on the negative end and PMC on
+# the positive end means therefore, e.g., to start the domain with a primal grid plane
+# (containing tangential E-fields) and end the domain with a dual grid plane (containing
+# tangential H-fields), which requires putting only a half grid on the positive end and thus
+# not ideal.  In fact, we can still keep a whole integral number of grid cells to implement
+# the PMC on the negative end and PEC on the positive end by using the cool trick I used
+# in FD3D.  (We cannot implement PEC on the negative end and PMC on the positive end even
+# with that trick.)  However, supporting such a mixed boundary condition makes the code
+# unnecesasrily convoluted, so I will not support it for now.  (Consider supporting it by
+# passing something like an "ismixed" flag.)
 
 export Grid  # types
 export isproper_blochphase, lghost  # functions
