@@ -28,6 +28,7 @@ const VecInt = Vector{Int}
 const VecFloat = Vector{Float}
 const VecComplex = Vector{CFloat}
 
+const AbsVecBool = AbsVec{Bool}
 const AbsVecInt = AbsVec{Int}
 const AbsVecFloat = AbsVec{Float}
 const AbsVecComplex = AbsVec{CFloat}
@@ -48,17 +49,17 @@ const AbsMatNumber = AbsMat{<:Number}
 const AbsArrComplex = AbsArr{CFloat}
 const AbsArrNumber{N} = AbsArr{<:Number,N}
 
-const SVector2 = SVector{2}
-const SVector3 = SVector{3}
+const SVec2 = SVector{2}
+const SVec3 = SVector{3}
 
-const SVec2Bool = SVector2{Bool}
-const SVec3Bool = SVector3{Bool}
-const SVec2Float = SVector2{Float}
-const SVec3Float = SVector3{Float}
-const SVec2Int = SVector2{Int}
-const SVec3Int = SVector3{Int}
-const SVec3Complex = SVector3{CFloat}
-const SVec3Number = SVector3{<:Number}
+const SVec2Bool = SVec2{Bool}
+const SVec3Bool = SVec3{Bool}
+const SVec2Float = SVec2{Float}
+const SVec3Float = SVec3{Float}
+const SVec2Int = SVec2{Int}
+const SVec3Int = SVec3{Int}
+const SVec3Complex = SVec3{CFloat}
+const SVec3Number = SVec3{<:Number}
 
 const SMat3Complex = SMatrix{3,3,CFloat,9}
 

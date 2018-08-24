@@ -72,7 +72,7 @@ export add!
 abstract type Source end
 
 add!(j3d::AbsArrNumber{4}, gt::GridType, bounds::Tuple2{<:AbsVecReal}, l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, e⁻ⁱᵏᴸ::AbsVecNumber, srcs::Source...) =
-    add!(j3d, gt, SVec3Float.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVector3(e⁻ⁱᵏᴸ), srcs...)
+    add!(j3d, gt, SVec3Float.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVec3(e⁻ⁱᵏᴸ), srcs...)
 
 function add!(j3d::AbsArrNumber{4},  # 4D array of Je (electric current density) or Jm (magnetic current density)
               gt::GridType,  # type of source (primal or dual)

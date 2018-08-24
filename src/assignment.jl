@@ -266,10 +266,10 @@ function assign_val_shape!(arrays::Tuple,
                            τlcmp::Tuple3{AbsVecReal})
     # Set the location indices of object boundaries.
     assert(all(issorted.(τlcmp)))
-    bn, bp = bounds(shape)  # (SVector3, SVector3)
+    bn, bp = bounds(shape)  # (SVec3, SVec3)
     subn = map((l,b) -> (n = findfirst(l.≥b); n==0 ? 1 : n), τlcmp, bn)  # SVec3Int
     subp = map((l,b) -> (n = findlast(l.≤b); n==0 ? length(l) : n), τlcmp, bp)  # SVec3Int
-    I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVector3{UnitRange{Int}}
+    I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVec3{UnitRange{Int}}
 
     if shape isa Box{3,9} && (shape::Box{3,9}).p == @SMatrix(eye(3))  # shape is Cartesian box
         assign_val!.(arrays, vals, ((I,J,K),))
