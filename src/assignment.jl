@@ -55,12 +55,12 @@ export create_param3d, create_n3d, assign_param!, assign_val_shape!
 # matrices created by create_n3d and hence to simplify the algorithm, but only the first N
 # portion is used.
 create_param3d(N::SVec3Int) =
-    (s = (N+1).data; (zeros(CFloat, s..., 3, 3), zeros(CFloat, s..., 3, 3)))  # 3 = numel(Axis)
+    (s = (N.+1).data; (zeros(CFloat, s..., 3, 3), zeros(CFloat, s..., 3, 3)))  # 3 = numel(Axis)
 
 # Below, zeros cannot be used instead of Array{T}, because zero for the type T may not be
 # well-defined (e.g., T = Object3)
 create_n3d(::Type{T}, N::SVec3Int) where {T} =
-    (s = (N+1).data; (Array{T}.((s,s,s,s)), Array{T}.((s,s,s,s))))  # Tuple24{Array{T,3}}
+    (s = (N.+1).data; ((t->Array{T}(undef,t)).((s,s,s,s)), (t->Array{T}(undef,t)).((s,s,s,s))))  # Tuple24{Array{T,3}}
 
 
 # Notes on ghost point transformation by boundary conditions:
@@ -265,13 +265,13 @@ function assign_val_shape!(arrays::Tuple,
                            shape::Shape{3},
                            τlcmp::Tuple3{AbsVecReal})
     # Set the location indices of object boundaries.
-    assert(all(issorted.(τlcmp)))
+    @assert all(issorted.(τlcmp))
     bn, bp = bounds(shape)  # (SVec3, SVec3)
-    subn = map((l,b) -> (n = findfirst(l.≥b); n==0 ? 1 : n), τlcmp, bn)  # SVec3Int
-    subp = map((l,b) -> (n = findlast(l.≤b); n==0 ? length(l) : n), τlcmp, bp)  # SVec3Int
+    subn = map((l,b) -> (n = findfirst(l.≥b); n==nothing ? 1 : n), τlcmp, bn)  # SVec3Int
+    subp = map((l,b) -> (n = findlast(l.≤b); n==nothing ? length(l) : n), τlcmp, bp)  # SVec3Int
     I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVec3{UnitRange{Int}}
 
-    if shape isa Box{3,9} && (shape::Box{3,9}).p == @SMatrix(eye(3))  # shape is Cartesian box
+    if shape isa Box{3,9} && (shape::Box{3,9}).p == SMatrix{3,3,Float}(LinearAlgebra.I)  # shape is Cartesian box
         assign_val!.(arrays, vals, ((I,J,K),))
     else  # shape is not Cartesian box
         for k = K, j = J, i = I  # z-, y-, x-indices
@@ -288,13 +288,13 @@ end
 
 # Could be named Base.setindex!, but didn't want this to be exported, so named different.
 function assign_val!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
-    @inbounds array[subs...] = scalar
+    @inbounds array[subs...] .= Ref(scalar)
     return nothing
 end
 
 function assign_val!(array::AbsArr{T,5}, tensor::AbsMat{T}, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
     for nc = nXYZ, nr = next2(nc)  # column- and row-indices
-        @inbounds array[subs..., nr, nc] = tensor[nr,nc]
+        @inbounds array[subs..., nr, nc] .= tensor[nr,nc]
     end
     return nothing
 end

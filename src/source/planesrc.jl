@@ -39,8 +39,8 @@ function add!(j3d::AbsArrNumber{4},  # 4D array of Je (electric current density)
 
     jp3d, jq3d = @view(j3d[:,:,:,np]), @view(j3d[:,:,:,nq])
     for k = 1:length(ind)
-        jp3d[Base.setindex(indices(jp3d), ind[k], nr)...] += Jp[k]
-        jq3d[Base.setindex(indices(jq3d), ind[k], nr)...] += Jq[k]
+        jp3d[Base.setindex(axes(jp3d), ind[k], nr)...] .+= Jp[k]
+        jq3d[Base.setindex(axes(jq3d), ind[k], nr)...] .+= Jq[k]
     end
 
     return nothing

@@ -63,15 +63,14 @@ end  # @testset "sort8!"
     ε3d = view(param3d[nPR], 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
 
     # Construct an expected ε3d.
-    ε3dexp = Array{Complex128}(3,3,3,3,3)
+    ε3dexp = Array{ComplexF64}(undef,3,3,3,3,3)
     rvol = 0.5  # all nonzero rvol used in this test is 0.5
     εh = 1 / (rvol/εdiel + (1-rvol)/εvac)  # harmonic average
     εa = rvol*εdiel + (1-rvol)*εvac  # arithmetic average
 
     # Initialize ε3dexp.
-    I = eye(3)
     for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
-        ε3dexp[i,j,k,:,:] = εvac * I
+        ε3dexp[i,j,k,:,:] = εvac * Matrix(I,3,3)
     end
 
     # Yee's cell at (2,2,2)
@@ -123,7 +122,7 @@ end  # @testset "sort8!"
     ε3dexp[3,3,3,3,3] = εvac
 
     for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
-        # info("(i,j,k) = $((i,j,k))")  # uncomment this to know where test fails
+        # @info "(i,j,k) = $((i,j,k))"  # uncomment this to know where test fails
         @test @view(ε3d[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
         @test issymmetric(@view(ε3d[i,j,k,:,:]))
     end
@@ -168,15 +167,14 @@ end  # @testset "smoothing, box with odd number of voxels"
     ε3d = view(param3d[nPR], 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
 
     # Construct an expected ε3d.
-    ε3dexp = Array{Complex128}(4,4,4,3,3)
+    ε3dexp = Array{ComplexF64}(undef,4,4,4,3,3)
     rvol = 0.5  # all nonzero rvol used in this test is 0.5
     εh = 1 / (rvol/εdiel + (1-rvol)/εvac)  # harmonic average
     εa = rvol*εdiel + (1-rvol)*εvac  # arithmetic average
 
     # Initialize ε3dexp.
-    I = eye(3)
     for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
-        ε3dexp[i,j,k,:,:] = εvac * I
+        ε3dexp[i,j,k,:,:] = εvac * Matrix(I,3,3)
     end
 
     ## k = 2
@@ -346,7 +344,7 @@ end  # @testset "smoothing, box with odd number of voxels"
     ε3dexp[4,4,4,3,3] = εvac
 
     for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
-        # info("(i,j,k) = $((i,j,k))")  # uncomment this to know where test fails
+        # @info "(i,j,k) = $((i,j,k))"  # uncomment this to know where test fails
         @test @view(ε3d[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
         @test issymmetric(@view(ε3d[i,j,k,:,:]))
     end
@@ -392,15 +390,14 @@ end  # @testset "smoothing, box with even number of voxels"
 #     ε3d = view(param3d[nPR], 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
 #
 #     # Construct an expected ε3d.
-#     ε3dexp = Array{Complex128}(4,4,4,3,3)
+#     ε3dexp = Array{ComplexF64}(undef,4,4,4,3,3)
 #     rvol = 0.5  # all nonzero rvol used in this test is 0.5
 #     εh = 1 / (rvol/εdiel + (1-rvol)/εvac)  # harmonic average
 #     εa = rvol*εdiel + (1-rvol)*εvac  # arithmetic average
 #
 #     # Initialize ε3dexp.
-#     I = eye(3)
 #     for k = 1:4, j = 1:4, i = 1:4
-#         ε3dexp[i,j,k,:,:] = εvac * I
+#         ε3dexp[i,j,k,:,:] = εvac * Matrix(I,3,3)
 #     end
 #
 #     # Yee's cell at (1,2,1)
@@ -452,7 +449,7 @@ end  # @testset "smoothing, box with even number of voxels"
 #     ε3dexp[3,3,3,3,3] = εvac
 #
 #     for k = 1:3, j = 1:3, i = 1:3
-#         # info("(i,j,k) = $((i,j,k))")  # uncomment this to know where test fails
+#         # @info "(i,j,k) = $((i,j,k))"  # uncomment this to know where test fails
 #         @test ε3d[i,j,k,:,:] ≈ ε3dexp[i,j,k,:,:]
 #     end
 # end

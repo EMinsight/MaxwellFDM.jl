@@ -119,10 +119,10 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                           ) where {O<:Object3}
     Nx, Ny, Nz = length.(lcmp)
 
-    obj_vxl = Vector{O}(8)  # object inside voxel
-    pind_vxl = VecInt(8)  # material parameter indices inside voxel
-    oind_vxl = VecInt(8)  # object indices inside voxel
-    ind_c = VecInt(8)  # corner indices inside voxel
+    obj_vxl = Vector{O}(undef, 8)  # object inside voxel
+    pind_vxl = VecInt(undef, 8)  # material parameter indices inside voxel
+    oind_vxl = VecInt(undef, 8)  # object indices inside voxel
+    ind_c = VecInt(undef, 8)  # corner indices inside voxel
 
     for k = 1:Nz, j = 1:Ny, i = 1:Nx
         ijk_cmp = SVector(i,j,k)
@@ -215,7 +215,7 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                     obj_fg, obj_bg = obj_c1, obj_c2
                     ind_fg = ind_c1
                 else  # obj_c2 is foreground
-                    assert(oind_c1≠oind_c2)
+                    @assert oind_c1≠oind_c2
                     obj_fg, obj_bg = obj_c2, obj_c1
                     ind_fg = ind_c2
                 end
@@ -238,7 +238,7 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                     σvxl = t_ind(σcmp, ijk_cmp)
                     lvxl = t_ind(lcmp′, (ijk_cmp, ijk_cmp+1))
 
-                    sub_fg = ind2sub((2,2,2), ind_fg)  # subscritpt of corner ind_fg
+                    sub_fg = CartesianIndices((2,2,2))[ind_fg].I  # subscritpt of corner ind_fg
                     ∆fg = t_ind(∆τcmp′, ijk_cmp + SVector(sub_fg) - 1)  # SVec3Float; nonzero if corner ind_fg is outside periodic boundary
 
                     # See "Overall smoothing algorithm" above.
@@ -324,7 +324,7 @@ function kottke_input_accurate(x₀::SVec3Float, σvxl::SVec3Bool, lvxl::Tuple2{
     # Having zeros at the right location in the material parameter tensor is critical for
     # achieving a symmetric matrix after field averaging!  See my notes entitled [Beginning
     # of the part added on Aug/14/2018] in RN - Subpixel Smoothing.nb.
-    S = diagm(.!σvxl - σvxl)  # .!σvxl - σvxl = [1,-1,-1] for σvxl = [false,true,true] (x-normal symmetry boundary)
+    S = diagm(Val(0) => .!σvxl - σvxl)  # .!σvxl - σvxl = [1,-1,-1] for σvxl = [false,true,true] (x-normal symmetry boundary)
     param_fg = 0.5 * (param_fg + S * param_fg * S)
     param_bg = 0.5 * (param_bg + S * param_bg * S)
 

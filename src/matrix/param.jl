@@ -44,8 +44,8 @@ function param3d2mat(param3d::AbsArrComplex{5},
     # - to distribute the resulting output fields in the v(≠w)-direction back to voxel edges,
     # the output fields need to be forward(backward)-averaged along the v-direction if the
     # v-normal voxel faces are primal (dual) grid planes.
-    isfwd_in = gt.==DUAL
-    isfwd_out = gt.==PRIM
+    isfwd_in = gt.==Ref(DUAL)
+    isfwd_out = gt.==Ref(PRIM)
 
     # For the output averaging, ∆l and ∆l′ are not supplied to create_mean in order to
     # create a simple arithmetic averaging operator.  This is because the area factor matrix
@@ -86,9 +86,9 @@ function create_param3dmat(param3d::AbsArrComplex{5},
     # Note that param3d's i, j, k indices run from 1 to N+1 rather than to N, so we should
     # not iterate those indices from 1 to end.
     M = prod(N)
-    I = VecInt(3M)
-    J = VecInt(3M)
-    V = VecComplex(3M)
+    I = VecInt(undef, 3M)
+    J = VecInt(undef, 3M)
+    V = VecComplex(undef, 3M)
     n = 0
     for nv = nXYZ  # row index of tensor
         istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
@@ -96,7 +96,7 @@ function create_param3dmat(param3d::AbsArrComplex{5},
         jstr, joff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (column stride, column offset)
         for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
             n += 1
-            ind = sub2ind(N.data, i, j, k)  # linear index of Yee's cell
+            ind = LinearIndices(N.data)[i,j,k]  # linear index of Yee's cell
 
             I[n] = istr * ind + ioff
             J[n] = jstr * ind + joff
@@ -104,7 +104,7 @@ function create_param3dmat(param3d::AbsArrComplex{5},
         end
     end
     # for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
-    #     ind = sub2ind(N.data, i, j, k)  # linear index of Yee's cell
+    #     ind = LinearIndices(N.data)[i,j,k]  # linear index of Yee's cell
     #     for nv = nXYZ  # row index of tensor
     #         n += 1
     #         istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)

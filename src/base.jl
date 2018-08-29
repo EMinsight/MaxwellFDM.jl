@@ -110,7 +110,7 @@ function movingavg(l::AbsVec{T}) where {T<:Number}
     if n ≤ 1  # n = 0 or 1
         lmov = float(T)[]
     else  # n ≥ 2
-        lmov = Vector{float(T)}(n-1)
+        lmov = Vector{float(T)}(undef, n-1)
         for i = 1:n-1
             lmov[i] = (l[i] + l[i+1]) / 2
         end
@@ -149,25 +149,25 @@ function newtsol(x₀::Number, f::Function, f′::Function=(x,fₙ)->f′fwd(f,x
     #   write f′ such that it takes f(x) as the 2nd argument
 
     isconverged = true  # true if solution converged; false otherwise
-    const maxit = 100    # maximum iterations
-    const maxitls = 20   # maximum iterations inside the line search
-    const α = 1e-4
-    const maxs = 1 / Base.rtoldefault(Float)  # maximum step size
-    const perturbls = eps(Float)^0.75  # ≈ 1e-12, between sqrt(eps) and eps; some perturbation allowed in line search
+    maxit = 100    # maximum iterations
+    maxitls = 20   # maximum iterations inside the line search
+    α = 1e-4
+    maxs = 1 / Base.rtoldefault(Float)  # maximum step size
+    perturbls = eps(Float)^0.75  # ≈ 1e-12, between sqrt(eps) and eps; some perturbation allowed in line search
 
     # Initialize.
     n = 0
     xₙ = float(x₀)
-    const T = typeof(xₙ)
+    T = typeof(xₙ)
     fₙ::T = f(xₙ)
-    const τf = rtol*abs(fₙ) + atol
-    const rx₀ = abs(x₀)
-    const has2ndarg = method_exists(f′, Tuple2{Number})
+    τf = rtol*abs(fₙ) + atol
+    rx₀ = abs(x₀)
+    has2ndarg = hasmethod(f′, Tuple2{Number})
 
     # Perform the Newton method.
-    # info("fₙ = $fₙ")
+    # @info "fₙ = $fₙ"
     while abs(fₙ) > τf
-        # info("n = $n")
+        # @info "n = $n"
 
         # abs(xₙ/x₀) ≤ 1e3 || (isconverged = false; break)
         # abs(xₙ/x₀) ≤ 1e3 || throw(ErrorException("Solution xₙ = $xₙ has diverged from x₀ = $x₀."))
@@ -179,7 +179,7 @@ function newtsol(x₀::Number, f::Function, f′::Function=(x,fₙ)->f′fwd(f,x
 
         # Avoid too large Newton steps.
         s = -fₙ/f′ₙ
-        # info("fₙ = $fₙ, f′ₙ = $f′ₙ, xₙ = $xₙ, s = $s")
+        # @info "fₙ = $fₙ, f′ₙ = $f′ₙ, xₙ = $xₙ, s = $s"
         abs(s) ≤ maxs || (isconverged = false; break)
         # abs(s) ≤ maxs || throw(ErrorException("Newton step s = $s is larger than maximum step size $maxs."))
         xₙ₊₁ = xₙ + λ*s
@@ -190,7 +190,7 @@ function newtsol(x₀::Number, f::Function, f′::Function=(x,fₙ)->f′fwd(f,x
         # allows update in xₙ even in the situation where line search is supposed
         # to fail.
         while abs(fₙ₊₁) ≥ (1 - α*λ) * abs(fₙ) + perturbls
-            # info("nls = $nls, fₙ₊₁ = $(fₙ₊₁)")
+            # @info "nls = $nls, fₙ₊₁ = $(fₙ₊₁)"
             λ /= 2
             xₙ₊₁ = xₙ + λ*s
             fₙ₊₁::T = f(xₙ₊₁)
@@ -210,9 +210,9 @@ function newtsol(x₀::Number, f::Function, f′::Function=(x,fₙ)->f′fwd(f,x
         # n ≤ maxit || throw(ErrorException("Newton method fails to converge in $n iteration steps."))
 
         fₙ = f(xₙ)
-        # info("fₙ = $fₙ")
+        # @info "fₙ = $fₙ"
     end
-    # info("Newton done")
+    # @info "Newton done"
 
     return xₙ, isconverged
 end

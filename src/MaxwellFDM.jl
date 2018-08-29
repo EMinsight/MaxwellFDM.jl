@@ -1,8 +1,8 @@
 module MaxwellFDM
 
 using Reexport
-@reexport using GeometryPrimitives, StaticArrays
-using DataStructures  # SortedSet in gridgen.jl
+@reexport using GeometryPrimitives, StaticArrays  # make all exported symbols of these packages available in module using MaxwellFDM
+using LinearAlgebra, SparseArrays
 
 export SVec3Complex, SMat3Complex, ParamInd, ObjInd
 

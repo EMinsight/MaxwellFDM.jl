@@ -7,7 +7,7 @@
     for nw = nXYZ
     # for nw = (1,)
         Nw = N[nw]
-        sub′ = Vector{Int}(3)
+        sub′ = Vector{Int}(undef, 3)
 
         for ns = (-1,1)
         # for ns = (1,)
@@ -17,7 +17,7 @@
                 ∂ws[ind,ind] = -ns  # diagonal entries
 
                 # Calculate the column index of the off-diagonal entry in the row `ind`.
-                sub′ .= ind2sub(N.data, ind)
+                sub′ .= CartesianIndices(N.data)[ind].I
                 if ns == 1  # forward difference
                     if sub′[nw] == Nw
                         sub′[nw] = 1
@@ -32,7 +32,7 @@
                     end
                 end
 
-                ind′ = sub2ind(N.data, sub′...)
+                ind′ = LinearIndices(N.data)[sub′...]
                 ∂ws[ind, ind′] += ns  # off-diagonal entry
             end
             @test create_∂(nw, ns==1, N) == ∂ws
@@ -50,9 +50,9 @@ Z = spzeros(M,M)
     Cu = create_curl([true,true,true], N, reorder=false)
 
     # Examine the overall coefficients.
-    @test all(any(Cu.≠0, 1))  # no zero columns
-    @test all(any(Cu.≠0, 2))  # no zero rows
-    @test all(sum(Cu, 2) .== 0)  # all row sums are zero, because Cu * ones(M) = 0
+    @test all(any(Cu.≠0, dims=1))  # no zero columns
+    @test all(any(Cu.≠0, dims=2))  # no zero rows
+    @test all(sum(Cu, dims=2) .== 0)  # all row sums are zero, because Cu * ones(M) = 0
 
     ∂x = (nw = 1; create_∂(nw, true, N))
     ∂y = (nw = 2; create_∂(nw, true, N))
@@ -64,7 +64,7 @@ Z = spzeros(M,M)
     # Construct Cu for a nonuniform grid and general boundaries.
     ∆ldual = rand.(N.data)
     isbloch = SVector(true, false, false)
-    e⁻ⁱᵏᴸ = @SVector rand(Complex128, 3)
+    e⁻ⁱᵏᴸ = @SVector rand(ComplexF64, 3)
 
     Cu = create_curl([true,true,true], N, ∆ldual, isbloch, e⁻ⁱᵏᴸ, reorder=false)
 
@@ -86,9 +86,9 @@ end  # @testset "create_curl for U"
     Cv = create_curl([false,false,false], N, reorder=false)
 
     # Examine the overall coefficients.
-    @test all(any(Cv.≠0, 1))  # no zero columns
-    @test all(any(Cv.≠0, 2))  # no zero rows
-    @test all(sum(Cv, 2) .== 0)  # all row sums are zero, because Cv * ones(sum(Min)) = 0
+    @test all(any(Cv.≠0, dims=1))  # no zero columns
+    @test all(any(Cv.≠0, dims=2))  # no zero rows
+    @test all(sum(Cv, dims=2) .== 0)  # all row sums are zero, because Cv * ones(sum(Min)) = 0
 
     ∂x = (nw = 1; create_∂(nw, false, N))
     ∂y = (nw = 2; create_∂(nw, false, N))
@@ -100,7 +100,7 @@ end  # @testset "create_curl for U"
     # Construct Cv for a nonuniform grid and general boundaries.
     ∆lprim = rand.(N.data)
     isbloch = SVector(true, false, false)
-    e⁻ⁱᵏᴸ = @SVector rand(Complex128, 3)
+    e⁻ⁱᵏᴸ = @SVector rand(ComplexF64, 3)
 
     Cv = create_curl([false,false,false], N, ∆lprim, isbloch, e⁻ⁱᵏᴸ, reorder=false)
 
@@ -142,10 +142,10 @@ end  # @testset "create_curl for V"
 
     # Test curl of curl.
     @test all(diag(A) .== 4)  # all diagonal entries are 4
-    @test all(sum(A.≠0, 2) .== 13)  # 13 nonzero entries per row
+    @test all(sum(A.≠0, dims=2) .== 13)  # 13 nonzero entries per row
     @test A == A'  # Hermitian
 
-    B = A - 4*speye(A)
+    B = A - 4I
     @test all(abs.(B[B.≠0]).==1)  # all nonzero off-diagonal entries are ±1
 end  # @testset "curl of curl"
 
@@ -175,10 +175,10 @@ end  # @testset "curl of curl"
 
     # Test curl of curl.
     @test all(diag(A) .== 4)  # all diagonal entries are 4
-    @test all(sum(A.≠0, 2) .== 13)  # 13 nonzero entries per row
+    @test all(sum(A.≠0, dims=2) .== 13)  # 13 nonzero entries per row
     @test A == A'  # Hermitian
 
-    B = A - 4*speye(A)
+    B = A - 4I
     @test all(abs.(B[B.≠0]).==1)  # all nonzero off-diagonal entries are ±1
 end  # @testset "curl of curl"
 

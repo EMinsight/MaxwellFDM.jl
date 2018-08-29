@@ -176,10 +176,10 @@ function distweights(c::Float,  # location of point (c means center)
     #       - for Bloch, l[1] ≤ c < l[end], and
     #       - for symmetry, l[1] ≤ c < l[end].
     # Therefore, only the case with the primal field and symmetry boundary is different.
-    # I will call the a boundary condition congruent with the field type, because it is the
-    # boundary that is effective for the field type of interest.
+    # I will call it a case with a boundary condition congruent with the field type, because
+    # it is the boundary that is effective for the field type of interest.
     cong_bc = gt==PRIM && !isbloch
-    indn = cong_bc ? 2:1
+    indn = cong_bc ? 2 : 1
     indp = N
 
     # Below, note that c < l[indp] is used rather than c ≤ l[indp].  If c = l[indp], then
@@ -187,7 +187,7 @@ function distweights(c::Float,  # location of point (c means center)
     # indp = N.  The use of c < l[indp] avoids such a case.
     bc_noeff = l[indn] ≤ c < l[indp]  # boundary condition does not affect result
     if bc_noeff
-        ind₁ = findlast(x->x≤0, l.-c)
+        ind₁ = findlast(x->x≤0, l.-c)  # because l is sorted and c ≥ l[1], l[1]-c ≤ 0 and thus ind₁ ≠ nothing
         ind₂ = ind₁ + 1
         ∆c1 = c - l[ind₁]
         ∆lc = l[ind₂] - l[ind₁]

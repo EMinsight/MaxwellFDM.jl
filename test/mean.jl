@@ -7,7 +7,7 @@
     for nw = nXYZ
     # for nw = (nX,)
         Nw = N[nw]
-        sub′ = Vector{Int}(3)
+        sub′ = Vector{Int}(undef, 3)
 
         for isfwd = (true, false)
         # for isfwd = (true,)
@@ -17,7 +17,7 @@
                 Mws[ind,ind] = 0.5  # diagonal entries
 
                 # Calculate the column index of the off-diagonal entry in the row `ind`.
-                sub′ .= ind2sub(N.data, ind)  # subscripts of off-diagonal entry
+                sub′ .= CartesianIndices(N.data)[ind].I  # subscripts of off-diagonal entry
                 if isfwd  # forward difference
                     if sub′[nw] == Nw
                         sub′[nw] = 1
@@ -32,7 +32,7 @@
                     end
                 end
 
-                ind′ = sub2ind(N.data, sub′...)  # index of off-diagonal entry
+                ind′ = LinearIndices(N.data)[sub′...]  # index of off-diagonal entry
                 Mws[ind, ind′] = 0.5  # off-diagonal entry
             end
             @test create_m(nw, isfwd, N) == Mws

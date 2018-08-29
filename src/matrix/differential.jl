@@ -40,7 +40,7 @@ export create_∂, create_curl
 ## Discrete curl ##
 create_curl(isfwd::AbsVecBool,  # isfwd[w] = true|false: create ∂w by forward|backward difference
             N::AbsVecInteger,  # size of grid
-            ∆l::Tuple3{AbsVecNumber}=ones.((N...)),  # ∆l[w]: distances between grid planes in x-direction
+            ∆l::Tuple3{AbsVecNumber}=ones.((N...,)),  # ∆l[w]: distances between grid planes in x-direction
             isbloch::AbsVec{Bool}=fill(true,length(N)),  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
@@ -142,8 +142,8 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
                      ) where {K}
     M = prod(N)
     Nw = N[nw]
-    ŵ = SVector(ntuple(identity,Val{K})) .== nw  # unit vector in w-direction; [0,true,0] for w == y
-    ns = isfwd ? 1.0: -1.0
+    ŵ = SVector(ntuple(identity,Val(K))) .== nw  # unit vector in w-direction; [0,true,0] for w == y
+    ns = isfwd ? 1.0 : -1.0
 
     # Below, when constructing I, J's, V's, note that a tuple of array subscripts (i,j,k)
     # indicates a row index of the final matrix.  In other words, the entries with the same
@@ -151,7 +151,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     # Jₛ[i,j,k], V₀[i,j,k], Vₛ[i,j,k], we must know that they are for the entries in the
     # same row index (or the same output field).  Specifically,
     #
-    # - I is the row index itself, so it is the identity map: I[i,j,k] = sub2ind(N, i, j, k).
+    # - I is the row index itself, so it is the identity map: I[i,j,k] = LinearIndices(N)[i,j,k].
     #
     # - J₀[i,j,k] is the column index of the diagonal entry in the row subscripted (i,j,k).
     # Because the row and column indices are the same for the diagonal entries, J₀ = I and
@@ -218,7 +218,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     # For the final sparsity patterns of the operators, see my notes on September 6, 2017 in
     # RN - MaxwellFDM.jl.nb
     #
-    # Below, Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] mimics the implementation of slicedim
+    # Below, Vₛ[Base.setindex(axes(Vₛ), iw, nw)...] mimics the implementation of slicedim
     # and basically means Vₛ[:,iw,:] for w = y.
     if isbloch
         # Application of the aformentioned procedure:
@@ -260,7 +260,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
         # ghost input fields that they are brought into.  Therefore, e⁺ⁱᵏᴸ must be
         # multiplied to the nonghost input fields to create the ghost input fields.
         iw = isfwd ? Nw : 1
-        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
+        Vₛ[Base.setindex(axes(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
     else  # symmetry boundary
         # A. isfwd = true (forward difference)
         #
@@ -334,7 +334,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
         # zeros at the same locations.  This means the locations of zeros on the diagonal
         # must be independent of isfwd.
         iw = 1
-        V₀[Base.setindex(indices(V₀), iw, nw)...] .= 0
+        V₀[Base.setindex(axes(V₀), iw, nw)...] .= 0
 
         # Zero the off-diagonal entries multiplied with the fields on the boundary.
         #
@@ -342,7 +342,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
         # uniform, this means that for the same ns, the operators for the symmetry boundary
         # conditions will have the same off-diagonal entries, except for the opposite signs.
         iw = isfwd ? Nw : 1
-        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0
+        Vₛ[Base.setindex(axes(Vₛ), iw, nw)...] .= 0
     end
 
     i = reshape(I, M)

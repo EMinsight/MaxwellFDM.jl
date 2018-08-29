@@ -16,7 +16,7 @@ const CYC_AXES = (YZX, ZXY, XYZ)  # not (XYZ, YZX, ZXY)
 const XZY, YXZ, ZYX = SVector(X̂,Ẑ,Ŷ), SVector(Ŷ,X̂,Ẑ), SVector(Ẑ,Ŷ,X̂)
 const ACYC_AXES = (ZYX, XZY, YXZ)  # not (XZY, YXZ, ZYX)
 for ins in instances(Axis); @eval export $(Symbol(ins)); end  # export all instances
-Base.string(ins::Axis) = ins==X̂ ? "x" : (ins==Ŷ ? "y" :"z")
+Base.string(ins::Axis) = ins==X̂ ? "x" : (ins==Ŷ ? "y" : "z")
 
 next3(ins::Axis) = CYC_AXES[Int(ins)]
 next2(ins::Axis) = (n3 = next3(ins); SVector(n3[1], n3[2]))

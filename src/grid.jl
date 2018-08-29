@@ -140,7 +140,7 @@ function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}
     ldual = movingavg.(lprim)  # NTuple{K,VecFloat}
 
     lbound = SVector(lprim)  # SVector{K,Vector{<:Real}}; to make broadcast and map on lprim to produce SVector
-    bounds = (getindex.(lbound,1), getindex.(lbound,endof.(lbound)))  # Tuple2{SVector{K,<:Real}}
+    bounds = (getindex.(lbound,1), getindex.(lbound,lastindex.(lbound)))  # Tuple2{SVector{K,<:Real}}
     L = bounds[nP] - bounds[nN]  # SVector{K,<:Real}
 
     lpml = (map((v,n)->v[1+n], lbound, Npml[nN]), map((v,n)->v[end-n], lbound, Npml[nP]))  # Tuple2{SVector{K,<:Real}}
@@ -162,7 +162,7 @@ function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}
     ∆l = (∆lprim, ∆ldual)
 
     # Set N (number of grid cells along the axis).
-    assert(length.(∆l[nPR]) == length.(∆l[nDL]))  # lprim, ldual, ∆lprim, ∆ldual have the same length
+    @assert length.(∆l[nPR]) == length.(∆l[nDL])  # lprim, ldual, ∆lprim, ∆ldual have the same length
     N = SVector(length.(∆l[nPR]))
 
     # Find the locations of the ghost points transformed into the domain by the boundary
@@ -211,8 +211,8 @@ function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}
     # is on the positive side (so lprim[end] is dropped) and the dual ghost point is on
     # the negative side (so ldual[1] is dropped).
     pop!.(lprim)
-    shift!.(ldual)
-    assert(length.(lprim) == length.(ldual) == N.data)  # lprim, ldual, ∆lprim, ∆ldual have the same length
+    popfirst!.(ldual)
+    @assert length.(lprim) == length.(ldual) == N.data  # lprim, ldual, ∆lprim, ∆ldual have the same length
     l = (lprim, ldual)
 
     return Grid{K}(axis, unit, N, L, l, ∆l, Npml, Lpml, lpml, isbloch, σ, bounds, center, ghosted)
@@ -236,4 +236,4 @@ Base.in(l::SVector{K}, g::Grid{K}) where {K} = all(g.bounds[nN] .≤ l .≤ g.bo
 # exp(-ik⋅r).
 isproper_blochphase(e⁻ⁱᵏᴸ::Number, isbloch::Bool) = (isbloch && abs(e⁻ⁱᵏᴸ)==1) || (!isbloch && e⁻ⁱᵏᴸ==1)
 isproper_blochphase(e⁻ⁱᵏᴸ::SVector{K,<:Number}, isbloch::SVector{K,Bool}) where {K} =
-    all(ntuple(k->isproper_blochphase(isbloch[k], e⁻ⁱᵏᴸ[k]), Val{K}))
+    all(ntuple(k->isproper_blochphase(isbloch[k], e⁻ⁱᵏᴸ[k]), Val(K)))

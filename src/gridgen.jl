@@ -1,3 +1,5 @@
+using DataStructures: SortedSet
+
 export gen_lprim
 export R_TARGET_DEFAULT, R_MAX_DEFAULT
 
@@ -12,7 +14,7 @@ function movingmin(l::AbsVec{T}) where {T<:Number}
     if n == 0
         lmov = [Inf]
     else  # n ≥ 1
-        lmov = Vector{T}(n+1)
+        lmov = Vector{T}(undef, n+1)
         lmov[1] = l[1]
         lmov[n+1] = l[n]
         for i = 2:n
@@ -32,7 +34,7 @@ function consolidate_similar!(l::AbsVecNumber, L::Number)
     # lprim0 = lprim0[ind_unique]  # [lprim0[1:end-1][original ind_unique]; lprim0[end]]
 
     if !isempty(l)
-        ind_sim = find(isapprox_wrt.(@view(l[1:end-1]), @view(l[2:end]), L))
+        ind_sim = findall(isapprox_wrt.(@view(l[1:end-1]), @view(l[2:end]), L))
 
         # Below, l[end] must be always included as a unique entry.  There are two cases: where
         # l[end-1] is included as a unique entry or not.  If l[end-1] is included, it must be
@@ -41,7 +43,7 @@ function consolidate_similar!(l::AbsVecNumber, L::Number)
         # l[end].  In other words, l[end] represents the last set of approximately equal entries
         # in any cases.
         deleteat!(l, ind_sim)
-        assert(!isapprox_wrt(l[end], l[end-1], L))  # last entry is always unique
+        @assert !isapprox_wrt(l[end], l[end-1], L)  # last entry is always unique
     end
 end
 
@@ -112,7 +114,7 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
     consolidate_similar!(ldual0, L)
 
     indsim = findsim(ldual0, lprim0, L)
-    !isempty(indsim) && warn("$(ldual0[indsim]) is shared by primal and dual grid, and will be assigned to primal grid.")
+    !isempty(indsim) && @warn "$(ldual0[indsim]) is shared by primal and dual grid, and will be assigned to primal grid."
     deleteat!(ldual0, indsim)
 
     # Below, insert primal nodes around dual grid points.  This is necessary, because
@@ -121,7 +123,7 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
     # dual nodes that we know must exist in the dual grid.  Therefore, we must
     # create the primal grid such that the dual grid it induces contains those nodes.
 
-    # Make ∆ldual0[j] the samller of the two ∆ldual0 entries adjacent to ldual0[j].
+    # Make ∆ldual0[j] the smaller of the two ∆ldual0 entries adjacent to ldual0[j].
     ∆ldual0 = movingmin(diff(ldual0))
 
     intervals = [intvprim; intvdual]
@@ -130,6 +132,7 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
     for j in eachindex(ldual0)
         l::Float = ldual0[j]
         ind₋ = findlast(x->x<l, lprim0)  # to find interval ∆lprim0[ind] containing ldual0[j]
+        ind₋==nothing && (ind₋ = 0)
 
         # Below, ind₊ is findfirst(x->x>l, lprim0), but because l cannot be one of the
         # lprim0 entries, it can be more efficiently calculated.
@@ -137,11 +140,11 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
 
         # Find the minimax (minimum of maximum) ∆lprim's (constrained by lprim0 and ldual0) to use around ldual0[j].
         if ind₋ == ind₊ == 0
-            assert(nprim0 == 0)
+            @assert nprim0 == 0
             ∆lmm = min(∆lmax, ∆ldual0[j])
-        elseif ind₋==0 && ind₊≠0
+        elseif ind₋==0 && ind₊≠0  # ind₊ = 1
             ∆lmm = min(∆lmax, ∆ldual0[j], 2(lprim0[ind₊]-l))
-        elseif ind₋≠0 && ind₊==0
+        elseif ind₋≠0 && ind₊==0  # ind₋ = nprim0
             ∆lmm = min(∆lmax, ∆ldual0[j], 2(l-lprim0[ind₋]))
         else  # ind₋≠0 && ind₊≠0
             ∆lmm = min(∆lmax, ∆ldual0[j], 2(l-lprim0[ind₋]), 2(lprim0[ind₊]-l))
@@ -177,8 +180,8 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
 
     # For each space between primal nodes, find the smallest ∆l suggested by intervals.
     nprim0 = length(lprim0)
-    btwn_lprim0 = VecFloat(nprim0-1)  # midpoints between primal nodes
-    ∆lprim0 = VecFloat(nprim0-1)
+    btwn_lprim0 = VecFloat(undef, nprim0-1)  # midpoints between primal nodes
+    ∆lprim0 = VecFloat(undef, nprim0-1)
     for i = 1:nprim0-1
         btwn_lprim0[i] = (lprim0[i] + lprim0[i+1]) / 2
         ∆lprim0[i] = lprim0[i+1] - lprim0[i]
@@ -186,7 +189,7 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
     # btwn_lprim0 = (lprim0[1:end-1] + lprim0[2:end]) / 2  # points between primal nodes
     # ∆lprim0 = diff(lprim0)
 
-    ∆lmm_array = VecFloat(nprim0-1)  # lmm for each space between primal nodes
+    ∆lmm_array = VecFloat(undef, nprim0-1)  # lmm for each space between primal nodes
     for j = 1:nprim0-1
         l = btwn_lprim0[j]
         ∆lmm = min(∆lmax, ∆lprim0[j])  # minimax: minimum of maximum ∆lprim's allowed
@@ -212,7 +215,7 @@ function gen_sublprim1d(domain::OpenInterval,  # specifies domain boundaries; us
 
     # Create subgrids.  (This is the part that needs to be improved.)
     l = lprim0[1]
-    # assert(l == domain.bound[1])  # legacy code before using dual grid for PDC boundary
+    # @assert l == domain.bound[1]  # legacy code before using dual grid for PDC boundary
 
     ∆l = ∆l_at_lprim0[1]
     prev = [l, l+∆l]
@@ -288,14 +291,14 @@ function fill_constant(∆lout::Real, gap::AbsVecReal, ∆lt::Real, rt::Real=R_T
     # a warning.
     issmooth(SVector(∆lout, ∆l[1]), rmax) || issmooth(SVector(∆lout, ∆l[2]), rmax) ||
         # throw(ArgumentError("Cannot find ∆l whose multiple fits in gap = $gap while being close to ∆lt = $∆lt and varying smoothly from ∆lout = $∆lout."))
-        warn("Cannot find ∆l whose multiple fits in gap = $gap while being close to ∆lt = $∆lt and varying smoothly from ∆lout = $∆lout.")
+        @warn "Cannot find ∆l whose multiple fits in gap = $gap while being close to ∆lt = $∆lt and varying smoothly from ∆lout = $∆lout."
 
     # Unless the coarser grid fails to generate smoothly varying grid, give it a preference.
     i = issmooth(SVector(∆lout, ∆l[1]), rmax) ? 1 : 2
     n = ns[i]
-    # ∆l[i] ≤ ∆lt || warn("gap = $gap will be filled with ∆l = $(∆l[i]), which is slightly greater than ∆lt = $∆lt.")
+    # ∆l[i] ≤ ∆lt || @info "gap = $gap will be filled with ∆l = $(∆l[i]), which is slightly greater than ∆lt = $∆lt."
 
-    filler = linspace(gap[1], gap[2], n+1)  # in exact arithmetic, equivalent to gap[1]:∆l:gap[end], which may not include gap[end] due to round-off error
+    filler = range(gap[1], stop=gap[2], length=n+1)  # in exact arithmetic, equivalent to gap[1]:∆l:gap[end], which may not include gap[end] due to round-off error
 
     return filler
 end
@@ -337,7 +340,7 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
             # ∆lmin * (rt^1 + ... + rt^n + ... + rt^1) ≥ L; note rt^n is added once.
             # Similarly, n[2] is such that ceil(n[2]) is the smallest integer satisfying
             # ∆lmin * (rt^1 + ... + rt^n + rt^n ... + rt^1) ≥ L; note rt^n is added twice.
-            ns = VecFloat(2)
+            ns = VecFloat(undef, 2)
             # n[1] = fzero(n -> ∆lmin*rt * (rt^(n-1) + 2(rt^(n-1) - 1)/(rt-1)) - L, 1)
             # n[2] = fzero(n -> ∆lmin*rt * 2(rt^n - 1)/(rt-1) - L, 1)
             ns[1], isconverged = newtsol(
@@ -345,13 +348,13 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
                 n -> ∆lmin * rt * (rt^(n-1) + 2(rt^(n-1)-1)/(rt-1)) - L,
                 n -> ∆lmin * rt^n * log(rt) * (rt+1) / (rt-1)
             )
-            assert(isconverged)
+            @assert isconverged
             ns[2], isconverged = newtsol(
                 1.,
                 n -> 2∆lmin * rt * (rt^n-1)/(rt-1) - L,
                 n -> 2∆lmin * rt^(n+1) * log(rt) / (rt-1)
             )
-            assert(isconverged)
+            @assert isconverged
 
             # Between Float ns[1] and ns[2], choose the one closer to their smallest
             # upper-bounding integers.
@@ -361,7 +364,7 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
             # ns[1] > ns[2], and ns[2] > 0 because f(n) = ∆lmin*rt * (rt^(n-1) + 2(rt^(n-1) - 1)/(rt-1))
             # is an increasing function of n and f(0) = -∆lmin < 0, whereas ns[2] is the
             # solution to  f(n) = L > 0.  Therefore, ceil(ns[1]) ≥ ceil(ns[2]) ≥ 1.
-            assert(n ≥ 1)
+            @assert n ≥ 1
 
             if i == 1
                 # Below, ∆lmin * (r^1 + ... + r^n + ... + r^1) == L
@@ -371,10 +374,10 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
                     s -> ∆lmin * s * (s^(n-1) + 2*(s^(n-1) - 1)/(s-1)) - L,
                     s -> ∆lmin * (s^(n-1) * (n*s^2 - 2s - n) + 2) / (s-1)^2
                 )
-                assert(isconverged)
+                @assert isconverged
                 ∆l_array = ∆lmin * (r.^[1:n; n-1:-1:1])
             else  # i == 2
-                assert(i==2)
+                @assert i==2
                 # Below, ∆lmin * (r^1 + ... + r^n + r^n + ... + r^1) == L
                 # r = fzero(s -> ∆lmin*s * (s^n - 1)/(s-1) - L/2, rt)
                 r, isconverged = newtsol(
@@ -382,10 +385,10 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
                     s -> ∆lmin * s * (s^n-1)/(s-1) - L/2,
                     s -> ∆lmin * (s^n * (n*s - n - 1) + 1) / (s-1)^2
                 )
-                assert(isconverged)
+                @assert isconverged
                 ∆l_array = ∆lmin * (r.^[1:n; n:-1:1])
             end
-            assert(r ≤ rt)
+            @assert r ≤ rt
             r ≥ 1/rt || throw(ArgumentError("gap = $gap is too small for ∆lsym = $∆lsym to grow geometrically to ∆lt = $∆lt with geometric ratio ≤ rt = $rt."))
 
             ∆l_filler = ∆l_array
@@ -396,7 +399,7 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
             L_∆lmax = sum(∆lmax_array)
 
             # Slightly overfill the gap with ∆lmin's, graded ∆l's, and the above generated L_∆lmax.
-            assert(2L_graded + L_∆lmax ≤ L)
+            @assert 2L_graded + L_∆lmax ≤ L
             n_∆lmin = ceil(Int, (L - 2L_graded - L_∆lmax) / 2∆lmin)  # use ceil() to overfill
             ∆lmin_array = fill(∆lmin, n_∆lmin)  # [∆lmin, ..., ∆lmin]
             L_∆lmin = sum(∆lmin_array)
@@ -410,8 +413,8 @@ function fill_geometric_sym(∆lsym::Real, gap::AbsVecReal, ∆lt::Real, rt::Rea
                 s -> ∆lmin*s * (s^n - 1) / (s-1) - L_graded,
                 s -> ∆lmin * (s^n * (n*s - n - 1) + 1) / (s-1)^2
             )
-            assert(isconverged)
-            assert(rnew ≤ r)
+            @assert isconverged
+            @assert rnew ≤ r
             r = rnew
             ∆l_array = ∆lmin * (r.^(1:n))
             ∆l_filler = [∆lmin_array; ∆l_array; ∆lmax_array; reverse(∆l_array); ∆lmin_array]
@@ -463,7 +466,7 @@ function fill_geometric(∆ln::Real, gap::AbsVecReal, ∆lt::Real, ∆lp::Real, 
             filler_sym = fill_geometric_sym(∆lp, gap_sym, ∆lt, rt, rmax)
             filler = [filler_n[1:end-1]; filler_sym]
         else
-            assert(∆ln > ∆lp)
+            @assert ∆ln > ∆lp
             filler_p = cumsum([gap[2]; -∆l_array])
             filler_p = reverse(filler_p)
             gap_sym = [gap[1]; filler_p[1]]
@@ -539,7 +542,7 @@ function comp_lprim1d(sublprim::AbsVec{<:AbsVecReal}, rt::Real=R_TARGET_DEFAULT,
             # errors in `filler`.  This is important for assiging materials and
             # sources at intended locations.  For example, failure to maintain the
             # provided subgrids can result in warnings in Shape.generate_kernel().
-            assert(filler[1]≈sublprim_curr[end] && filler[end]≈sublprim_next[1])
+            @assert filler[1]≈sublprim_curr[end] && filler[end]≈sublprim_next[1]
             append!(lprim, @view(filler[2:end-1]))
             append!(lprim, sublprim_next)
 
@@ -578,8 +581,8 @@ function gen_lprim1d(domain::OpenInterval,
     lprim = comp_lprim1d(sublprim, rt, rmax)
 
 
-    # Npml(w,Sign.n) = length(find(lprim < lprim(1) + Lpml(w,Sign.n)));
-    # Npml(w,Sign.p) = length(find(lprim > lprim(end) - Lpml(w,Sign.p)));
+    # Npml(w,Sign.n) = length(findall(lprim < lprim(1) + Lpml(w,Sign.n)));
+    # Npml(w,Sign.p) = length(findall(lprim > lprim(end) - Lpml(w,Sign.p)));
 
     return lprim
 end
@@ -587,14 +590,14 @@ end
 function gen_lprim(domain::Object{N,<:Box{N}},
                    domaintype::NTuple{N,GridType},
                    sprim::AbsVec{<:Object{N}},
-                   lprim0::NTuple{N,AbsVecReal}=ntuple(n->Float[],Val{N}),
-                   ldual0::NTuple{N,AbsVecReal}=ntuple(n->Float[],Val{N}),
+                   lprim0::NTuple{N,AbsVecReal}=ntuple(n->Float[],Val(N)),
+                   ldual0::NTuple{N,AbsVecReal}=ntuple(n->Float[],Val(N)),
                    rt::Real=R_TARGET_DEFAULT,
                    rmax::Real=R_MAX_DEFAULT) where {N}
     lprim = [gen_lprim1d(OpenInterval(domain,w), domaintype[w], (s->ClosedInterval(s,w)).(sprim),
                          ClosedInterval[], lprim0[w], ldual0[w], rt, rmax) for w = 1:N]
 
-    return ntuple(w->lprim[w], Val{N})
+    return ntuple(w->lprim[w], Val(N))
 end
 
 # function gen_lprim3d(domain::Interval3D,
@@ -618,8 +621,8 @@ end
 #         for w = Axis.elems
 #             dl_intended = domain.dl_max(w);
 #             Nw = round(domain.L(w) / dl_intended);
-#             lprim = linspace(domain.bound(w,Sign.n), domain.bound(w,Sign.p), Nw+1);
-#             assert(length(lprim) >= 2);
+#             lprim = range(domain.bound(w,Sign.n), stop=domain.bound(w,Sign.p), length=Nw+1);
+#             @assert length(lprim) >= 2
 #             dl_generated = lprim(2) - lprim(1);
 #             error_dl = (dl_generated - dl_intended) / dl_intended;
 #             if abs(error_dl) > 1e-9
@@ -627,8 +630,8 @@ end
 #                     'significantly differs from intended separation %s: error is %s percent.'], ...
 #                     num2str(dl_generated), num2str(dl_intended), num2str(error_dl * 100));
 #             end
-#             Npml(w,Sign.n) = length(find(lprim < lprim(1) + Lpml(w,Sign.n)));
-#             Npml(w,Sign.p) = length(find(lprim > lprim(end) - Lpml(w,Sign.p)));
+#             Npml(w,Sign.n) = length(findall(lprim < lprim(1) + Lpml(w,Sign.n)));
+#             Npml(w,Sign.p) = length(findall(lprim > lprim(end) - Lpml(w,Sign.p)));
 #             lprims{w} = lprim;
 #         end
 #     else  # withuniform == false: use adaptive grid generation algorithm
@@ -687,8 +690,8 @@ end
 #                     throw(addCause(exception, err1));
 #                 end
 #             end
-#             Npml(w,Sign.n) = length(find(lprim < lprim(1) + Lpml(w,Sign.n)));
-#             Npml(w,Sign.p) = length(find(lprim > lprim(end) - Lpml(w,Sign.p)));
+#             Npml(w,Sign.n) = length(findall(lprim < lprim(1) + Lpml(w,Sign.n)));
+#             Npml(w,Sign.p) = length(findall(lprim > lprim(end) - Lpml(w,Sign.p)));
 #             lprims{w} = lprim;
 #         end
 #     end

@@ -3,7 +3,7 @@ export matparam, kottke_avg_param
 import Base:string
 
 tensorize(x::Number) = tensorize(SVec3Complex(x,x,x))
-tensorize(v::AbsVecNumber) = diagm(SVec3Complex(v))
+tensorize(v::AbsVecNumber) = diagm(Val(0)=>SVec3Complex(v))
 tensorize(m::AbsMatNumber) = SMat3Complex(m)
 
 struct Material
@@ -49,12 +49,12 @@ function kottke_avg_param(param1::SMat3Complex, param2::SMat3Complex, n12::SVec3
     # Create a local Cartesian coordinate system.
     S = [n h v]  # unitary
 
-    τ1 = τ_trans(S.' * param1 * S)  # express param1 in S coordinates, and apply τ transform
-    τ2 = τ_trans(S.' * param2 * S)  # express param2 in S coordinates, and apply τ transform
+    τ1 = τ_trans(transpose(S) * param1 * S)  # express param1 in S coordinates, and apply τ transform
+    τ2 = τ_trans(transpose(S) * param2 * S)  # express param2 in S coordinates, and apply τ transform
 
     τavg = τ1 .* rvol1 + τ2 .* (1-rvol1)  # volume-weighted average
 
-    return S * τ⁻¹_trans(τavg) * S.'  # apply τ⁻¹ and transform back to global coordinates
+    return S * τ⁻¹_trans(τavg) * transpose(S)  # apply τ⁻¹ and transform back to global coordinates
 end
 
 # Equation (4) of the paper by Kottke et al.

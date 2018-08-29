@@ -54,9 +54,9 @@ function create_mean(isfwd::SVec3Bool,  # isfwd[w] = true|false for forward|back
     T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
 
-    Itot = VecInt(6M)
-    Jtot = VecInt(6M)
-    Vtot = Vector{T}(6M)
+    Itot = VecInt(undef, 6M)
+    Jtot = VecInt(undef, 6M)
+    Vtot = Vector{T}(undef, 6M)
 
     for nw = nXYZ  # Cartesian compotent of output vector
         indstr, indoff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (row stride, row offset)
@@ -113,8 +113,8 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
                      ) where {K}
     M = prod(N)
     Nw = N[nw]
-    ŵ = SVector(ntuple(identity,Val{K})) .== nw  # [0,true,0] for w == y
-    ns = isfwd ? 1.0: -1.0
+    ŵ = SVector(ntuple(identity,Val(K))) .== nw  # [0,true,0] for w == y
+    ns = isfwd ? 1.0 : -1.0
 
     # Below, when constructing I, J's, V's, note that a tuple of array subscripts (i,j,k)
     # indicates a row index of the final matrix.  In other words, the entries with the same
@@ -122,7 +122,7 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
     # Jₛ[i,j,k], V₀[i,j,k], Vₛ[i,j,k], we must know that they are for the entries in the
     # same row index (or the same output field).  Specifically,
     #
-    # - I is the row index itself, so it is the identity map: I[i,j,k] = sub2ind(N, i, j, k).
+    # - I is the row index itself, so it is the identity map: I[i,j,k] = LinearIndices(N)[i,j,k].
     #
     # - J₀[i,j,k] is the column index of the diagonal entry in the row subscripted (i,j,k).
     # Because the row and column indices are the same for the diagonal entries, J₀ = I and
@@ -191,7 +191,7 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
     # For the final sparsity patterns of the operators, see my notes entitled [Beginning of
     # the part added on Aug/14/2018] in RN - Subpixel Smoothing.nb.
     #
-    # Below, Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] mimics the implementation of slicedim
+    # Below, Vₛ[Base.setindex(axes(Vₛ), iw, nw)...] mimics the implementation of slicedim
     # and basically means Vₛ[:,iw,:] for w = y.
     if isbloch
         # Application of the aformentioned procedure:
@@ -233,7 +233,7 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
         # ghost input fields that they are brought into.  Therefore, e⁺ⁱᵏᴸ must be
         # multiplied to the nonghost input fields to create the ghost input fields.
         iw = isfwd ? Nw : 1
-        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
+        Vₛ[Base.setindex(axes(Vₛ), iw, nw)...] .*= e⁻ⁱᵏᴸ^ns
     else  # symmetry bounndary
         # A. isfwd = true (forward averaging)
         #
@@ -309,11 +309,11 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
         # Replace some diagonal entries with 0 or 2.
         iw = 1
         val = isfwd ? 0 : 2
-        V₀[Base.setindex(indices(V₀), iw, nw)...] .*= val
+        V₀[Base.setindex(axes(V₀), iw, nw)...] .*= val
 
         # Replace some off-diagonal entries with 0.
         iw = isfwd ? Nw : 1
-        Vₛ[Base.setindex(indices(Vₛ), iw, nw)...] .= 0
+        Vₛ[Base.setindex(axes(Vₛ), iw, nw)...] .= 0
 
         # Note that the forward and backward averaging operators are not the transpose of
         # each other because they have different diagonals.  This may seem to make the final

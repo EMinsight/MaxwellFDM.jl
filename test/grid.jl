@@ -14,7 +14,7 @@ lghost(l::NTuple{2,NTuple{K,AbstractVector{<:Real}}},  # grid point locations
 L₀ = 1e-9
 unit = PhysUnit(L₀)
 
-@testset "Grid{1}, BLOCH boundary" begin
+@testset "Grid{1}, Bloch boundary" begin
     isbloch = true
     Npmln = 5
     Npmlp = 7
@@ -31,7 +31,7 @@ unit = PhysUnit(L₀)
     @test g1.unit == unit
     @test g1.N == [M]
     @test g1.L ≈ [L]
-    @test all(SVector.(lprim) .∈ g1)  # `∈` supports only SVector
+    @test all(SVector.(lprim) .∈ Ref(g1))  # `∈` supports only SVector, not Vector
     ldual = MaxwellFDM.movingavg(lprim)
     pop!(lprim)
     @test g1.l ≈ ((lprim,), (ldual,))
@@ -69,7 +69,7 @@ end  # @testset "Grid{1}, primal boundary"
 
     L = SVector(sum.(∆ldual))  # SVec3Float
     l₀ = L ./ 2  # SVec3Float
-    lprim = map(x->[0; cumsum(x)], ∆ldual) .- (l₀...)  # tuple of vectors
+    lprim = map((v,s)->v.-s, map(x->[0; cumsum(x)], ∆ldual), (l₀...,))  # tuple of vectors
 
     g3 = Grid(unit, lprim, Npml, isbloch)
 
@@ -99,20 +99,20 @@ end  # @testset "Grid{1}, primal boundary"
         [lprim[d][end] + ∆ldual[d][end] for d = nXYZ]
     )
     @test -l₀ ∈ g3
-    @test all(g3.bounds .∈ g3)
+    @test all(g3.bounds .∈ Ref(g3))
     lg = lghost((lprim,ldual), L, g3.isbloch)
     lprim_g = g3.ghosted.l[nPR]
     ldual_g = g3.ghosted.l[nDL]
-    @test pop!.(lprim_g)≈lg[nPR].data && shift!.(ldual_g)≈lg[nDL].data && lprim_g≈lprim && ldual_g≈ldual
+    @test pop!.(lprim_g)≈lg[nPR].data && popfirst!.(ldual_g)≈lg[nDL].data && lprim_g≈lprim && ldual_g≈ldual
     τlprim_g = g3.ghosted.τl[nPR]
     τldual_g = g3.ghosted.τl[nDL]
-    @test pop!.(τlprim_g)≈lg[nPR].data.-(0,0,L[nZ]) && shift!.(τldual_g)≈(ldual[nX][1],ldual[nY][1],lg[nDL][nZ]+L[nZ]) && τlprim_g≈lprim && τldual_g≈ldual
+    @test pop!.(τlprim_g)≈lg[nPR].data.-(0,0,L[nZ]) && popfirst!.(τldual_g)≈(ldual[nX][1],ldual[nY][1],lg[nDL][nZ]+L[nZ]) && τlprim_g≈lprim && τldual_g≈ldual
     τindprim_g = g3.ghosted.τind[nPR]
     τinddual_g = g3.ghosted.τind[nDL]
-    @test pop!.(τindprim_g)==(M[nX]+1,M[nY]+1,1) && shift!.(τinddual_g)==(2,2,M[nZ]+1) && τindprim_g==map(m->collect(1:m), tuple(M...)) && τinddual_g==map(m->collect(2:m+1), tuple(M...))
+    @test pop!.(τindprim_g)==(M[nX]+1,M[nY]+1,1) && popfirst!.(τinddual_g)==(2,2,M[nZ]+1) && τindprim_g==map(m->collect(1:m), tuple(M...)) && τinddual_g==map(m->collect(2:m+1), tuple(M...))
     ∆τprim_g = g3.ghosted.∆τ[nPR]
     ∆τdual_g = g3.ghosted.∆τ[nDL]
-    @test pop!.(∆τprim_g)≈(0,0,-L[nZ]) && shift!.(∆τdual_g)≈(0,0,L[nZ]) && all(iszero.(∆τprim_g)) && all(iszero.(∆τdual_g))
+    @test pop!.(∆τprim_g)≈(0,0,-L[nZ]) && popfirst!.(∆τdual_g)≈(0,0,L[nZ]) && all(iszero.(∆τprim_g)) && all(iszero.(∆τdual_g))
 end  # @testset "Grid{3}"
 
 # @testset "Grid{2}" begin

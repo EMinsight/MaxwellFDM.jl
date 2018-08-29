@@ -23,15 +23,15 @@ mutable struct Object{K,S<:Shape}  # use S<:Shape{K} after Julia issue #26321 is
     Object{K,S}(shape, mat, ∆lmax) where {K,S<:Shape{K}} = new(shape, mat, ∆lmax)
 end
 
-Object(shape::S, mat::EncodedMaterial, ∆lmax::SVector{K}=SVector(ntuple(k->Inf, Val{K}))) where {K,S<:Shape{K}} = Object{K,S}(shape, mat, ∆lmax)
+Object(shape::S, mat::EncodedMaterial, ∆lmax::SVector{K}=SVector(ntuple(k->Inf, Val(K)))) where {K,S<:Shape{K}} = Object{K,S}(shape, mat, ∆lmax)
 Object(shape::Shape{K}, mat::EncodedMaterial, ∆lmax::AbsVec) where {K} = Object(shape, mat, SVector{K}(∆lmax))
-Object(shape::Shape{K}, mat::EncodedMaterial, ∆lmax::Real) where {K} = Object(shape, mat, SVector(ntuple(k->∆lmax, Val{K})))
+Object(shape::Shape{K}, mat::EncodedMaterial, ∆lmax::Real) where {K} = Object(shape, mat, SVector(ntuple(k->∆lmax, Val(K))))
 
 # Define Object with ∆lmax, Shape, and a material.
 const Object3 = Object{3}
 
 # Add a new convenience constructor
-GeometryPrimitives.Box(b::Tuple2{AbsVec}, axes=eye(length(b[1]))) = Box((b[1]+b[2])/2, abs.(b[2]-b[1]), axes)
+GeometryPrimitives.Box(b::Tuple2{AbsVec}, axes=Matrix{Float}(I,length(b[1]),length(b[1]))) = Box((b[1]+b[2])/2, abs.(b[2]-b[1]), axes)
 
 GeometryPrimitives.bounds(o::Object) = bounds(o.shape)
 Base.in(x::SVector{K}, o::Object{K}) where {K} = in(x, o.shape)
@@ -40,7 +40,7 @@ Base.in(x::AbsVec, o::Object{K}) where {K} = in(SVector{K}(x), o)
 # Create the user interface such that maxwellsys.add(shape, material, ∆lmax) uses this function.
 # setmat!(o::Object, em::EncodedMaterial) = (o.mat = em; o)
 # setmax∆l!(o::Object{K}, ∆lmax::AbsVec) where {K} = (o.∆lmax = SVector{K}(∆lmax); o)
-# setmax∆l!(o::Object{K}, ∆lmax::Number) where {K} = setmax∆l!(o, SVector(ntuple(k->∆lmax, Val{K})))
+# setmax∆l!(o::Object{K}, ∆lmax::Number) where {K} = setmax∆l!(o, SVector(ntuple(k->∆lmax, Val(K))))
 
 max∆l(o::Object) = o.∆lmax
 matparam(o::Object, gt::GridType) = matparam(o.mat, gt)
@@ -81,16 +81,16 @@ end
 function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
     # Assign the object index to o.
     o.oind = isempty(ovec) ? 1 : objind(ovec[end])+1  # not just length(ovec)+1 to handle periodized objects (see comments above)
-    push!(ovec, o)  # append o (for potential use of ovec with KDTree, must use unshift! to prepend)
+    push!(ovec, o)  # append o (for potential use of ovec with KDTree, must use pushfirst! to prepend)
 
     # Assign the material parameter indices to o.
     p, pset = matparam(o,PRIM), paramset[nPR]
-    pind_prim = findlast(x -> x==p, pset)
-    pind_prim==0 && (push!(pset, p); pind_prim = length(pset))
+    pind_prim = findlast(x -> x==p, pset)  # number if p is already in pset
+    pind_prim==nothing && (push!(pset, p); pind_prim = length(pset))  # update pind_prim if p is not in pset
 
     p, pset = matparam(o,DUAL), paramset[nDL]
-    pind_dual = findlast(x -> x==p, pset)
-    pind_dual==0 && (push!(pset, p); pind_dual = length(pset))
+    pind_dual = findlast(x -> x==p, pset)  # number if p is already in psent
+    pind_dual==nothing && (push!(pset, p); pind_dual = length(pset))  # update pind_dual if p is not in pset
 
     o.pind = (pind_prim, pind_dual)
 

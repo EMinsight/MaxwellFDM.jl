@@ -1,5 +1,7 @@
 using MaxwellFDM
-using Base.Test
+using Test
+using Statistics: mean
+using LinearAlgebra, SparseArrays
 
 Base.isapprox(a::Tuple, b::Tuple; kws...) = all(p -> isapprox(p...; kws...), zip(a,b))
 

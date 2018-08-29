@@ -95,29 +95,29 @@ end  # @testset "param3d2mat"
 
     Nx, Ny, Nz = N
     ∆X = repeat(∆ldual[nX], outer=(1,Ny,Nz))
-    ∆Y = repeat(∆ldual[nY].', outer=(Nx,1,Nz))
+    ∆Y = repeat(reshape(∆ldual[nY], (1,Ny,1)), outer=(Nx,1,Nz))
     ∆Z = repeat(reshape(∆ldual[nZ], (1,1,Nz)), outer=(Nx,Ny,1))
 
-    ∆L = [∆X[:].'; ∆Y[:].'; ∆Z[:].']
+    ∆L = [reshape(∆X,1,:); reshape(∆Y,1,:); reshape(∆Z,1,:)]
     ∆l = ∆L[:]
-    Ml⁻¹ = spdiagm(1./∆l)
+    Ml⁻¹ = sparse(Diagonal(1 ./ ∆l))
 
     # Ma
     ∆X = repeat(∆lprim[nX], outer=(1,Ny,Nz))
-    ∆Y = repeat(∆lprim[nY].', outer=(Nx,1,Nz))
+    ∆Y = repeat(reshape(∆lprim[nY], (1,Ny,1)), outer=(Nx,1,Nz))
     ∆Z = repeat(reshape(∆lprim[nZ], (1,1,Nz)), outer=(Nx,Ny,1))
 
     ∆YZ = ∆Y .* ∆Z
     ∆ZX = ∆Z .* ∆X
     ∆XY = ∆X .* ∆Y
 
-    ∆A = [∆YZ[:].'; ∆ZX[:].'; ∆XY[:].']
+    ∆A = [reshape(∆YZ,1,:); reshape(∆ZX,1,:); reshape(∆XY,1,:)]
     ∆a = ∆A[:]
-    Ma = spdiagm(∆a)
+    Ma = sparse(Diagonal(∆a))
 
     Mξ_sym = Ma * Mξ * Ml⁻¹
 
-    @test Mξ_sym ≈ Mξ_sym.'
+    @test Mξ_sym ≈ transpose(Mξ_sym)
 
     # Code I used to reveal the matrix structure while debugging:
     # (i,j) = (nX,nY); full(real.(Mξ3))[27(i-1)+1:27i, 27(j-1)+1:27j]
