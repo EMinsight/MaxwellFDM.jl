@@ -304,8 +304,8 @@ obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 # Add objects.
 ovec = Object3[]
 paramset = (SMat3Complex[], SMat3Complex[])
-add!(ovec, paramset, dom_vac)
-# add!(ovec, paramset, dom_vac, obj_diel)
+# add!(ovec, paramset, dom_vac)
+add!(ovec, paramset, dom_vac, obj_diel)
 # add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
 
 param3d = create_param3d(g3.N)
@@ -342,7 +342,7 @@ obj3d_cmp = view(obj3d[ngt′][nw], ind_cmp...)
 pind3d_cmp = view(pind3d[ngt′][nw], ind_cmp...)
 oind3d_cmp = view(oind3d[ngt′][nw], ind_cmp...)
 
-# o = ovec[end-1]  # ovec[end-1]: Sphere, ovec[end]: Box
+# o = ovec[2]  # ovec[1]: Box, ovec[2]: Sphere
 # shape = o.shape
 #
 # gt′ = alter(gt)
@@ -356,6 +356,15 @@ oind3d_cmp = view(oind3d[ngt′][nw], ind_cmp...)
 # println("# of objects = $(length(ovec))")
 # # @time assign_val_shape!((arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
 # # @code_warntype assign_val_shape!((arrays..., param3d_cmp), (vals, param), shape, τlcmp)
+
+# assign_val_shape!(pind3d_cmp, pind′, shape, τlcmp)
+# assign_val_shape!(oind3d_cmp, oind, shape, τlcmp)
+# assign_val_shape!(obj3d_cmp, o, shape, τlcmp)
+# if nw == 4
+#     assign_val_shape!(param3d_cmp, param, shape, τlcmp)
+# else  # nw = 1, 2, 3
+#     assign_val_shape!(@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
+# end
 
 
 # @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec, τlcmp)

@@ -20,6 +20,7 @@
 # change and I may need to implement this optimization.
 
 export create_param3d, create_n3d, assign_param!, assign_val_shape!
+# using BenchmarkTools
 
 # About the order of indices of param3d:
 #
@@ -250,20 +251,64 @@ end
 # Maybe, I could create a function that selects τlcmp from gt and nw.
 
 
+# assign_val_shape!(array::AbsArr{T,3}, val::T, shape::Shape{3}, τlcmp::Tuple3{AbsVecReal}) where {T} =
+#     assign_val_shape!((array,), (val,), shape, τlcmp)
+#
+# assign_val_shape!(array::AbsArr{T,5}, val::AbsMat{T}, shape::Shape{3}, τlcmp::Tuple3{AbsVecReal}) where {T} =
+#     assign_val_shape!((array,), (val,), shape, τlcmp)
+#
+# # Given a shape, assign value at the points within the shape.
+# #
+# # This function is written to handle a variable-length list of (array, value, function)'s in
+# # assign_param_cmp, but the usage is suppressed for performance.
+# function assign_val_shape!(arrays::Tuple,
+#                            vals::Tuple,
+#                            shape::Shape{3},
+#                            τlcmp::Tuple3{AbsVecReal})
+#     # Set the location indices of object boundaries.
+#     @assert all(issorted.(τlcmp))
+#     bn, bp = bounds(shape)  # (SVec3, SVec3)
+#     subn = map((l,b) -> (n = findfirst(l.≥b); n==nothing ? 1 : n), τlcmp, bn)  # SVec3Int
+#     subp = map((l,b) -> (n = findlast(l.≤b); n==nothing ? length(l) : n), τlcmp, bp)  # SVec3Int
+#     I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVec3{UnitRange{Int}}
+#
+#     if shape isa Box{3,9} && (shape::Box{3,9}).p == SMatrix{3,3,Float}(LinearAlgebra.I)  # shape is Cartesian box
+#         # @info "haha1"
+#         assign_val_range!.(arrays, vals, ((I,J,K),))
+#         # @info "haha2"
+#     else  # shape is not Cartesian box
+#         # @info "haha3"
+#         for k = K, j = J, i = I  # z-, y-, x-indices
+#             pt = t_ind(τlcmp, i, j, k)
+#             if pt ∈ shape
+#                 @time assign_val!.(arrays, vals, ((i,j,k),))
+#             end  # if pt ∈ shape
+#         end  # for k = ..., j = ..., i = ...
+#         # @info "haha4"
+#     end  # if shape isa ...
+#
+#     return nothing
+# end
+
+# Do we need an another wrapper function that selects τlcmp from gt and nw?  The downside of
+# such a function is that avf already contains nw information.
+# Maybe, I could create a function that selects τlcmp from gt and nw.
+
+
 assign_val_shape!(array::AbsArr{T,3}, val::T, shape::Shape{3}, τlcmp::Tuple3{AbsVecReal}) where {T} =
-    assign_val_shape!((array,), (val,), shape, τlcmp)
+    assign_val_shape_impl!(array, val, shape, τlcmp)
 
 assign_val_shape!(array::AbsArr{T,5}, val::AbsMat{T}, shape::Shape{3}, τlcmp::Tuple3{AbsVecReal}) where {T} =
-    assign_val_shape!((array,), (val,), shape, τlcmp)
+    assign_val_shape_impl!(array, val, shape, τlcmp)
 
 # Given a shape, assign value at the points within the shape.
 #
 # This function is written to handle a variable-length list of (array, value, function)'s in
 # assign_param_cmp, but the usage is suppressed for performance.
-function assign_val_shape!(arrays::Tuple,
-                           vals::Tuple,
+function assign_val_shape_impl!(array::AbsArr{T},
+                           val::Union{T,AbsMat{T}},
                            shape::Shape{3},
-                           τlcmp::Tuple3{AbsVecReal})
+                           τlcmp::Tuple3{AbsVecReal}) where {T}
     # Set the location indices of object boundaries.
     @assert all(issorted.(τlcmp))
     bn, bp = bounds(shape)  # (SVec3, SVec3)
@@ -272,29 +317,54 @@ function assign_val_shape!(arrays::Tuple,
     I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # SVec3{UnitRange{Int}}
 
     if shape isa Box{3,9} && (shape::Box{3,9}).p == SMatrix{3,3,Float}(LinearAlgebra.I)  # shape is Cartesian box
-        assign_val!.(arrays, vals, ((I,J,K),))
+        # @info "haha1"
+        assign_val_range!(array, val, I, J, K)
+        # @info "haha2"
     else  # shape is not Cartesian box
+        # @info "haha3"
         for k = K, j = J, i = I  # z-, y-, x-indices
             pt = t_ind(τlcmp, i, j, k)
             if pt ∈ shape
-                assign_val!.(arrays, vals, ((i,j,k),))
+                # @info "pt = $pt, shape = $shape, typeof(array) = $(typeof(array))"
+                # @btime assign_val2!($array, $val, ($i,$j,$k))
+                @timev assign_val!(array, val, i, j, k)
             end  # if pt ∈ shape
         end  # for k = ..., j = ..., i = ...
+        # @info "haha4"
     end  # if shape isa ...
 
     return nothing
 end
 
-
 # Could be named Base.setindex!, but didn't want this to be exported, so named different.
-function assign_val!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
-    @inbounds array[subs...] .= Ref(scalar)
+function assign_val!(array::AbsArr{T,3}, scalar::T, i::Integer, j::Integer, k::Integer) where {T}
+    # @info "haha7"
+    @inbounds array[i,j,k] = scalar
+    # @info "haha8"
     return nothing
 end
 
-function assign_val!(array::AbsArr{T,5}, tensor::AbsMat{T}, subs::Tuple3{S}) where {T,S<:Union{Integer,AbsVecInteger}}
+function assign_val!(array::AbsArr{T,5}, tensor::AbsMat{T}, i::Integer, j::Integer, k::Integer) where {T}
     for nc = nXYZ, nr = next2(nc)  # column- and row-indices
-        @inbounds array[subs..., nr, nc] .= tensor[nr,nc]
+        # @info "haha9"
+        @inbounds array[i,j,k,nr,nc] = tensor[nr,nc]
+        # @info "haha10"
+    end
+    return nothing
+end
+
+function assign_val_range!(array::AbsArr{T,3}, scalar::T, i::AbsVecInteger, j::AbsVecInteger, k::AbsVecInteger) where {T}
+    # @info "haha5"
+    @inbounds array[i,j,k] .= Ref(scalar)
+    # @info "haha6"
+    return nothing
+end
+
+function assign_val_range!(array::AbsArr{T,5}, tensor::AbsMat{T}, i::AbsVecInteger, j::AbsVecInteger, k::AbsVecInteger) where {T}
+    for nc = nXYZ, nr = next2(nc)  # column- and row-indices
+        # @info "haha9"
+        @inbounds array[i,j,k,nr,nc] .= tensor[nr,nc]
+        # @info "haha10"
     end
     return nothing
 end
