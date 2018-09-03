@@ -305,8 +305,8 @@ obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 ovec = Object3[]
 paramset = (SMat3Complex[], SMat3Complex[])
 # add!(ovec, paramset, dom_vac)
-add!(ovec, paramset, dom_vac, obj_diel)
-# add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
+# add!(ovec, paramset, dom_vac, obj_diel)
+add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
 
 param3d = create_param3d(g3.N)
 obj3d = create_n3d(Object3, g3.N)
@@ -385,7 +385,7 @@ oind3d_cmp = view(oind3d[ngt′][nw], ind_cmp...)
 
 # @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj3d_cmp′, pind3d_cmp′, oind3d_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
 
-# @time smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+@time smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
 
 # # Construct arguments and call assign_param!.

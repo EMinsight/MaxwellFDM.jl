@@ -229,9 +229,9 @@ function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
         assign_val_shape!(oind3d_cmp, oind, shape, τlcmp)
         assign_val_shape!(obj3d_cmp, o, shape, τlcmp)
         if nw == 4
-            # assign_val_shape!(param3d_cmp, param, shape, τlcmp)
+            assign_val_shape!(param3d_cmp, param, shape, τlcmp)
         else  # nw = 1, 2, 3
-            # assign_val_shape!(@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
+            assign_val_shape!(@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
         end
         # arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
         # vals = (pind′, oind, o)
@@ -312,26 +312,24 @@ function assign_val_shape_impl!(array::AbsArr{T},
     # Set the location indices of object boundaries.
     @assert all(issorted.(τlcmp))
     bn, bp = bounds(shape)  # (SVec3, SVec3)
-    subn = map((l,b) -> (n = findfirst(l.≥b); n==nothing ? 1 : n), τlcmp, bn)  # SVec3Int
-    subp = map((l,b) -> (n = findlast(l.≤b); n==nothing ? length(l) : n), τlcmp, bp)  # SVec3Int
-    @info "typeof(subn) = $(typeof(subn)), typeof(subp) = $(typeof(subp))"
-    L, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn.data, subp.data)  # SVec3{UnitRange{Int}}
-    # L, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, (1,1,1), (10,10,10))  # SVec3{UnitRange{Int}}
+    subn = map((l,b) -> (n = findfirst(l.≥b); n==nothing ? 1 : n), τlcmp, bn.data)  # NTuple{3,Int}
+    subp = map((l,b) -> (n = findlast(l.≤b); n==nothing ? length(l) : n), τlcmp, bp.data)  # NTuple{3,Int}
+    I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # NTuple{3,UnitRange{Int}}
 
 
     if shape isa Box{3,9} && (shape::Box{3,9}).p == LinearAlgebra.I  # shape is Cartesian box
         # @info "haha1"
-        # assign_val_range!(array, val, I, J, K)
+        assign_val_range!(array, val, I, J, K)
         # @info "haha2"
     else  # shape is not Cartesian box
         # @info "haha3"
-        for k = K, j = J, i = L  # z-, y-, x-indices
-            # pt = t_ind(τlcmp, i, j, k)
-            # if pt ∈ shape
+        for k = K, j = J, i = I  # z-, y-, x-indices
+            pt = t_ind(τlcmp, i, j, k)
+            if pt ∈ shape
                 # @info "pt = $pt, shape = $shape, typeof(array) = $(typeof(array))"
                 # @btime assign_val2!($array, $val, ($i,$j,$k))
-                # assign_val!(array, val, i, j, k)
-            # end  # if pt ∈ shape
+                assign_val!(array, val, i, j, k)
+            end  # if pt ∈ shape
         end  # for k = ..., j = ..., i = ...
         # @info "haha4"
     end  # if shape isa ...
