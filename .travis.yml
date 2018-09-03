@@ -4,7 +4,8 @@ os:
   - linux
   - osx
 julia:
-  - release
+  - 0.7
+  - 1.0
   - nightly
 matrix:
   allow_failures:
@@ -12,7 +13,7 @@ matrix:
 notifications:
   email: false
 # uncomment the following lines to override the default test script
-script:
+#script:
  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
  - julia -e 'Pkg.clone("https://github.com/simonster/Reexport.jl.git")'
  - julia -e 'Pkg.clone("https://github.com/stevengj/GeometryPrimitives.jl.git")'
