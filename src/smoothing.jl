@@ -236,7 +236,7 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                     # must correspond to different objects.
                     x₀ = t_ind(lcmp, ijk_cmp)  # SVec3Float: location of center of smoothing voxel
                     σvxl = t_ind(σcmp, ijk_cmp)
-                    lvxl = t_ind(lcmp′, (ijk_cmp, ijk_cmp+1))
+                    lvxl = (t_ind(lcmp′,ijk_cmp), t_ind(lcmp′,ijk_cmp+1))
 
                     sub_fg = CartesianIndices((2,2,2))[ind_fg].I  # subscritpt of corner ind_fg
                     ∆fg = t_ind(∆τcmp′, ijk_cmp + SVector(sub_fg) - 1)  # SVec3Float; nonzero if corner ind_fg is outside periodic boundary

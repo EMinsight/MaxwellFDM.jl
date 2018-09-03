@@ -229,8 +229,14 @@ function assign_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
         assign_val_shape!(oind3d_cmp, oind, shape, τlcmp)
         assign_val_shape!(obj3d_cmp, o, shape, τlcmp)
         if nw == 4
+            # Assign parameters at voxel corners where the v-component E and H affects the
+            # w≠v components of D and B.  This will use assign_val(..., tensor, ...) for
+            # setting off-diagonal entries of the material parameter tensor.
             assign_val_shape!(param3d_cmp, param, shape, τlcmp)
         else  # nw = 1, 2, 3
+            # Assign parameters at Yee's field points where the v-component E and H affects
+            # the w=v components of D and B.  This will use assign_val(..., scalar, ...) for
+            # setting diagonal entries of the material parameter tensor.
             assign_val_shape!(@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
         end
         # arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
@@ -270,44 +276,46 @@ function assign_val_shape_impl!(array::AbsArr{T},
     bn, bp = bounds(shape)  # (SVec3, SVec3)
     subn = map((l,b) -> (n = findfirst(l.≥b); n==nothing ? 1 : n), τlcmp, bn.data)  # Tuple3{Int}
     subp = map((l,b) -> (n = findlast(l.≤b); n==nothing ? length(l) : n), τlcmp, bp.data)  # Tuple3{Int}
-    I, J, K = map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp)  # Tuple3{UnitRange{Int}}
+    CI = CartesianIndices(map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp))  # CartesianIndices{3}
 
 
     if shape isa Box{3,9} && (shape::Box{3,9}).p == LinearAlgebra.I  # shape is Cartesian box
-        assign_val_range!(array, val, (I,J,K))
+        assign_val!(array, val, CI)
     else  # shape is not Cartesian box
-        for k = K, j = J, i = I  # z-, y-, x-indices
-            pt = t_ind(τlcmp, i, j, k)
+        for ci = CI
+            pt = t_ind(τlcmp, ci)
             if pt ∈ shape
-                assign_val!(array, val, (i,j,k))
+                assign_val!(array, val, ci)
             end  # if pt ∈ shape
-        end  # for k = ..., j = ..., i = ...
+        end  # for ci = ...
     end  # if shape isa ...
 
     return nothing
 end
 
 # Could be named Base.setindex!, but didn't want this to be exported, so named different.
-function assign_val!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{Integer}) where {T}
-    @inbounds array[subs...] = scalar
+function assign_val!(array::AbsArr{T,3}, scalar::T, ci::CartesianIndex{3}) where {T}
+    @inbounds array[ci] = scalar
     return nothing
 end
 
-function assign_val!(array::AbsArr{T,5}, tensor::AbsMat{T}, subs::Tuple3{Integer}) where {T}
+function assign_val!(array::AbsArr{T,3}, scalar::T, CI::CartesianIndices{3}) where {T}
+    @inbounds array[CI] .= Ref(scalar)
+    return nothing
+end
+
+# Similar to assign_val!(..., scalar, ...), but set the off-diagonal entries of a given
+# tensor.
+function assign_val!(array::AbsArr{T,5}, tensor::AbsMat{T}, ci::CartesianIndex{3}) where {T}
     for nc = nXYZ, nr = next2(nc)  # column- and row-indices
-        @inbounds array[subs...,nr,nc] = tensor[nr,nc]
+        @inbounds array[ci,nr,nc] = tensor[nr,nc]
     end
     return nothing
 end
 
-function assign_val_range!(array::AbsArr{T,3}, scalar::T, subs::Tuple3{AbsVecInteger}) where {T}
-    @inbounds array[subs...] .= Ref(scalar)
-    return nothing
-end
-
-function assign_val_range!(array::AbsArr{T,5}, tensor::AbsMat{T}, subs::Tuple3{AbsVecInteger}) where {T}
+function assign_val!(array::AbsArr{T,5}, tensor::AbsMat{T}, CI::CartesianIndices{3}) where {T}
     for nc = nXYZ, nr = next2(nc)  # column- and row-indices
-        @inbounds array[subs...,nr,nc] .= tensor[nr,nc]
+        @inbounds array[CI,nr,nc] .= tensor[nr,nc]
     end
     return nothing
 end

@@ -12,29 +12,30 @@
 
 # From a tuple of two tuples 1 and 2, each with K entries, construct a tuple (with K entries)
 # whose kth entry is the kth entry of either tuple 1 or tuple 2.
+# E.g., t_ind(((0.1,0.2,0.3), (1.0,2.0,3.0)), 1, 2, 1) = (0.1, 2.0, 0.3)
 @inline t_ind(t::Tuple23, i₁₂::T, j₁₂::T, k₁₂::T) where {T<:Union{GridType,Sign,Integer}} = t_ind(t, (i₁₂,j₁₂,k₁₂))  # i₁₂, j₁₂, k₁₂ = 1 or 2
+@inline t_ind(t::Tuple2{NTuple{K}}, ind₁₂::CartesianIndex{K}) where {K} = t_ind(t, ind₁₂.I)  # ind₁₂.I: NTuple{K,Int}
 @inline t_ind(t::Tuple2{NTuple{K}}, ind₁₂::SVector{K,T}) where {K,T<:Union{GridType,Sign,Integer}} = t_ind(t, ind₁₂.data)
 @inline t_ind(t::Tuple2{NTuple{K}}, ind₁₂::NTuple{K,T}) where {K,T<:Union{GridType,Sign,Integer}} =  # ind₁₂[k] = 1 or 2
     map((t₁,t₂,i) -> Int(i)==1 ? t₁ : t₂, t[1], t[2], ind₁₂)  # NTuple{K}
 
 # From a tuple of two SVectors 1 and 2, each with K entries, construct an SVector (with K
 # entries) whose kth entry is the kth entry of either SVector 1 or SVector 2.
+# E.g., t_ind((SVector(0.1,0.2,0.3), SVector(1.0,2.0,3.0)), 1, 2, 1) = SVector(0.1, 2.0, 0.3)
 @inline t_ind(t::Tuple2{SVec3}, i₁₂::T, j₁₂::T, k₁₂::T) where {T<:Union{GridType,Sign,Integer}} = t_ind(t, (i₁₂,j₁₂,k₁₂))
 @inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::NTuple{K,T}) where {K,T<:Union{GridType,Sign,Integer}} = t_ind(t, SVector(ind₁₂))
 @inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::SVector{K,T}) where {K,T<:Union{GridType,Sign,Integer}} =  # ind₁₂[k] = 1 or 2
     map((t₁,t₂,i) -> Int(i)==1 ? t₁ : t₂, t[1], t[2], ind₁₂)  # SVector{K}
 
-# From a tuple of K vectors, construct a vector with K entries whose kth entry is the ind[k]-th
-# entry of the kth vector.
+# From a tuple of K vectors, construct a vector with K entries whose kth entry is
+# taken from the kth vector.  Which entry to take from the kth vector is specified
+# by indices.
+# E.g., t_ind(([0.1,0.2,0.3,0.4], [1.0,2.0,3.0,4.0], [10.0,20.0,30.0,40.0]), 3, 1, 4) = SVector(0.3, 1.0, 40.0)
 @inline t_ind(t::Tuple3{AbsVec}, i::Int, j::Int, k::Int) = t_ind(t, (i,j,k))
 @inline t_ind(t::Tuple2{AbsVec}, i::Int, j::Int) = t_ind(t, (i,j))
+@inline t_ind(t::NTuple{K,AbsVec}, ind::CartesianIndex{K}) where {K} = t_ind(t, ind.I)
 @inline t_ind(t::NTuple{K,AbsVec}, ind::NTuple{K,Int}) where {K} = t_ind(t, SVector(ind))
 @inline t_ind(t::NTuple{K,AbsVec}, ind::SVector{K,Int}) where {K} = map((tₖ,iₖ) -> tₖ[iₖ], SVector(t), ind)
-
-# From a tuple of K vectors, construct a tuple of two vectors with K entries whose kth entry
-# is taken from the kth vector.
-@inline t_ind(t::NTuple{K,AbsVec}, ind::Tuple2{NTuple{K,Int}}) where {K} = (t_ind(t,ind[nN]), t_ind(t,ind[nP]))
-@inline t_ind(t::NTuple{K,AbsVec}, ind::Tuple2{SVector{K,Int}}) where {K} = (t_ind(t,ind[nN]), t_ind(t,ind[nP]))
 
 # getindex(t::Tuple3{T}, ind::Tuple3{Int}) where {T} = (t[ind[1]], t[ind[2]], t[ind[3]])
 # getindex(t::Tuple32{T}, i::Int, j::Int, k::Int) where {T} = (t[1][i], t[2][j], t[3][k])  # i, j, k = 1 or 2
