@@ -20,7 +20,6 @@
 # change and I may need to implement this optimization.
 
 export create_param3d, create_n3d, assign_param!, assign_val_shape!
-# using BenchmarkTools
 
 # About the order of indices of param3d:
 #

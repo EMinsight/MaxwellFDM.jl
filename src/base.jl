@@ -23,6 +23,7 @@
 # entries) whose kth entry is the kth entry of either SVector 1 or SVector 2.
 # E.g., t_ind((SVector(0.1,0.2,0.3), SVector(1.0,2.0,3.0)), 1, 2, 1) = SVector(0.1, 2.0, 0.3)
 @inline t_ind(t::Tuple2{SVec3}, i₁₂::T, j₁₂::T, k₁₂::T) where {T<:Union{GridType,Sign,Integer}} = t_ind(t, (i₁₂,j₁₂,k₁₂))
+@inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::CartesianIndex{K}) where {K} = t_ind(t, ind₁₂.I)
 @inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::NTuple{K,T}) where {K,T<:Union{GridType,Sign,Integer}} = t_ind(t, SVector(ind₁₂))
 @inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::SVector{K,T}) where {K,T<:Union{GridType,Sign,Integer}} =  # ind₁₂[k] = 1 or 2
     map((t₁,t₂,i) -> Int(i)==1 ? t₁ : t₂, t[1], t[2], ind₁₂)  # SVector{K}
