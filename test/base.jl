@@ -19,8 +19,6 @@
     @test @inferred(MaxwellFDM.t_ind(t2sa, SVector(NEG,POS,NEG))) == [1,5,3]
     @test @inferred(MaxwellFDM.t_ind(t3a, 2, 3, 4)) == [2,7,12]
     @test @inferred(MaxwellFDM.t_ind(t3a, SVector(2,3,4))) == [2,7,12]
-    @test @inferred(MaxwellFDM.t_ind(t3a, ((1,2,3), (2,3,4)))) == ([1,6,11], [2,7,12])
-    @test @inferred(MaxwellFDM.t_ind(t3a, (SVector(1,2,3), SVector(2,3,4)))) == ([1,6,11], [2,7,12])
 end
 
 # @testset "dot" begin
