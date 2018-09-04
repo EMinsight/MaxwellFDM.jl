@@ -30,11 +30,10 @@ install:
 
 build_script:
   - echo "%JL_BUILD_SCRIPT%"
-  - C:\julia\bin\julia -e "%JL_BUILD_SCRIPT%";
-      using Pkg;
-      Pkg.clone(\"https://github.com/simonster/Reexport.jl.git\");
-      Pkg.clone(\"https://github.com/stevengj/GeometryPrimitives.jl.git\");
-      Pkg.clone(pwd(), \"MaxwellFDM\"); Pkg.build(\"MaxwellFDM\")"
+  - C:\julia\bin\julia -e "using Pkg;
+                           Pkg.clone(\"https://github.com/simonster/Reexport.jl.git\");
+                           Pkg.clone(\"https://github.com/stevengj/GeometryPrimitives.jl.git\");
+                           %JL_BUILD_SCRIPT%"
 
 test_script:
   - echo "%JL_TEST_SCRIPT%"
