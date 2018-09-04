@@ -15,12 +15,12 @@ notifications:
 # uncomment the following lines to override the default test script
 script:
  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
- - julia -e 'using Pkg'
- - julia -e 'Pkg.clone("https://github.com/simonster/Reexport.jl.git")'
- - julia -e 'Pkg.clone("https://github.com/stevengj/GeometryPrimitives.jl.git")'
- - julia -e 'Pkg.clone(pwd()); Pkg.build("MaxwellFDM"); Pkg.test("MaxwellFDM"; coverage=true)'
+ - julia -e 'using Pkg;
+             Pkg.clone("https://github.com/simonster/Reexport.jl.git");
+             Pkg.clone("https://github.com/stevengj/GeometryPrimitives.jl.git");
+             Pkg.clone(pwd()); Pkg.build("MaxwellFDM"); Pkg.test("MaxwellFDM"; coverage=true)'
 after_success:
   # push coverage results to Coveralls
-  - julia -e 'cd(Pkg.dir("MaxwellFDM")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  - julia -e 'using Pkg; cd(Pkg.dir("MaxwellFDM")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
   # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("MaxwellFDM")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia -e 'using Pkg; cd(Pkg.dir("MaxwellFDM")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
