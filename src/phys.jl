@@ -1,3 +1,5 @@
+# Consider using Unitful.jl.
+
 export PhysUnit, Oscillation  # types
 export c₀, μ₀, ε₀, η₀, ℎ, ℏ  # constants
 export in_L₀, in_ω₀, in_eV  # functions
