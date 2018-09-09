@@ -7,6 +7,7 @@ using LinearAlgebra, SparseArrays
 export SVec3Complex, SMat3Complex, ParamInd, ObjInd
 
 ## Type aliases
+# Below, use Int instead of Int64 for compatibility with 32-bit systems (e.g., x86 in appveyor.yml).
 const Float = typeof(0.0)  # use Float = Float128 for quadruple precision in the future
 const CFloat = Complex{Float}
 
