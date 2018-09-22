@@ -99,7 +99,7 @@ end
     #     a = [0,0,1]
     #     ∆lmax = R ./ 10
     #
-    #     cyl_emat = Object(Cylinder(c,r,a,h), emat, ∆lmax)
+    #     cyl_emat = Object(Cylinder(c,r,h,a), emat, ∆lmax)
     #
     #     b = (c-R, c+R)
     #
@@ -161,7 +161,7 @@ end  # @testset "Object"
 #     Si = Material("Si", ε = 12)
 #     ge = PRIM
 #     eSi = EncodedMaterial(ge, Si)
-#     c_eSi = Object(Cylinder([0,0,0], 1, [0,0,1], 5), eSi)
+#     c_eSi = Object(Cylinder([0,0,0], 1, 5, [0,0,1]), eSi)
 #
 #     b = Box([0,0,0], [10,10,5])
 #     A = [1 0 0; 0 1 0; 0 0 5]'

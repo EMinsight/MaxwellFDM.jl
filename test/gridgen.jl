@@ -157,7 +157,7 @@ end  # @testset "comp_lprim1d"
 
     h = 50
     r = 20
-    sprim = [Object(Cylinder([0,0,0],r,[0,0,1],h), evac, [∆l,∆l,∆L]), Object(Sphere([0,0,h/2], r), evac, ∆l), Object(Sphere([0,0,-h/2], r), evac, ∆l)]
+    sprim = [Object(Cylinder([0,0,0],r,h,[0,0,1]), evac, [∆l,∆l,∆L]), Object(Sphere([0,0,h/2], r), evac, ∆l), Object(Sphere([0,0,-h/2], r), evac, ∆l)]
     # sprim = [Object(Sphere([0,0,0],r), evac, [∆l,∆l,∆L]), Object(Sphere([0,0,h/2], r), evac, ∆l), Object(Sphere([0,0,-h/2], r), evac, ∆l)]
 
     (xprim, yprim, zprim) = gen_lprim(domain, (PRIM,PRIM,PRIM), sprim)
