@@ -124,12 +124,11 @@ unit = PhysUnit(L₀)
 @testset "PlaneSrc" begin
     src = PlaneSrc(Ẑ, 0, X̂)  # x-polarized source in z-normal plane
 
-    Npml = ([0,0,0], [0,0,0])
     isbloch = [true, true, true]
 
     # Coarse grid
     lprim = (collect(-10:10), collect(-10:10), collect(-10:10))
-    g3 = Grid(unit, lprim, Npml, isbloch)
+    g3 = Grid(unit, lprim, isbloch)
     ∆a = 1.0^2  # area element
 
     j3d = create_field3d(g3.N)
@@ -141,7 +140,7 @@ unit = PhysUnit(L₀)
 
     # Fine grid
     lprim = (collect(-10:0.5:10), collect(-10:0.5:10), collect(-10:0.5:10))
-    g3_fine = Grid(unit, lprim, Npml, isbloch)
+    g3_fine = Grid(unit, lprim, isbloch)
 
     j3d_fine = create_field3d(g3_fine.N)
     add!(j3d_fine, PRIM, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
@@ -155,7 +154,7 @@ unit = PhysUnit(L₀)
     z_avg = mean(zprim)
     zprim .-= z_avg  # z = 0 is within the z-range
     lprim = (collect(-10:10), collect(-10:10), zprim)
-    g3_nu = Grid(unit, lprim, Npml, isbloch)
+    g3_nu = Grid(unit, lprim, isbloch)
 
     ∆yprim = g3_nu.∆l[nPR][nY]
     ∆zprim = g3_nu.∆l[nPR][nZ]

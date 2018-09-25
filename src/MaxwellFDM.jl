@@ -50,6 +50,7 @@ const AbsMatNumber = AbsMat{<:Number}
 const AbsArrComplex = AbsArr{CFloat}
 const AbsArrNumber{N} = AbsArr{<:Number,N}
 
+const SVec1 = SVector{1}
 const SVec2 = SVector{2}
 const SVec3 = SVector{3}
 

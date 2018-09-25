@@ -77,69 +77,6 @@
 # unnecesasrily convoluted, so I will not support it for now.  (Consider supporting it by
 # passing something like an "ismixed" flag.)
 
-
-# About PML setup
-#
-# - Let's define the computational domain as the region where we perform computation, and
-# the physical domain where actual physical phenomena are simulated.  The physical domain is
-# the computational domain outside PML, because PML is an artificial region that is
-# introduced to absorb physical waves.
-#
-# Currently, we specify the size of the computational domain first, and then specify PML
-# such that it "eats in" the computational domain to leave the physical domain.  This means
-# you always need to define the computational domain larger than the physical domain by the
-# PML thickness.
-#
-# This seems inconvenient.  It may seem more convenient to specify the physical domain first,
-# specify the PML thickness, and then construct the computational domain by attaching PML
-# to the physical domain.  That way, we would be able to turn on and off the absorbing
-# boundary without changing the size of the physical domain of interest.  Also, increasing
-# the PML thickness would be done simply by increasing the PML thickness, wherease with the
-# current method it requires increasing the computational domain as well to keep the size of
-# the physical domain the same.
-#
-# However, there is a reason for the current method.  One of the most popular use cases of
-# PML is the simulation of an infinite waveguide, where we need to define the waveguide
-# inside PML.  Therefore, we cannot "hide" PML from the users: we have to let the users put
-# objects inside PML.  In that case, it is better to let the users specify the size of the
-# region including PML, because that way the users would know how deep they should place the
-# waveguide.
-#
-# You way think that you hide PML from the users by automatically constructing the material
-# parameters inside PML, by taking the material parameters on the boundary of the physical
-# domain and extending it homogeneously into PML.  However, such a homogeneous extension is
-# not always what we want.  For example, to construct PML for a phothonic crystal waveguide,
-# we have to specify the photonic crystal structure inside PML.  In that case the material
-# composition inside PML is not simply the homogeneous extension of their values at the PML
-# boundary
-#
-# - Another question that could be raised about the current method is the way to set the
-# PML thickness.  Currently we specify the number of grid cells inside PML and multiply the
-# cell size ∆l to figure out the PML thickness, rather than specifying the PML thickness and
-# divide it by ∆l to figure out the number of grid cells inside PML.
-#
-# The latter look like a better method, because the reflectance of PML is a function of the
-# PML loss parameter and thickness.  Therefore, for a given PML loss parameter, the
-# reflectance does not change with the spatial resolution of the grid if the PML thickness
-# is maintained.  Conversely, if we fix the number of grid cells inside PML, the PML
-# thickness changes with the spacial resolution, so the PML loss parameter needs to change
-# as well to achieve the same PML reflectance.
-#
-# However, in my experience, when using iterative methods to solve Maxwell's equations, the
-# number of grid cells inside PML affects the convergence of iterative methods significantly,
-# regardless of the spatial resolution.  For example, when I doubled the spatial resolution
-# while keeping the PML thickness and therefore doubled the number of grid cells inside PML,
-# the iterative methods no longer converged.  On the other hand, even if I doubled the
-# spatial resolution, if I keep the number of grid cells inside PML to halve the PML
-# thickness, I still got convergence.
-#
-# Of course, I have to use a stronger PML loss parameter to achieve the same reflectance
-# with a thinner PML, and if we use a too strong loss parameter, the discretized PML model
-# deviates from the continuous model and we get stronger reflectance than the target value.
-# Still, I found that the reflectance remains pretty low, and the convergence of iterative
-# methods was more important.  So, I decided to specify the number of grid cells inside PML
-# rather than the PML thickness.  This decision may change in the future.
-
 export Grid  # types
 export isproper_blochphase, lghost  # functions
 
@@ -168,48 +105,37 @@ struct Grid{K}
     L::SVector{K,Float}  # L[k] = length of grid (domain) in k-direction
     l::Tuple2{NTuple{K,VecFloat}}  # l[PRIM][k] = primal vertex locations in k-direction
     ∆l::Tuple2{NTuple{K,VecFloat}}  # ∆l[PRIM][k] = (∆l at primal vertices in w) == diff(l[DUAL][k] including ghost point)
-    Npml::Tuple2{SVector{K,Int}}  # Npml[NEG][k] = number of cells inside PML at (-) end in k-direction
-    Lpml::Tuple2{SVector{K,Float}}  # Lpml[NEG][k] = thickness of PML at (-) end in k-direction
-    lpml::Tuple2{SVector{K,Float}}  # lpml[NEG][k] = location of PML interface at (-) end in k-direction
     isbloch::SVector{K,Bool}  # isbloch[k]: true if boundary condition in k-direction is Bloch
     σ::Tuple2{NTuple{K,VecBool}}  # false for non-ghost points exactly on symmetric boundary
     bounds::Tuple2{SVector{K,Float}}  # bounds[NEG][k] = boundary of domain at (-) end in k-direction
-    center::SVector{K,Float}  # center of grid without PML
     ghosted::Ghosted{K}  # data related to ghost points
 end
 
 # Constructor for 1D grid: arguments don't have to be tuples.
-Grid(axis::Axis, unit::PhysUnit, lprim::AbsVecReal, Npml::Tuple2{<:Integer}, isbloch::Bool) =
-    Grid(SVector(axis), unit, (lprim,), ([Npml[nN]], [Npml[nP]]), SVector(isbloch))
+Grid(axis::Axis, unit::PhysUnit, lprim::AbsVecReal, isbloch::Bool) = Grid(SVector(axis), unit, (lprim,), SVector(isbloch))
 
 # Constructor for 3D grid: axis is always XYZ.
-Grid(unit::PhysUnit, lprim::Tuple3{AbsVecReal}, Npml::Tuple2{AbsVecInteger}, isbloch::AbsVec{Bool}) =
-    Grid(XYZ, unit, lprim, Npml, isbloch)
+Grid(unit::PhysUnit, lprim::Tuple3{AbsVecReal}, isbloch::AbsVec{Bool}) = Grid(XYZ, unit, lprim, isbloch)
 
 # Constructor taking non-static vectors.
-Grid(axis::AbsVec{Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal},
-     Npml::Tuple2{AbsVecInteger}, isbloch::AbsVec{Bool}) where {K} =
-     Grid(SVector{K}(axis), unit, lprim, SVector{K}.(Npml), SVector{K}(isbloch))
+Grid(axis::AbsVec{Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}, isbloch::AbsVec{Bool}) where {K} =
+     Grid(SVector{K}(axis), unit, lprim, SVector{K}(isbloch))
 
 # Constructor calling the inner constructor.
-function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal},
-              Npml::Tuple2{SVector{K,<:Integer}}, isbloch::SVector{K,Bool}) where {K}
+function Grid(axis::SVector{K,Axis},
+              unit::PhysUnit,
+              lprim::NTuple{K,AbsVecReal},  # primal grid plane locations, including both domain boundaries
+              isbloch::SVector{K,Bool}) where {K}
     all(issorted.(lprim)) || throw(ArgumentError("all entry vectors of lprim = $(lprim) must be sorted."))
 
     # For array inputs, create separate copies.
     lprim = deepcopy(lprim)
-    Npml = deepcopy(Npml)
 
     ldual = movingavg.(lprim)  # NTuple{K,VecFloat}
 
     lbound = SVector(lprim)  # SVector{K,Vector{<:Real}}; to make broadcast and map on lprim to produce SVector
     bounds = (getindex.(lbound,1), getindex.(lbound,lastindex.(lbound)))  # Tuple2{SVector{K,<:Real}}
     L = bounds[nP] - bounds[nN]  # SVector{K,<:Real}
-
-    lpml = (map((v,n)->v[1+n], lbound, Npml[nN]), map((v,n)->v[end-n], lbound, Npml[nP]))  # Tuple2{SVector{K,<:Real}}
-    Lpml = (lpml[nN]-bounds[nN], bounds[nP]-lpml[nP])  # Tuple2{SVector{K,<:Real}}
-
-    center = (lpml[nN] + lpml[nP]) / 2  # SVector{K,<:Real}
 
     # Prepare lprim and ldual to calculate ∆lprim and ∆ldual.
     # Note that ∆lprim is not ∆'s or lprim, but ∆'s defined at lprim locations.
@@ -278,7 +204,7 @@ function Grid(axis::SVector{K,Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}
     @assert length.(lprim) == length.(ldual) == N.data  # lprim, ldual, ∆lprim, ∆ldual have the same length
     l = (lprim, ldual)
 
-    return Grid{K}(axis, unit, N, L, l, ∆l, Npml, Lpml, lpml, isbloch, σ, bounds, center, ghosted)
+    return Grid{K}(axis, unit, N, L, l, ∆l, isbloch, σ, bounds, ghosted)
 end
 
 # To do

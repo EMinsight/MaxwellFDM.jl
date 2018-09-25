@@ -278,10 +278,9 @@ lprim = (xprim, yprim, zprim)
 
 L₀ = 1e-9
 unit = PhysUnit(L₀)
-Npml = ([10,10,10], [10,10,10])
 isbloch = [true, true, true]
 
-g3 = Grid(unit, lprim, Npml, isbloch)
+g3 = Grid(unit, lprim, isbloch)
 
 # Create materials.
 εvac = 1.0

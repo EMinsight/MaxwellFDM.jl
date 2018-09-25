@@ -25,11 +25,10 @@ end  # @testset "sort8!"
     # Create a grid.
     L₀ = 1e-9
     unit = PhysUnit(L₀)
-    Npml = ([0,0,0], [0,0,0])
     isbloch = [true, true, true]
     # isbloch = [true, false, false]
     lprim = ([-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5])
-    g3 = Grid(unit, lprim, Npml, isbloch)
+    g3 = Grid(unit, lprim, isbloch)
     N = g3.N
 
     # Create materials.
@@ -133,9 +132,8 @@ end  # @testset "smoothing, box with odd number of voxels"
     L₀ = 1e-9
     unit = PhysUnit(L₀)
     lprim = ([-2,-1,0,1,2], [-2,-1,0,1,2], [-2,-1,0,1,2])
-    Npml = ([0,0,0], [0,0,0])
     isbloch = [true, true, true]
-    g3 = Grid(unit, lprim, Npml, isbloch)
+    g3 = Grid(unit, lprim, isbloch)
     N = g3.N
 
     # Create materials.
@@ -356,9 +354,8 @@ end  # @testset "smoothing, box with even number of voxels"
 #     L₀ = 1e-9
 #     unit = PhysUnit(L₀)
 #     lprim = ([-0.5,0.5], [-2,-1,0,1,2], [-0.5,0.5])
-#     Npml = ([0,0,0], [0,0,0])
 #     isbloch = [true, true, true]
-#     g3 = Grid(unit, lprim, Npml, isbloch)
+#     g3 = Grid(unit, lprim, isbloch)
 #     N = g3.N
 #
 #     # Create materials.
