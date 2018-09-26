@@ -86,5 +86,6 @@ include("smoothing.jl")
 include("matrix/matrix.jl")
 include("pml.jl")
 # include("equation.jl")
+include("maxwell.jl")
 
 end # module MaxwellFDM
