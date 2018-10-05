@@ -1,7 +1,7 @@
 export Maxwell
-export get_unit, get_osc, get_grid, set_domain!, add_obj!, get_param3d, get_stretched_∆l,
-    get_εmatrix, get_curle, get_curlm, get_curls, get_Amatrix, add_srce!, add_srcm!,
-    get_bvector
+export set_unitlen!, set_bounds!, set_∆l!, set_isbloch!, set_Npml!, set_wvlen!, set_freq!,
+    get_unit, get_osc, get_grid, set_bgmat!, add_obj!, get_param3d, get_stretched_∆l,
+    get_εmatrix, get_curle, get_curlm, get_curls, get_Amatrix, add_srce!, add_srcm!, get_bvector
 
 # Add quantities, and construct various systems at the end at once?
 # Create a domain from the domain size, and add it to the object list.
@@ -11,11 +11,11 @@ mutable struct Maxwell
     unitlen::Real
 
     # Oscillation
-    λ::Real
+    λ₀::Real
 
     # Grid
     g::Grid{3}
-    boundary::Tuple2{AbsVecReal}  # ([xmin,ymin,zmin], [xmax,ymax,zmax])
+    bounds::Tuple2{AbsVecReal}  # ([xmin,ymin,zmin], [xmax,ymax,zmax])
     ∆l::AbsVecReal  # [∆x,∆y,∆z]
     isbloch::AbsVec{Bool}  # [::Bool,::Bool,::Bool]
     e⁻ⁱᵏᴸ::AbsVecComplex
@@ -58,14 +58,24 @@ mutable struct Maxwell
     end
 end
 
+#= Setters for basic quantities =#
+set_unitlen!(m::Maxwell, unitlen::Real) = (m.unitlen = unitlen)
+set_bounds!(m::Maxwell, bounds::Tuple2{AbsVecReal}) = (m.bounds = bounds)
+set_∆l!(m::Maxwell, ∆l::AbsVecReal) = (m.∆l = ∆l)
+set_isbloch!(m::Maxwell, isbloch::AbsVecBool) = (m.isbloch = isbloch)
+set_Npml!(m::Maxwell, Npml::Tuple2{AbsVecInteger}) = (m.Npml = Npml)
+set_wvlen!(m::Maxwell, λ₀::Real) = (m.λ₀ = λ₀)
+set_freq!(m::Maxwell, ω₀::Real) = (m.λ₀ = 2π/ω₀)
+
+#= Getters for basic constructed objects =#
 get_unit(m::Maxwell) = PhysUnit(m.unitlen)
-get_osc(m::Maxwell) = Oscillation(m.λ, get_unit(m))
+get_osc(m::Maxwell) = Oscillation(m.λ₀, get_unit(m))
 
 function get_grid(m::Maxwell)
     if ~isdefined(m, :g)
-        L = m.boundary[nP] - m.boundary[nN]
+        L = m.bounds[nP] - m.bounds[nN]
         N = round.(Int, L ./ m.∆l)
-        lprim = map((lmin,lmax,n)->collect(range(lmin, stop=lmax, length=n+1)), m.boundary[nN], m.boundary[nP], N)
+        lprim = map((lmin,lmax,n)->collect(range(lmin, stop=lmax, length=n+1)), m.bounds[nN], m.bounds[nP], N)
 
         m.g = Grid(get_unit(m), (lprim...,), m.isbloch)
     end
@@ -73,7 +83,9 @@ function get_grid(m::Maxwell)
     return m.g
 end
 
-set_domain!(m::Maxwell, matname::String, ε::MatParam) = add_obj!(m, matname, ε, Box(get_grid(m).bounds))
+#= Setters for objects =#
+# Set background materials.
+set_bgmat!(m::Maxwell, matname::String, ε::MatParam) = add_obj!(m, matname, ε, Box(get_grid(m).bounds))
 
 # Below, I write two methods for add_obj: one for a tuple and the other for a vector.
 # Because we can easily create a tuple from a vector and vice versa, we can implement only
@@ -91,6 +103,7 @@ function add_obj!(m::Maxwell, matname::String, ε::MatParam, shapes::AbsVec{<:Sh
     return nothing
 end
 
+#= Getters for operators =#
 function get_param3d(m::Maxwell)
     if ~isdefined(m, :param3d)
         g = get_grid(m)
@@ -178,6 +191,7 @@ function get_Amatrix(m::Maxwell)
     return m.A
 end
 
+#= Setters and getters for sources =#
 function add_srce!(m::Maxwell, src::Source)
     if ~isdefined(m, :je3d)
         g = get_grid(m)
