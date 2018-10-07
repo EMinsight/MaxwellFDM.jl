@@ -1,7 +1,8 @@
 export Maxwell
 export set_unitlen!, set_bounds!, set_∆l!, set_isbloch!, set_Npml!, set_wvlen!, set_freq!,
-    get_unit, get_osc, get_grid, set_bgmat!, add_obj!, get_param3d, get_stretched_∆l,
-    get_εmatrix, get_curle, get_curlm, get_curls, get_Amatrix, add_srce!, add_srcm!, get_bvector
+    get_unit, get_osc, get_grid, set_background!, add_obj!, get_param3d, get_stretched_∆l,
+    get_εmatrix, get_curle, get_curlm, get_curls, get_dblcurl, get_Amatrix, add_srce!,
+    add_srcm!, get_bvector
 
 # Add quantities, and construct various systems at the end at once?
 # Create a domain from the domain size, and add it to the object list.
@@ -40,6 +41,7 @@ mutable struct Maxwell
     Mε::SparseMatrixCSC{CFloat,Int}
     Ce::SparseMatrixCSC{CFloat,Int}
     Cm::SparseMatrixCSC{CFloat,Int}
+    CC::SparseMatrixCSC{CFloat,Int}
     A::SparseMatrixCSC{CFloat,Int}
     b::Vector{CFloat}
 
@@ -85,7 +87,7 @@ end
 
 #= Setters for objects =#
 # Set background materials.
-set_bgmat!(m::Maxwell, matname::String, ε::MatParam) = add_obj!(m, matname, ε, Box(get_grid(m).bounds))
+set_background!(m::Maxwell, matname::String, ε::MatParam) = add_obj!(m, matname, ε, Box(get_grid(m).bounds))
 
 # Below, I write two methods for add_obj: one for a tuple and the other for a vector.
 # Because we can easily create a tuple from a vector and vice versa, we can implement only
@@ -176,16 +178,24 @@ end
 
 get_curls(m::Maxwell) = (get_curle(m), get_curlm(m))
 
-function get_Amatrix(m::Maxwell)
-    if ~isdefined(m, :A)
-        Mε = get_εmatrix(m)
+function get_dblcurl(m::Maxwell)
+    if ~isdefined(m, :CC)
         Tμ⁻¹ = I
-
         Ce, Cm = get_curls(m)
 
+        m.CC = Cm * Tμ⁻¹ * Ce
+    end
+
+    return m.CC
+end
+
+function get_Amatrix(m::Maxwell)
+    if ~isdefined(m, :A)
+        CC = get_dblcurl(m)
+        Mε = get_εmatrix(m)
         ω = in_ω₀(get_osc(m))
 
-        m.A =  Cm * Tμ⁻¹ * Ce - ω^2 * Mε;
+        m.A = CC - ω^2 * Mε;
     end
 
     return m.A
