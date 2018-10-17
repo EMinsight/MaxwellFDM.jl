@@ -61,13 +61,13 @@ mutable struct Maxwell
 end
 
 #= Setters for basic quantities =#
-set_unitlen!(m::Maxwell, unitlen::Real) = (m.unitlen = unitlen)
-set_bounds!(m::Maxwell, bounds::Tuple2{AbsVecReal}) = (m.bounds = bounds)
-set_∆l!(m::Maxwell, ∆l::AbsVecReal) = (m.∆l = ∆l)
-set_isbloch!(m::Maxwell, isbloch::AbsVecBool) = (m.isbloch = isbloch)
-set_Npml!(m::Maxwell, Npml::Tuple2{AbsVecInteger}) = (m.Npml = Npml)
-set_wvlen!(m::Maxwell, λ₀::Real) = (m.λ₀ = λ₀)
-set_freq!(m::Maxwell, ω₀::Real) = (m.λ₀ = 2π/ω₀)
+set_unitlen!(m::Maxwell, unitlen::Real) = (m.unitlen = unitlen; return nothing)
+set_bounds!(m::Maxwell, bounds::Tuple2{AbsVecReal}) = (m.bounds = bounds; return nothing)
+set_∆l!(m::Maxwell, ∆l::AbsVecReal) = (m.∆l = ∆l; return nothing)
+set_isbloch!(m::Maxwell, isbloch::AbsVecBool) = (m.isbloch = isbloch; return nothing)
+set_Npml!(m::Maxwell, Npml::Tuple2{AbsVecInteger}) = (m.Npml = Npml; return nothing)
+set_wvlen!(m::Maxwell, λ₀::Number) = (m.λ₀ = λ₀; return nothing)
+set_freq!(m::Maxwell, ω₀::Number) = (m.λ₀ = 2π/ω₀; return nothing)
 
 #= Getters for basic constructed objects =#
 get_unit(m::Maxwell) = PhysUnit(m.unitlen)
@@ -180,8 +180,23 @@ get_curls(m::Maxwell) = (get_curle(m), get_curlm(m))
 
 function get_dblcurl(m::Maxwell)
     if ~isdefined(m, :CC)
-        Tμ⁻¹ = I
         Ce, Cm = get_curls(m)
+
+        # Cm and Ce are sparse, but if they have explicit zeros, Cm * I drops those zeros
+        # from Cm, leading to the symbolic sparsity pattern that is not the transpose of the
+        # symbolic sparsity pattern of Ce (which still has explicit zeros).  This makes the
+        # symbolic sparsity pattern of CC nonsymmetric, for which UMFPACK uses a slower
+        # LU factorization algorithm.
+        #
+        # One way to avoid this problem is to use a sparse diagonal matrix instead of I for
+        # Tμ⁻¹.  Another way is to drop the explicit zeros in Ce and Cm such that there are
+        # no explicit zeros to drop in Ce and Cm.  I chose the latter, because it leads to a
+        # compact CC that is faster to factorize.
+
+        Tμ⁻¹ = I
+        # g = get_grid(m)
+        # M = 3*prod(g.N)
+        # Tμ⁻¹ = sparse(Diagonal(ones(M)))
 
         m.CC = Cm * Tμ⁻¹ * Ce
     end

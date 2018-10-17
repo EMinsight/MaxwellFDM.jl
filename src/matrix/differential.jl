@@ -86,7 +86,7 @@ function create_curl(isfwd::SVec3Bool,  # isfwd[w] = true|false: create ∂w by 
         end
     end
 
-    return sparse(Itot, Jtot, Vtot, 3M, 3M)
+    return dropzeros!(sparse(Itot, Jtot, Vtot, 3M, 3M))
 end
 
 
@@ -106,7 +106,7 @@ create_∂(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ∆w::AbsVecNumber,  # spatial discretization; vector of length N[nw]
          isbloch::Bool=true,  # boundary condition in w-direction
          e⁻ⁱᵏᴸ::Number=1.0) =  # Bloch phase factor
-    (K = length(N); M = prod(N); sparse(create_∂info(nw, isfwd, SVector{K,Int}(N), ∆w, isbloch, e⁻ⁱᵏᴸ)..., M, M))
+    (K = length(N); M = prod(N); dropzeros!(sparse(create_∂info(nw, isfwd, SVector{K,Int}(N), ∆w, isbloch, e⁻ⁱᵏᴸ)..., M, M)))
 
 
 # I need to figure out whether the ±1 entries of the backward difference operator is always

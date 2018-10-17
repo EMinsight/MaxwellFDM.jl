@@ -72,7 +72,7 @@ function create_mean(isfwd::SVec3Bool,  # isfwd[w] = true|false for forward|back
         Vtot[indₛ:indₑ] = V
     end
 
-    return sparse(Itot, Jtot, Vtot, 3M, 3M)  # 3M×3M matrix with 2 entries per row (so 6M entries for I, J, V)
+    return dropzeros!(sparse(Itot, Jtot, Vtot, 3M, 3M))  # 3M×3M matrix with 2 entries per row (so 6M entries for I, J, V)
 end
 
 
@@ -100,7 +100,7 @@ create_m(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
          ∆w′::AbsVecNumber,  # line segments to divide by; vector of length N[nw]
          isbloch::Bool=true,  # boundary condition in w-direction
          e⁻ⁱᵏᴸ::Number=1.0) =  # Bloch phase factor
-    (K = length(N); M = prod(N); sparse(create_minfo(nw, isfwd, SVector{K,Int}(N), ∆w, ∆w′, isbloch, e⁻ⁱᵏᴸ)..., M, M))
+    (K = length(N); M = prod(N); dropzeros!(sparse(create_minfo(nw, isfwd, SVector{K,Int}(N), ∆w, ∆w′, isbloch, e⁻ⁱᵏᴸ)..., M, M)))
 
 
 function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
