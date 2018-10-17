@@ -12,7 +12,7 @@ mutable struct Maxwell
     unitlen::Real
 
     # Oscillation
-    λ₀::Real
+    λ₀::Number
 
     # Grid
     g::Grid{3}
