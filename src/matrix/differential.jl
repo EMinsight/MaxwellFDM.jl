@@ -62,10 +62,11 @@ function create_curl(isfwd::SVec3Bool,  # isfwd[w] = true|false: create ∂w by 
     T = promote_type(eltype.(∆l)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
 
-    Itot = VecInt()
-    Jtot = VecInt()
-    Vtot = Vector{T}()
+    Itot = VecInt(undef, 12M)
+    Jtot = VecInt(undef, 12M)
+    Vtot = Vector{T}(undef, 12M)
 
+    indblk = 0  # index of matrix block
     for nv = nXYZ  # Cartesian compotent of output vector
         istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
         parity = 1
@@ -78,9 +79,13 @@ function create_curl(isfwd::SVec3Bool,  # isfwd[w] = true|false: create ∂w by 
             @. J = jstr * J + joff
             V .*= parity
 
-            append!(Itot, I)
-            append!(Jtot, J)
-            append!(Vtot, V)
+            # For some reason, using .= below is slower because it uses 1 allocatiotn.  On the
+            # other hand, using = does not use allocation and therefore faster.
+            indₛ, indₑ = indblk*2M + 1, (indblk+1)*2M
+            Itot[indₛ:indₑ] = I
+            Jtot[indₛ:indₑ] = J
+            Vtot[indₛ:indₑ] = V
+            indblk += 1
 
             parity = -1
         end
