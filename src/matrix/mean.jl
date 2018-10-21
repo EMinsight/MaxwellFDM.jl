@@ -66,7 +66,9 @@ function create_mean(isfwd::SVec3Bool,  # isfwd[w] = true|false for forward|back
         @. I = indstr * I + indoff
         @. J = indstr * J + indoff
 
-        indₛ, indₑ = 2(nw-1)*M+1, 2nw * M
+        # For some reason, using .= below is slower because it uses 1 allocatiotn.  On the
+        # other hand, using = does not use allocation and therefore faster.
+        indₛ, indₑ = (nw-1)*2M + 1, nw*2M
         Itot[indₛ:indₑ] = I
         Jtot[indₛ:indₑ] = J
         Vtot[indₛ:indₑ] = V
