@@ -46,7 +46,9 @@ create_curl(isfwd::AbsVecBool,  # isfwd[w] = true|false: create ∂w by forward|
             reorder::Bool=true) =  # true for more tightly banded matrix
     # I should not cast e⁻ⁱᵏᴸ into a complex vector, because then the entire curl matrix
     # becomes a complex matrix.  Sometimes I want to keep it real (e.g., when no PML and
-    # Bloch phase factors are used).
+    # Bloch phase factors are used).  In fact, this is the reason why I accept e⁻ⁱᵏᴸ instead
+    # of constructing it from k and L as exp.(-im .* k .* L), which is always complex even
+    # if k = 0.
     #
     # I should not cast ∆l to a vector of any specific type (e.g., Float, CFloat), either,
     # because sometimes I would want to even create an integral curl operator.

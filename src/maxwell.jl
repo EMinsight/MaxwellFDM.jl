@@ -18,7 +18,8 @@ mutable struct Maxwell
     g::Grid{3}
     bounds::Tuple2{AbsVecReal}  # ([xmin,ymin,zmin], [xmax,ymax,zmax])
     ∆l::AbsVecReal  # [∆x,∆y,∆z]
-    isbloch::AbsVec{Bool}  # [::Bool,::Bool,::Bool]
+    isbloch::AbsVecBool  # [Bool,Bool,Bool]
+    kbloch::AbsVecReal  # [Real,Real,Real]
     e⁻ⁱᵏᴸ::AbsVecComplex
 
     # PML
@@ -50,7 +51,7 @@ mutable struct Maxwell
 
         # Initialize some fields with default values.
         m.isbloch = @SVector ones(Bool, 3)
-        m.e⁻ⁱᵏᴸ = @SVector ones(CFloat, 3)
+        m.kbloch = @SVector zeros(3)
         m.∆l = @SVector ones(3)
 
         m.ovec = Object3[]
@@ -65,6 +66,7 @@ set_unitlen!(m::Maxwell, unitlen::Real) = (m.unitlen = unitlen; return nothing)
 set_bounds!(m::Maxwell, bounds::Tuple2{AbsVecReal}) = (m.bounds = bounds; return nothing)
 set_∆l!(m::Maxwell, ∆l::AbsVecReal) = (m.∆l = ∆l; return nothing)
 set_isbloch!(m::Maxwell, isbloch::AbsVecBool) = (m.isbloch = isbloch; return nothing)
+set_kbloch(m::Maxwell, kbloch::AbsVecReal) = (m.kbloch = kbloch; return nothing)
 set_Npml!(m::Maxwell, Npml::Tuple2{AbsVecInteger}) = (m.Npml = Npml; return nothing)
 set_wvlen!(m::Maxwell, λ₀::Number) = (m.λ₀ = λ₀; return nothing)
 set_freq!(m::Maxwell, ω₀::Number) = (m.λ₀ = 2π/ω₀; return nothing)
@@ -83,6 +85,22 @@ function get_grid(m::Maxwell)
     end
 
     return m.g
+end
+
+function get_e⁻ⁱᵏᴸ(m::Maxwell)
+    if ~isdefined(m, :e⁻ⁱᵏᴸ)
+        if iszero(m.kbloch)
+            m.e⁻ⁱᵏᴸ = @SVector(ones(3))
+        else
+            g = get_grid(m)
+            L = g.L
+            kbloch = SVec3(m.kbloch)
+
+            m.e⁻ⁱᵏᴸ = exp.(-im .* kbloch .* L)
+        end
+    end
+
+    return m.e⁻ⁱᵏᴸ
 end
 
 #= Setters for objects =#
@@ -148,7 +166,9 @@ function get_εmatrix(m::Maxwell)
         g = get_grid(m)
         s∆l = get_stretched_∆l(m)
         param3d = get_param3d(m)
-        m.Mε = param3d2mat(param3d[nPR], [PRIM,PRIM,PRIM], g.N, s∆l[nDL], s∆l[nPR], g.isbloch, m.e⁻ⁱᵏᴸ, reorder=true)
+        e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
+
+        m.Mε = param3d2mat(param3d[nPR], [PRIM,PRIM,PRIM], g.N, s∆l[nDL], s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
     end
 
     return m.Mε
@@ -158,8 +178,9 @@ function get_curle(m::Maxwell)
     if ~isdefined(m, :Ce)
         g = get_grid(m)
         s∆l = get_stretched_∆l(m)
+        e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Ce = create_curl([true,true,true], g.N, s∆l[nDL], g.isbloch, m.e⁻ⁱᵏᴸ, reorder=true)
+        m.Ce = create_curl([true,true,true], g.N, s∆l[nDL], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
     end
 
     return m.Ce
@@ -169,8 +190,9 @@ function get_curlm(m::Maxwell)
     if ~isdefined(m, :Cm)
         g = get_grid(m)
         s∆l = get_stretched_∆l(m)
+        e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Cm = create_curl([false,false,false], g.N, s∆l[nPR], g.isbloch, m.e⁻ⁱᵏᴸ, reorder=true)
+        m.Cm = create_curl([false,false,false], g.N, s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
     end
 
     return m.Cm
