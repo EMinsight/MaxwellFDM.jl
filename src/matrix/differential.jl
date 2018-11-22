@@ -41,7 +41,7 @@ export create_∂, create_curl
 create_curl(isfwd::AbsVecBool,  # isfwd[w] = true|false: create ∂w by forward|backward difference
             N::AbsVecInteger,  # size of grid
             ∆l::Tuple3{AbsVecNumber}=ones.((N...,)),  # ∆l[w]: distances between grid planes in x-direction
-            isbloch::AbsVec{Bool}=fill(true,length(N)),  # boundary conditions in x, y, z
+            isbloch::AbsVecBool=fill(true,length(N)),  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
     # I should not cast e⁻ⁱᵏᴸ into a complex vector, because then the entire curl matrix

@@ -115,10 +115,10 @@ end
 Grid(axis::Axis, unit::PhysUnit, lprim::AbsVecReal, isbloch::Bool) = Grid(SVector(axis), unit, (lprim,), SVector(isbloch))
 
 # Constructor for 3D grid: axis is always XYZ.
-Grid(unit::PhysUnit, lprim::Tuple3{AbsVecReal}, isbloch::AbsVec{Bool}) = Grid(XYZ, unit, lprim, isbloch)
+Grid(unit::PhysUnit, lprim::Tuple3{AbsVecReal}, isbloch::AbsVecBool) = Grid(XYZ, unit, lprim, isbloch)
 
 # Constructor taking non-static vectors.
-Grid(axis::AbsVec{Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}, isbloch::AbsVec{Bool}) where {K} =
+Grid(axis::AbsVec{Axis}, unit::PhysUnit, lprim::NTuple{K,AbsVecReal}, isbloch::AbsVecBool) where {K} =
      Grid(SVector{K}(axis), unit, lprim, SVector{K}(isbloch))
 
 # Constructor calling the inner constructor.

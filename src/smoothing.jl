@@ -70,7 +70,7 @@ function smooth_param!(param3d::Tuple2{AbsArrComplex{5}},  # parameter array to 
                        oind3d::Tuple24{AbsArr{ObjInd,3}},  # object index array (does not change)
                        l::Tuple23{AbsVecReal},  # location of field components
                        l′::Tuple23{AbsVecReal},  # location of voxel corners without transformation by boundary conditions
-                       σ::Tuple23{AbsVec{Bool}},  # false if on symmetry boundary
+                       σ::Tuple23{AbsVecBool},  # false if on symmetry boundary
                        ∆τ′::Tuple23{AbsVecReal})  # amount of shift by Bloch boundary conditions
     for ngt = nPD
         param3d_gt = param3d[ngt]
@@ -114,7 +114,7 @@ function smooth_param_cmp!(gt::GridType,  # primal field (U) or dual field (V)
                            oind3d_cmp′::AbsArr{ObjInd,3},  # object index array (does not change)
                            lcmp::Tuple3{AbsVecReal},  # location of field components
                            lcmp′::Tuple3{AbsVecReal},  # location of voxel corners without transformation by boundary conditions
-                           σcmp::Tuple3{AbsVec{Bool}},  # false if on symmetry boundary
+                           σcmp::Tuple3{AbsVecBool},  # false if on symmetry boundary
                            ∆τcmp′::Tuple3{AbsVecReal}  # amount of shift by Bloch boundary conditions
                           ) where {O<:Object3}
     Nx, Ny, Nz = length.(lcmp)

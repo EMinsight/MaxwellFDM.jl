@@ -6,7 +6,7 @@ param3d2mat(param3d::AbsArrComplex{5},
             N::AbsVecInteger,  # size of grid
             ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
             ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-            isbloch::AbsVec{Bool},  # boundary conditions in x, y, z
+            isbloch::AbsVecBool,  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
     (K = length(N); param3d2mat(param3d, SVector{K}(gt), SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
