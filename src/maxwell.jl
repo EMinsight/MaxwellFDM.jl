@@ -1,8 +1,8 @@
 export Maxwell
-export set_unitlen!, set_bounds!, set_∆l!, set_isbloch!, set_Npml!, set_wvlen!, set_freq!,
-    get_unit, get_osc, get_grid, set_background!, add_obj!, get_param3d, get_stretched_∆l,
-    get_εmatrix, get_curle, get_curlm, get_curls, get_dblcurl, get_Amatrix, add_srce!,
-    add_srcm!, get_bvector
+export set_unitlen!, set_bounds!, set_∆l!, set_isbloch!, set_kbloch!, set_Npml!, set_wvlen!,
+    set_freq!, get_unit, get_osc, get_grid, set_background!, add_obj!, get_param3d,
+    get_stretched_∆l, get_εmatrix, get_curle, get_curlm, get_curls, get_dblcurl, get_Amatrix,
+    add_srce!, add_srcm!, get_bvector
 
 # Add quantities, and construct various systems at the end at once?
 # Create a domain from the domain size, and add it to the object list.
@@ -66,7 +66,7 @@ set_unitlen!(m::Maxwell, unitlen::Real) = (m.unitlen = unitlen; return nothing)
 set_bounds!(m::Maxwell, bounds::Tuple2{AbsVecReal}) = (m.bounds = bounds; return nothing)
 set_∆l!(m::Maxwell, ∆l::AbsVecReal) = (m.∆l = ∆l; return nothing)
 set_isbloch!(m::Maxwell, isbloch::AbsVecBool) = (m.isbloch = isbloch; return nothing)
-set_kbloch(m::Maxwell, kbloch::AbsVecReal) = (m.kbloch = kbloch; return nothing)
+set_kbloch!(m::Maxwell, kbloch::AbsVecReal) = (m.kbloch = kbloch; return nothing)
 set_Npml!(m::Maxwell, Npml::Tuple2{AbsVecInteger}) = (m.Npml = Npml; return nothing)
 set_wvlen!(m::Maxwell, λ₀::Number) = (m.λ₀ = λ₀; return nothing)
 set_freq!(m::Maxwell, ω₀::Number) = (m.λ₀ = 2π/ω₀; return nothing)
