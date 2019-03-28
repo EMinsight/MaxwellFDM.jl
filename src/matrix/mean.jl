@@ -14,26 +14,47 @@ export create_m, create_mean
 #
 # See the comments in differential.jl as well.
 
-# The averaging scheme in SALT will be mostly used with Bloch, so the implementation of
-# boundary condition is actually not that important.
+# The averaging scheme in SALT will be mostly used with the Bloch boundary condition, so the
+# implementation of the impact of boundary conditions in the averaging scheme is actually
+# not that important, because field averaging at the boundaries is trivial for the Bloch
+# boundary condition.
 
-# The symmetry of the averaged material parameters is guaranteed even though the forward
-# and backward averaging operators are not symmetric when the symmetry boundary condition
-# is used: one has element with the factor of 2 multiplied while the other with the factor
-# of zero.  Still, the symmetry boundary enforces a special structure on the subpixel
-# smoothed material parameter tensor on the symmetry boundary.  This tensor of a special
-# structure has zero entries where the nonsymmetry between the forward and backward
-# averaging matters and eventually makes the effect of this nonsymmetry does not propagate
-# up to the symmetry of the final operator.  See my notes entitled [Beginning of the part
-# added on Aug/14/2018] in RN - Subpixel Smoothing.nb.
+# The forward and (-1) × backward averaging operators are not the transpose of each other
+# when the symmetry boundary condition is used: one has element with the factor of 2
+# multiplied while the other with the factor of zero.  Still, the symmetry boundary enforces
+# a special structure on the subpixel smoothed material parameter tensor on the symmetry
+# boundary.  This tensor of a special structure has zero entries where the non-transpose
+# relationship between the forward and backward averaging matters, and eventually makes the
+# effect of this non-transpose relationship does not propagate up to the symmetry of the
+# final operator (i.e., the final operator is still symmetric even though the forward and
+# (-1) × backward averaging operators are not the transpose of each other). See my notes
+# entitled [Beginning of the part added on Aug/14/2018] in RN - Subpixel Smoothing.nb.
+
+# The role of the `kdiag` argument
+# This argument is used to interpolate Cartesian components of a vector field at locations
+# where the components are not defined, e.g., to interpolate Ex at Ez-locations.  For that,
+# the first interpolation needs to be applied to these Cartesian components at the grid cell
+# corners (kdiag = 0).  This will leave Ex at Ex-indices in the output column vector.  (It
+# is easier to consider the averaging operators in the block-matrix form (i.e., reorder=false).)
+# Then, the second interpolation needs to be applied to the corner Ex at the Ez-locations.
+# This requires not only averaging these corner Ex along the z-direction, but also putting
+# the Ex-components at the Ez-indices.  Similarly, this second interpolation needs to put
+# Ey-components at the Ex-indices, and Ez-components at the Ey-indices.  So, the second
+# interpolation matrix should look like
+# ⎡   Mx   ⎤
+# ⎢      My⎥
+# ⎣Mz      ⎦
+# where Mw is the operator averaging along the w-direction.  So, the second interpolation
+# matrix is generated with kdiag = +1.
 
 # Creates the field-averaging operator for all three Cartegian components.
 create_mean(isfwd::AbsVecBool,  # isfwd[w] = true|false for forward|backward averaging
             N::AbsVecInteger,  # size of grid
             isbloch::AbsVecBool=fill(true,length(N)),  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
+            kdiag::Integer=0,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
             reorder::Bool=true) =  # true for more tightly banded matrix
-    create_mean(isfwd, N, ones.(N.data), ones.(N.data), isbloch, e⁻ⁱᵏᴸ, reorder=reorder)
+    create_mean(isfwd, N, ones.(N.data), ones.(N.data), isbloch, e⁻ⁱᵏᴸ, kdiag=kdiag, reorder=reorder)
 
 create_mean(isfwd::AbsVecBool,  # isfwd[w] = true|false for forward|backward averaging
             N::AbsVecInteger,  # size of grid
@@ -41,15 +62,17 @@ create_mean(isfwd::AbsVecBool,  # isfwd[w] = true|false for forward|backward ave
             ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
             isbloch::AbsVecBool=fill(true,length(N)),  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
+            kdiag::Integer=0,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
             reorder::Bool=true) =  # true for more tightly banded matrix
-    (K = length(N); create_mean(SVector{K}(isfwd), SVector{K,Int}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
+    (K = length(N); create_mean(SVector{K}(isfwd), SVector{K,Int}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), kdiag=kdiag, reorder=reorder))
 
 function create_mean(isfwd::SVec3Bool,  # isfwd[w] = true|false for forward|backward averaging
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
                      isbloch::SVec3Bool,  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SVec3Number;  # Bloch phase factor in x, y, z
+                     e⁻ⁱᵏᴸ::SVec3Number=SVec3Float(1,1,1);  # Bloch phase factor in x, y, z
+                     kdiag::Integer=0,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
                      reorder::Bool=true)  # true for more tightly banded matrix
     T = promote_type(eltype.(∆l)..., eltype.(∆l′)..., eltype(e⁻ⁱᵏᴸ))  # eltype(eltype(∆l)) can be Any if ∆l is inhomogeneous
     M = prod(N)
@@ -58,20 +81,24 @@ function create_mean(isfwd::SVec3Bool,  # isfwd[w] = true|false for forward|back
     Jtot = VecInt(undef, 6M)
     Vtot = Vector{T}(undef, 6M)
 
-    for nw = nXYZ  # Cartesian compotent of output vector
-        indstr, indoff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (row stride, row offset)
+    indblk = 0  # index of matrix block
+    for nv = nXYZ  # Cartesian compotent of output vector
+        I, J, V = create_minfo(nv, isfwd[nv], N, ∆l[nv], ∆l′[nv], isbloch[nv], e⁻ⁱᵏᴸ[nv])  # averaging along nv-direction
 
-        I, J, V = create_minfo(nw, isfwd[nw], N, ∆l[nw], ∆l′[nw], isbloch[nw], e⁻ⁱᵏᴸ[nw])
+        istr, ioff = reorder ? (3, nv-3) : (1, M*(nv-1))  # (row stride, row offset)
+        nw = mod1(nv+kdiag, 3)  # Cartesian component of input vector
+        jstr, joff = reorder ? (3, nw-3) : (1, M*(nw-1))  # (column stride, column offset)
 
-        @. I = indstr * I + indoff
-        @. J = indstr * J + indoff
+        @. I = istr * I + ioff
+        @. J = jstr * J + joff
 
         # For some reason, using .= below is slower because it uses 1 allocatiotn.  On the
         # other hand, using = does not use allocation and therefore faster.
-        indₛ, indₑ = (nw-1)*2M + 1, nw*2M
+        indₛ, indₑ = indblk*2M + 1, (indblk+1)*2M  # each I, J, V is length-2M
         Itot[indₛ:indₑ] = I
         Jtot[indₛ:indₑ] = J
         Vtot[indₛ:indₑ] = V
+        indblk += 1
     end
 
     return dropzeros!(sparse(Itot, Jtot, Vtot, 3M, 3M))  # 3M×3M matrix with 2 entries per row (so 6M entries for I, J, V)
