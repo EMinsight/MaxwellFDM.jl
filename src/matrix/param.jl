@@ -1,4 +1,4 @@
-export create_param3dmat, param3d2mat
+export param3d2mat
 
 
 param3d2mat(param3d::AbsArrComplex{5},

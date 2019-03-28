@@ -150,7 +150,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     M = prod(N)
     Nw = N[nw]
     ŵ = SVector(ntuple(identity,Val(K))) .== nw  # unit vector in w-direction; [0,true,0] for w == y
-    ns = isfwd ? 1.0 : -1.0
+    ns = isfwd ? 1.0 : -1.0  # number for sign
 
     # Below, when constructing I, J's, V's, note that a tuple of array subscripts (i,j,k)
     # indicates a row index of the final matrix.  In other words, the entries with the same
@@ -174,7 +174,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     I = reshape(collect(1:M), N.data)
 
     Jₛ = reshape(collect(1:M), N.data)
-    shifts = -ns * ŵ  # [0,-1,0] for w == y and ns = +1
+    shifts = -ns * ŵ  # shift vector for sign; [0,-1,0] for w == y and ns = +1
     Jₛ = circshift(Jₛ, shifts.data)
 
     # Align ∆w in the w-direction.
@@ -225,8 +225,8 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     # For the final sparsity patterns of the operators, see my notes on September 6, 2017 in
     # RN - MaxwellFDM.jl.nb
     #
-    # Below, Vₛ[Base.setindex(axes(Vₛ), iw, nw)...] mimics the implementation of slicedim
-    # and basically means Vₛ[:,iw,:] for w = y.
+    # Below, V[Base.setindex(axes(Vₛ), iw, nw)...] mimics the implementation of slicedim and
+    # basically means V[:,iw,:] for w = y.
     if isbloch
         # Application of the aformentioned procedure:
         #
@@ -293,11 +293,11 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
         # stored in Vₛ.
         #
         # A-3. Modification of the values in V
-        # The negative-end boundary input fields must be zeroed, so for iw = 1 we set
-        # V₀[i,j,k] = 0.
-        # The positive-end boundary input fields must be also zeroed, so for iw = Nw we set
-        # Vₛ[i,j,k] = 0.  Note that the positive-end boundary input fields are ghost fields
-        # that are brought from the negative-end boundary (nonghost) input fields.
+        # The negative-end boundary input fields must be zeroed, so for (i,j,k) with iw = 1
+        # we set V₀[i,j,k] = 0.
+        # The positive-end boundary input fields must be also zeroed, so for (i,j,k) with iw = Nw
+        # we set Vₛ[i,j,k] = 0.  Note that the positive-end boundary input fields are ghost
+        # fields that are brought from the negative-end boundary (nonghost) input fields.
         #
         #
         # B. isfwd = false (backward difference)
@@ -327,13 +327,13 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
         # must be modified.
         #
         # B-3. Modification of the values in V
-        # We simply zero the values, i.e., V₀[i,j,k] = Vₛ[i,j,k] = 0.
+        # We simply zero the values, i.e., V₀[i,j,k] = Vₛ[i,j,k] = 0, for (i,j,k) with iw = 1.
         #
         # The above procedure can be written compactly as follows without separating the
         # isfwd = true and false cases.
 
 
-        # Zero the diagonal entries multiplied with the fields on the boundary.
+        # Zero the diagonal entries (V₀) multiplied with the fields on the boundary.
         #
         # Note that the code below is independent of isfwd.  When the grid is uniorm, the
         # operators for the same boundary condition but for the opposite isfwd must be the
@@ -343,7 +343,7 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
         iw = 1
         V₀[Base.setindex(axes(V₀), iw, nw)...] .= 0
 
-        # Zero the off-diagonal entries multiplied with the fields on the boundary.
+        # Zero the off-diagonal entries (Vₛ) multiplied with the fields on the boundary.
         #
         # Note that the code below is indepent of the boundary condition.  When the grid is
         # uniform, this means that for the same ns, the operators for the symmetry boundary
@@ -357,9 +357,9 @@ function create_∂info(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vert
     v₀ = reshape(V₀, M)
     vₛ = reshape(Vₛ, M)
 
-    Is = [i; i]  # row indices of [diagonal; off-diagonal]
-    Js = [i; jₛ]  # column indices of [diagonal; off-diagonal]
-    Vs = [v₀; vₛ]  # matrix entries of [diagonal, off-diagonal]
+    Is = [i; i]  # row indices of [diagonal; off-diagonal] entries
+    Js = [i; jₛ]  # column indices of [diagonal; off-diagonal] entries
+    Vs = [v₀; vₛ]  # matrix entries of [diagonal, off-diagonal] entries
 
     return Is, Js, Vs
 end

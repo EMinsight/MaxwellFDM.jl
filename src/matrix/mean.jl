@@ -88,14 +88,14 @@ end
 # the fields along the direction normal to the fields, the field-averaging operators average
 # fields along the field direction.  As a result, backward (rather than forward) averaging
 # is for primal fields.
-create_m(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
+create_m(nw::Integer,  # 1|2|3 for averaging along x|y|z; 1|2 for averaging along horizontal|vertical
          isfwd::Bool,  # true|false for forward|backward averaging
          N::AbsVecInteger,  # size of grid
          isbloch::Bool=true,  # boundary condition in w-direction
          e⁻ⁱᵏᴸ::Number=1.0) =  # Bloch phase factor
     (K = length(N); ∆w = ones(N[nw]); create_m(nw, isfwd, SVector{K,Int}(N), ∆w, ∆w, isbloch, e⁻ⁱᵏᴸ))
 
-create_m(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
+create_m(nw::Integer,  # 1|2|3 for averaging along x|y|z; 1|2 for averaging along horizontal|vertical
          isfwd::Bool,  # true|false for forward|backward averaging
          N::AbsVecInteger,  # size of grid
          ∆w::AbsVecNumber,  # line segments to multiply with; vector of length N[nw]
@@ -105,7 +105,7 @@ create_m(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
     (K = length(N); M = prod(N); dropzeros!(sparse(create_minfo(nw, isfwd, SVector{K,Int}(N), ∆w, ∆w′, isbloch, e⁻ⁱᵏᴸ)..., M, M)))
 
 
-function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertical
+function create_minfo(nw::Integer,  # 1|2|3 for averaging along x|y|z; 1|2 for averaging along horizontal|vertical
                       isfwd::Bool,  # true|false for forward|backward averaging
                       N::SVector{K,Int},  # size of grid
                       ∆w::AbsVecNumber,  # line segments to multiply with; vector of length N[nw]
@@ -116,7 +116,7 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
     M = prod(N)
     Nw = N[nw]
     ŵ = SVector(ntuple(identity,Val(K))) .== nw  # [0,true,0] for w == y
-    ns = isfwd ? 1.0 : -1.0
+    ns = isfwd ? 1.0 : -1.0  # number for sign
 
     # Below, when constructing I, J's, V's, note that a tuple of array subscripts (i,j,k)
     # indicates a row index of the final matrix.  In other words, the entries with the same
@@ -140,7 +140,7 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
     I = reshape(collect(1:M), N.data)
 
     Jₛ = reshape(collect(1:M), N.data)
-    shifts = -ns * ŵ  # [0,-1,0] for w == y and ns = +1
+    shifts = -ns * ŵ  # shift vector for sign; [0,-1,0] for w == y and ns = +1
     Jₛ = circshift(Jₛ, shifts.data)
 
     # Align ∆w and ∆w′ in the w-direction.
@@ -181,10 +181,10 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
     # 2. In each of these rows, determine the column in which the modification should be
     # made.  Because each row has only two nonzero entries (one diagoal and one off-diagonal),
     # this step is to determine whether the modification should be made at the diagonal
-    # entry or the off-diagonal entry in the row currently concerned.  If the array
-    # subscripts of the input fields contributing to the currently concerned output averages
-    # are the same as the array subscripts of the output averages, the modification is made
-    # in V₀ (diagonal).  If they are different, the modification is made in Vₛ (off-diagonal).
+    # entry or the off-diagonal entry in the row currently concerned.  If the (i,j,k) of the
+    # input fields contributing to the currently concerned output averages are the same as
+    # the (i,j,k) of the output averages, the modification is made in V₀ (diagonal).  If
+    # they are different, the modification is made in Vₛ (off-diagonal).
     #
     # 3. In the determined rows, modify either V₀ or Vₛ depending on the above step.  This
     # is to modify V₀[i,j,k] or Vₛ[i,j,k], where (i,j,k) is the array subscripts specifying
@@ -193,8 +193,8 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
     # For the final sparsity patterns of the operators, see my notes entitled [Beginning of
     # the part added on Aug/14/2018] in RN - Subpixel Smoothing.nb.
     #
-    # Below, Vₛ[Base.setindex(axes(Vₛ), iw, nw)...] mimics the implementation of slicedim
-    # and basically means Vₛ[:,iw,:] for w = y.
+    # Below, V[Base.setindex(axes(Vₛ), iw, nw)...] mimics the implementation of slicedim and
+    # basically means V[:,iw,:] for w = y.
     if isbloch
         # Application of the aformentioned procedure:
         #
@@ -206,8 +206,8 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
         # 1. Determination of the indices of the rows to modify
         # For isfwd = true, we are taking forward averaging between primal grid planes.  The
         # ghost input fields are at the positive-end boundary, and they contritube to the
-        # averages at the last dual grid points, so the rows to modify are subscripted
-        # (i,j,k) with iw ≡ (i,j,k)[w] = Nw.
+        # averages at the last dual grid points, so the rows to modify are subscripted (i,j,k)
+        # with iw ≡ (i,j,k)[w] = Nw.
         #
         # For isfwd = false, we are taking backward averaging between dual grid planes.  The
         # ghost input fields are before the negative-end boundary, and they contribute to
@@ -221,10 +221,10 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
         # For isfwd = false, the w-subscript of the ghost input field is less by 1 than that
         # of the output average.
         #
-        # The nonghost input fields being brought to these ghost fields (from the opposite
-        # boundary) are different from the input fields subscripted the same as the output
-        # averages.  Therefore, the matrix entries to modify by multiplying the Bloch phase
-        # factors with are off-diagonal entries in Vₛ
+        # The nonghost input fields are brought to these ghost fields (from the opposite
+        # boundary), an they are different from the input fields subscripted the same as the
+        # output averages.  Therefore, the matrix entries to modify by multiplying the Bloch
+        # phase factors with are off-diagonal entries in Vₛ.
         #
         # 3. Modification of the values in V
         # For isfwd = true, the nonghost input fields have a smaller w-subscript than the
@@ -241,44 +241,46 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
         #
         # A-0. Goal
         # Forward averaging is taken between primal grid planes.  Because the domain
-        # boundaries are always primal grid planes, some input fields are on the domain
-        # boundaries.  Those input fields are zero for the symmetry boundary condition and
-        # do not contribute to the output averages.  Our goal is to make sure that the
-        # forward averaging operator properly ignore those fields that should be zero.
+        # boundaries are always primal grid planes, some input fields (either tangential or
+        # normal) are on the domain boundaries.  Those input fields are zero for the
+        # symmetry boundary condition and do not contribute to the output averages.  Our
+        # goal is to make sure that the forward averaging operator properly ignore those
+        # fields that should be zero.
         #
         # A-1. Determination of the indices of the the rows to modify
-        # The negative-end boundary input fields contribute to the w-averages at the first
-        # (nonghost) dual grid points in the w-direction.  The positive-end boundary input
-        # fields contribute to the w-averages at the last dual grid points in the
-        # w-direction.  Therefore, the array subscripts (i,j,k) we need to consider are the
-        # ones with iw ≡ (i,j,k)[w] = 1 and Nw.
+        # The negative-end-boundary input fields contribute to the w-directional averages
+        # evaluated at the first (nonghost) dual grid points in the w-direction.  The
+        # positive-end-boundary (ghost) input fields contribute to the w-directional
+        # averages evaluated at the last dual grid points in the w-direction.  Therefore,
+        # the array subscripts (i,j,k) we need to consider are the ones with iw ≡ (i,j,k)[w] = 1, Nw.
         #
         # A-2. Determination of the column in each row to modify
-        # The negative-end boundary input fields have subscripts the same as the averages
+        # The negative-end-boundary input fields have subscripts the same as the averages
         # they contribute to, so for iw = 1 we modify the diagonal entries stored in V₀.
-        # The positive-end boundary input fields have w-subscript greater by 1 than the
+        # The positive-end-boundary input fields have w-subscript greater by 1 than the
         # averages they contribute to, so for iw = Nw we modify the off-diagonal entries
         # stored in Vₛ.
         #
         # A-3. Modification of the values in V
-        # The negative-end boundary input fields must be zeroed, so for iw = 1 we set
-        # V₀[i,j,k] = 0.
-        # The positive-end boundary input fields must be also zeroed, so for iw = Nw we set
-        # Vₛ[i,j,k] = 0.  Note that the positive-end boundary input fields are ghost fields
-        # that are brought from the negative-end boundary (nonghost) input fields.
+        # The negative-end-boundary input fields must be zeroed, so for (i,j,k) with iw = 1
+        # we set V₀[i,j,k] = 0.
+        # The positive-end-boundary input fields must be also zeroed, so for (i,j,k) with iw = Nw
+        # we set Vₛ[i,j,k] = 0.  Note that the positive-end-boundary input fields are ghost
+        # fields that are brought from the negative-end-boundary (nonghost) input fields.
         #
         #
         # B. isfwd = false (backward averaging)
         #
         # B-0. Goal
         # Backward averaging is taken between dual grid planes.  The domain boundaries are
-        # always primal grid planes.  Therefore, no input fields are on the domain
-        # boundaries, and thus no input fields needs to be zeroed.
+        # always primal grid planes.  Therefore, no input fields (either tangential or
+        # normal) are on the domain boundaries, and thus no input fields needs to be zeroed.
         #
-        # However, the field at dual grid points are symmetric around the symmetry
-        # boundaries (so that their interpolated values at the symmetry boundary are nonzero).
-        # Therefore, the average between the two is double the contribution from one input
-        # field, leading to multiplication of a factor of 2 at the symmetry boundaries.
+        # However, the field at dual grid points are symmetric (rather than anti-symmetric)
+        # around the symmetry boundaries (so that their interpolated values at the symmetry
+        # boundary are nonzero). Therefore, the average between the two is double the
+        # contribution from one input field, leading to multiplication of a factor of 2 at
+        # the symmetry boundaries.
         #
         # On the positive-end boundary, the average of the dual field is not evaluated,
         # so we don't have to do anything to realize the positivte-end symmetry boundary.
@@ -302,18 +304,18 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
         # described in an off-diagonal entry in Vₛ.
         #
         # B-3. Modification of the values in V
-        # We double V₀[i,j,k] and zero Vₛ[i,j,k].
+        # We double V₀[i,j,k] and zero Vₛ[i,j,k] for (i,j,k) with iw = 1.
         #
-        # The above procedure can be written compactly as follows without separating the
+        # The above procedure A and B are written compactly below without separating the
         # isfwd = true and false cases.
 
 
-        # Replace some diagonal entries with 0 or 2.
+        # Replace some diagonal entries (V₀) with 0 or 2.
         iw = 1
         val = isfwd ? 0 : 2
         V₀[Base.setindex(axes(V₀), iw, nw)...] .*= val
 
-        # Replace some off-diagonal entries with 0.
+        # Replace some off-diagonal entries (Vₛ) with 0.
         iw = isfwd ? Nw : 1
         Vₛ[Base.setindex(axes(Vₛ), iw, nw)...] .= 0
 
@@ -331,9 +333,9 @@ function create_minfo(nw::Integer,  # 1|2|3 for x|y|z; 1|2 for horizontal|vertic
     v₀ = reshape(V₀, M)
     vₛ = reshape(Vₛ, M)
 
-    Is = [i; i]  # row indices of [diagonal; off-diagonal]
-    Js = [i; jₛ]  # column indices of [diagonal; off-diagonal]
-    Vs = [v₀; vₛ]  # matrix entries of [diagonal, off-diagonal]
+    Is = [i; i]  # row indices of [diagonal; off-diagonal] entries
+    Js = [i; jₛ]  # column indices of [diagonal; off-diagonal] entries
+    Vs = [v₀; vₛ]  # matrix entries of [diagonal, off-diagonal] entris
 
     return Is, Js, Vs
 end
