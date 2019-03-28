@@ -1,8 +1,24 @@
+# Here, I am assuming that the E-field grid is primal in all the x-, y-, z-directions.  This
+# is wrong.  Whether it is primal or dual can change depending on the boundary condition;
+# see the leading comments in grid.jl.
+#
+# I have made the same mistake in assignment.jl and smoothing.jl.  I need to fix these all
+# together someday.
+
+# The getters like get_Amatrix actually change the contents of Maxwell by creating the
+# desired fields on the fly.  However, because they do not change the contents of Maxwell
+# in the ways noticeable to the users, I leave out the exclamation mark at the end of the
+# function names.
+#
+# (I think I had to implement this on-the-fly creation in getters because some fields are
+# not ready from the beginning.  Instead, I could choose to implement initialize! function
+# that needs to be called after all the setters are called.  This is still an option, but I
+# think there were cases some getters need to be called before all the setters are called.)
 export Maxwell
 export set_unitlen!, set_bounds!, set_∆l!, set_isbloch!, set_kbloch!, set_Npml!, set_wvlen!,
     set_freq!, get_unit, get_osc, get_grid, set_background!, add_obj!, get_param3d,
     get_stretched_∆l, get_εmatrix, get_curle, get_curlm, get_curls, get_dblcurl, get_Amatrix,
-    add_srce!, add_srcm!, get_bvector
+    get_Mc, get_Ml, get_Mr, add_srce!, add_srcm!, get_bvector
 
 # Add quantities, and construct various systems at the end at once?
 # Create a domain from the domain size, and add it to the object list.
@@ -44,6 +60,9 @@ mutable struct Maxwell
     Cm::SparseMatrixCSC{CFloat,Int}
     CC::SparseMatrixCSC{CFloat,Int}
     A::SparseMatrixCSC{CFloat,Int}
+    Mc::SparseMatrixCSC{CFloat,Int}  # operator interpolating Ex, Ey, Ez at grid cell corners
+    Ml::SparseMatrixCSC{CFloat,Int}  # operator interpolating voxel-corner Ex, Ey, Ez at Ez, Ex, Ey (i.e., left component) locations
+    Mr::SparseMatrixCSC{CFloat,Int}  # operator interpolating voxel-corner Ex, Ey, Ez at Ey, Ez, Ex (i.e., right component) locations
     b::Vector{CFloat}
 
     function Maxwell()
@@ -236,6 +255,63 @@ function get_Amatrix(m::Maxwell)
     end
 
     return m.A
+end
+
+# Create the operator interpolating Ex, Ey, Ez at grid cell corners.
+function get_Mc(m::Maxwell)
+    if ~isdefined(m, :Mc)
+        g = get_grid(m)
+        s∆l = get_stretched_∆l(m)
+        e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
+
+        # Arguments of create_mean:
+        # - isfwd = [false,false,false] because we are doing backward averaging to get the
+        # field at the E-field locations from the voxel corner locations.
+        # - We supply ∆l and ∆l′ because we want to use weighted arithmetic averaging for
+        # this backward averaging.
+        # - kdiag = 0 for putting Ex, Ey, Ez to voxel corners.
+        m.Mc = create_mean([false,false,false], g.N, s∆l[nDL], s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, kdiag=0, reorder=true)
+    end
+
+    return m.Mc
+end
+
+# Create operator interpolating the voxel-corner Ex, Ey, Ez at Ez, Ex, Ey (i.e., left
+# component locations).
+function get_Ml(m::Maxwell)
+    if ~isdefined(m, :Ml)
+        g = get_grid(m)
+        e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
+
+        # Arguments of create_mean:
+        # - isfwd = [true,true,true] because we are doing forward averaging to get the field
+        # at the E-field locations from the voxel corner locations.
+        # - We don't supply ∆l and ∆l′ because we want to use unweighted arithmetic
+        # averaging for this forward averaging.
+        # - kdiag = +1 for putting Ex, Ey, Ez to Ez, Ex, Ey locations.
+        m.Ml = create_mean([true,true,true], g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=1, reorder=true)
+    end
+
+    return m.Ml
+end
+
+# Create operator interpolating the voxel-corner Ex, Ey, Ez at Ey, Ez, Ex (i.e., right
+# component) locations.
+function get_Mr(m::Maxwell)
+    if ~isdefined(m, :Mr)
+        g = get_grid(m)
+        e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
+
+        # Arguments of create_mean:
+        # - isfwd = [true,true,true] because we are doing forward averaging to get the field
+        # at the E-field locations from the voxel corner locations.
+        # - We don't supply ∆l and ∆l′ because we want to use unweighted arithmetic
+        # averaging for this forward averaging.
+        # - kdiag = -1 for putting Ex, Ey, Ez to Ey, Ez, Ex locations.
+        m.Mr = create_mean([true,true,true], g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=-1, reorder=true)
+    end
+
+    return m.Mr
 end
 
 #= Setters and getters for sources =#
