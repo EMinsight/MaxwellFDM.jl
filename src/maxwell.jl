@@ -286,7 +286,7 @@ function get_Ml(m::Maxwell)
         # Arguments of create_mean:
         # - isfwd = [true,true,true] because we are doing forward averaging to get the field
         # at the E-field locations from the voxel corner locations.
-        # - We don't supply ∆l and ∆l′ because we want to use unweighted arithmetic
+        # - We do not supply ∆l and ∆l′ because we want to use unweighted arithmetic
         # averaging for this forward averaging.
         # - kdiag = +1 for putting Ex, Ey, Ez to Ez, Ex, Ey locations.
         m.Ml = create_mean([true,true,true], g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=1, reorder=true)
@@ -305,7 +305,7 @@ function get_Mr(m::Maxwell)
         # Arguments of create_mean:
         # - isfwd = [true,true,true] because we are doing forward averaging to get the field
         # at the E-field locations from the voxel corner locations.
-        # - We don't supply ∆l and ∆l′ because we want to use unweighted arithmetic
+        # - We do not supply ∆l and ∆l′ because we want to use unweighted arithmetic
         # averaging for this forward averaging.
         # - kdiag = -1 for putting Ex, Ey, Ez to Ey, Ez, Ex locations.
         m.Mr = create_mean([true,true,true], g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=-1, reorder=true)
