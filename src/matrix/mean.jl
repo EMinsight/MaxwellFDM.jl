@@ -45,7 +45,15 @@ export create_m, create_mean
 # ⎢      My⎥
 # ⎣Mz      ⎦
 # where Mw is the operator averaging along the w-direction.  So, the second interpolation
-# matrix is generated with kdiag = +1.
+# matrix is generated with kdiag = +1.  Similarly, the matrix generated with kdiag = -1 is
+# ⎡      Mx⎤
+# ⎢My      ⎥
+# ⎣   Mz   ⎦
+# and this puts the Ex-components at the Ey-indices, Ey-components at the Ez-indices, and
+# Ez-components at the Ex-indices.
+#
+# Note that both kdiag = ±1 shift the diagonal blocks along the row directions.  This is
+# different from diagm(kdiag => v) or MATLAB's diag(v, kdiag).
 
 # Creates the field-averaging operator for all three Cartegian components.
 create_mean(isfwd::AbsVecBool,  # isfwd[w] = true|false for forward|backward averaging
