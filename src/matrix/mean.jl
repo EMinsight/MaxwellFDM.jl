@@ -62,7 +62,15 @@ create_mean(isfwd::AbsVecBool,  # isfwd[w] = true|false for forward|backward ave
             e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
             kdiag::Integer=0,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
             reorder::Bool=true) =  # true for more tightly banded matrix
-    create_mean(isfwd, N, ones.(N.data), ones.(N.data), isbloch, e⁻ⁱᵏᴸ, kdiag=kdiag, reorder=reorder)
+    (∆l = ones.((N...,)); create_mean(isfwd, N, ∆l, ∆l, isbloch, e⁻ⁱᵏᴸ, kdiag=kdiag, reorder=reorder))
+
+create_mean(isfwd::AbsVecBool,  # isfwd[w] = true|false for forward|backward averaging
+            N::SVec3Int,  # size of grid
+            isbloch::AbsVecBool=fill(true,length(N)),  # boundary conditions in x, y, z
+            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
+            kdiag::Integer=0,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
+            reorder::Bool=true) =  # true for more tightly banded matrix
+    (∆l = ones.(N.data); create_mean(isfwd, N, ∆l, ∆l, isbloch, e⁻ⁱᵏᴸ, kdiag=kdiag, reorder=reorder))
 
 create_mean(isfwd::AbsVecBool,  # isfwd[w] = true|false for forward|backward averaging
             N::AbsVecInteger,  # size of grid
