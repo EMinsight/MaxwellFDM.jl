@@ -1,13 +1,15 @@
 # Below, obj3d and oind3d are different: obj3d stores references to Object3 instances,
-# whereas oind3d stores object indices.  The reason for this is to handle multiple objects
-# forming essentially a single object by being connected through a periodic boundary.  In
-# that case, we assign the same object index to those distinct objects.
+# whereas oind3d stores object indices.  The reason for this is to handle the case where
+# objects touching the negative-side boundary and objects touching the positive-side
+# boundary are joined to form a single object by being wrapped around by the periodic
+# boundary condition.  In that case, we assign the same object index to those distinct
+# objects.
 #
-# I could enhance the assignment performance by constructing oid3d (not oind3d), which stores
-# unique object IDs rather than the reference itself.  This array is different from oind3d
-# in that it distinguishes objects repeated by periodic boundary condition.  Then, I can
-# retrieve objects from a map from this IDs to objects.  I could use oid3d in smoothing as
-# well, by constructing an 8-vector oid3d_vxl, like pind3d_vxl and oind3d_vxl.
+# I could enhance the assignment performance by constructing oid3d (not oind3d), which
+# stores unique object IDs rather than the reference itself.  This array is different from
+# oind3d in that it distinguishes objects repeated by periodic boundary condition.  Then, I
+# can retrieve objects from a map from this IDs to objects.  I could use oid3d in smoothing
+# as well, by constructing an 8-vector oid3d_vxl, like pind3d_vxl and oind3d_vxl.
 #
 # The rationale for this trick is that assigning an Int to VecInt is faster than assigning a
 # concrete Object (like Box) to Vector{Object3}.  In my test,
@@ -33,7 +35,7 @@ export create_param3d, create_n3d, assign_param!, assign_val_shape!
 # indices (i,j,k).  Similarly, the x-component of the E-field is usually written E_x[i,j,k],
 # not E[i,j,k]_x.
 #
-# However, when assigning the material parameters in the code in this file, we ofter assign
+# However, when assigning the material parameters in the code in this file, we often assign
 # the same value to a block of param3d.  This block is chosen differently for different
 # material tensor components, because different tensor components are evaluated at different
 # locations in Yee's grid.  Therefore, in this assignment, we first fix the material tensor
