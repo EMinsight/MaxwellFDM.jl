@@ -44,8 +44,8 @@ function param3d2mat(param3d::AbsArrComplex{5},
     # - to distribute the resulting output fields in the v(≠w)-direction back to voxel edges,
     # the output fields need to be forward(backward)-averaged along the v-direction if the
     # v-normal voxel faces are primal (dual) grid planes.
-    isfwd_in = gt.==Ref(DUAL)
-    isfwd_out = gt.==Ref(PRIM)
+    isfwd_in = gt.==Ref(DUAL)  # true if input fields need to be forward-averaged
+    isfwd_out = gt.==Ref(PRIM)  # true if output fields need to be backward-averaged
 
     # For the output averaging, ∆l and ∆l′ are not supplied to create_mean in order to
     # create a simple arithmetic averaging operator.  This is because the area factor matrix

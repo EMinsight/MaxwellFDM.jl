@@ -150,15 +150,13 @@ end  # @testset "comp_lprim1d"
     ∆L = 5
     ∆l = 1
 
-    ge = PRIM
     vac = Material("vacuum")
-    evac = EncodedMaterial(ge, vac)
-    domain = Object(Box([0,0,0], [200,200,200]), evac, 10)
+    domain = Object(Box([0,0,0], [200,200,200]), vac, 10)
 
     h = 50
     r = 20
-    sprim = [Object(Cylinder([0,0,0],r,h,[0,0,1]), evac, [∆l,∆l,∆L]), Object(Sphere([0,0,h/2], r), evac, ∆l), Object(Sphere([0,0,-h/2], r), evac, ∆l)]
-    # sprim = [Object(Sphere([0,0,0],r), evac, [∆l,∆l,∆L]), Object(Sphere([0,0,h/2], r), evac, ∆l), Object(Sphere([0,0,-h/2], r), evac, ∆l)]
+    sprim = [Object(Cylinder([0,0,0],r,h,[0,0,1]), vac, [∆l,∆l,∆L]), Object(Sphere([0,0,h/2], r), vac, ∆l), Object(Sphere([0,0,-h/2], r), vac, ∆l)]
+    # sprim = [Object(Sphere([0,0,0],r), vac, [∆l,∆l,∆L]), Object(Sphere([0,0,h/2], r), vac, ∆l), Object(Sphere([0,0,-h/2], r), vac, ∆l)]
 
     (xprim, yprim, zprim) = gen_lprim(domain, (PRIM,PRIM,PRIM), sprim)
     # @info "xprim = $xprim"

@@ -1,7 +1,9 @@
 export Axis, Dir, GridType, FieldType, Sign, BC, PML  # enumerated types
-export XYZ, NP, PD
-export nX, nY, nZ, nHRZ, nVRT, nN, nP, nPR, nDL  # integer values of instances of enumerated types
-export nXYZ, nHV, nNP, nPD
+export XYZ, nX, nY, nZ, nXYZ
+export HV, nHRZ, nVRT, nHV
+export NP, nN, nP, nNP
+export PD, nPR, nDL, nPD
+export EH, nE, nH, nEH
 export numel, next1, next2, next3, prev1, prev2, prev3, alter  # functions
 
 # 3D axes
@@ -36,6 +38,7 @@ prev1(nw::Int) = prev3(nw)[1]
 const nHRZ, nVRT = 1, 2  # horizontal, vertical directions
 const nHV = SVector(nHRZ,nVRT)  # tuple allocation is more efficient than array allocation
 @enum Dir HRZ=nHRZ VRT
+const HV = SVector(HRZ, VRT)
 for ins in instances(Dir); @eval export $(Symbol(ins)); end  # export all instances
 Base.string(ins::Dir) = ins==HRZ ? "horizontal" : "vertical"
 alter(ins::Dir) = ins==HRZ ? VRT : HRZ
@@ -59,10 +62,15 @@ Base.string(ins::GridType) = ins==PRIM ? "primal" : "dual"
 alter(ins::GridType) = ins==PRIM ? DUAL : PRIM
 
 # Field types
-@enum FieldType EE=1 HH
+const nE, nH = 1, 2  # E-, H-fields
+const nEH = SVector(nE, nH)
+@enum FieldType EE=nE HH
+const EH = SVector(EE, HH)
 for ins in instances(FieldType); @eval export $(Symbol(ins)); end  # export all instances
 Base.string(ins::FieldType) = ins==EE ? "E" : "H"
 alter(ins::FieldType) = ins==EE ? HH : EE
+
+const SVec3FT = SVec3{FieldType}
 
 # Boundary conditions
 @enum BC PERIODIC=1 PEC PMC

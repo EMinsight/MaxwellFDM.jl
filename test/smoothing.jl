@@ -33,10 +33,10 @@ end  # @testset "sort8!"
 
     # Create materials.
     εvac = 1.0
-    vac = EncodedMaterial(PRIM, Material("Vacuum", ε=εvac))
+    vac = Material("Vacuum", ε=εvac)
 
     εdiel = 2.0
-    diel = EncodedMaterial(PRIM, Material("Dielectric", ε=εdiel))
+    diel = Material("Dielectric", ε=εdiel)
 
     # Create objects.
     dom_vac = Object(Box(g3.bounds), vac)
@@ -54,10 +54,11 @@ end  # @testset "sort8!"
     pind3d = create_n3d(ParamInd, N)
     oind3d = create_n3d(ObjInd, N)
 
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
+    boundft = SVector(EE,EE,EE)
+    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch, boundft)
     # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
 
-    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ, boundft)
 
     ε3d = view(param3d[nPR], 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
 
@@ -138,10 +139,10 @@ end  # @testset "smoothing, box with odd number of voxels"
 
     # Create materials.
     εvac = 1.0
-    vac = EncodedMaterial(PRIM, Material("Vacuum", ε=εvac))
+    vac = Material("Vacuum", ε=εvac)
 
     εdiel = 2.0
-    diel = EncodedMaterial(PRIM, Material("Dielectric", ε=εdiel))
+    diel = Material("Dielectric", ε=εdiel)
 
     # Create objects.
     dom_vac = Object(Box(g3.bounds), vac)
@@ -159,8 +160,9 @@ end  # @testset "smoothing, box with odd number of voxels"
     pind3d = create_n3d(ParamInd, N)
     oind3d = create_n3d(ObjInd, N)
 
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
-    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    boundft = SVector(EE,EE,EE)
+    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch, boundft)
+    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ, boundft)
 
     ε3d = view(param3d[nPR], 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
 

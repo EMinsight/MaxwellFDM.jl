@@ -13,10 +13,10 @@
 
     # Create materials.
     εvac = 1.0
-    vac = EncodedMaterial(PRIM, Material("Vacuum", ε=εvac))
+    vac = Material("Vacuum", ε=εvac)
 
     εdiel = 2.0
-    diel = EncodedMaterial(PRIM, Material("Dielectric", ε=εdiel))
+    diel = Material("Dielectric", ε=εdiel)
 
     # Create objects.
     dom_vac = Object(Box(g3.bounds), vac)
@@ -34,12 +34,13 @@
     pind3d = create_n3d(ParamInd, N)
     oind3d = create_n3d(ObjInd, N)
 
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
+    boundft = SVector(EE,EE,EE)
+    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch, boundft)
     # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
 
-    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ, boundft)
 
-    Mξ = param3d2mat(param3d[nPR], [PRIM,PRIM,PRIM], N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
+    Mξ = param3d2mat(param3d[nE], ge, N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
 
     @test issymmetric(Mξ)
 
@@ -59,10 +60,10 @@ end  # @testset "param3d2mat"
 
     # Create materials.
     εvac = 1.0
-    vac = EncodedMaterial(PRIM, Material("Vacuum", ε=εvac))
+    vac = Material("Vacuum", ε=εvac)
 
     εdiel = 2.0
-    diel = EncodedMaterial(PRIM, Material("Dielectric", ε=εdiel))
+    diel = Material("Dielectric", ε=εdiel)
 
     # Create objects.
     dom_vac = Object(Box(g3.bounds), vac)
@@ -80,12 +81,13 @@ end  # @testset "param3d2mat"
     pind3d = create_n3d(ParamInd, N)
     oind3d = create_n3d(ObjInd, N)
 
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
+    boundft = SVector(EE,EE,EE)
+    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch, boundft)
     # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
 
-    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ, boundft)
 
-    Mξ = param3d2mat(param3d[nPR], [PRIM,PRIM,PRIM], N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
+    Mξ = param3d2mat(param3d[nE], ge, N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
 
     # Ml
     ∆lprim = g3.∆l[nPR]

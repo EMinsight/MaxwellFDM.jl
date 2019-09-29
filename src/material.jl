@@ -1,4 +1,4 @@
-export Material, EncodedMaterial
+export Material
 export matparam, kottke_avg_param
 import Base:string
 
@@ -8,22 +8,12 @@ tensorize(m::AbsMatNumber) = SMat3Complex(m)
 
 struct Material
     name::String
-    ε::SMat3Complex
-    μ::SMat3Complex
+    param::Tuple2{SMat3Complex}  # (material parameter interacting with E, material parameter interacting with H)
 end
-Material(name::String; ε::MatParam=1, μ::MatParam=1) = Material(name, tensorize(ε), tensorize(μ))
+Material(name::String; ε::MatParam=1, μ::MatParam=1) = Material(name, (tensorize(ε), tensorize(μ)))
 
 string(m::Material) = m.name
-
-struct EncodedMaterial
-    name::String
-    param::Tuple2{SMat3Complex}  # (material parameter interacting with primal field U, material parameter interacting with dual field V)
-end
-EncodedMaterial(ge::GridType, m::Material) = ge==PRIM ? EncodedMaterial(m.name, (m.ε,m.μ)) :
-                                                        EncodedMaterial(m.name, (m.μ,m.ε))
-
-string(em::EncodedMaterial) = em.name
-matparam(em::EncodedMaterial, gt::GridType) = em.param[Int(gt)]
+matparam(m::Material, ft::FieldType) = m.param[Int(ft)]
 
 kottke_avg_param(param1::AbsMatNumber, param2::AbsMatNumber, n12::AbsVecReal, rvol1::Real) =
     kottke_avg_param(SMat3Complex(param1), SMat3Complex(param2), SVec3Float(n12), rvol1)

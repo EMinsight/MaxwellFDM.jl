@@ -34,6 +34,7 @@ mutable struct Maxwell
     g::Grid{3}
     bounds::Tuple2{AbsVecReal}  # ([xmin,ymin,zmin], [xmax,ymax,zmax])
     ∆l::AbsVecReal  # [∆x,∆y,∆z]
+    boundft::SVec3FT  # boundary field type
     isbloch::AbsVecBool  # [Bool,Bool,Bool]
     kbloch::AbsVecReal  # [Real,Real,Real]
     e⁻ⁱᵏᴸ::AbsVecComplex
@@ -69,6 +70,7 @@ mutable struct Maxwell
         m = new()
 
         # Initialize some fields with default values.
+        m.boundft = SVector(EE,EE,EE)
         m.isbloch = @SVector ones(Bool, 3)
         m.kbloch = @SVector zeros(3)
         m.∆l = @SVector ones(3)
@@ -84,6 +86,7 @@ end
 set_unitlen!(m::Maxwell, unitlen::Real) = (m.unitlen = unitlen; return nothing)
 set_bounds!(m::Maxwell, bounds::Tuple2{AbsVecReal}) = (m.bounds = bounds; return nothing)
 set_∆l!(m::Maxwell, ∆l::AbsVecReal) = (m.∆l = ∆l; return nothing)
+set_boundft(m::Maxwell, boundft::AbsVec{FieldType}) = (m.∆boundft = boundft; return nothing)
 set_isbloch!(m::Maxwell, isbloch::AbsVecBool) = (m.isbloch = isbloch; return nothing)
 set_kbloch!(m::Maxwell, kbloch::AbsVecReal) = (m.kbloch = kbloch; return nothing)
 set_Npml!(m::Maxwell, Npml::Tuple2{AbsVecInteger}) = (m.Npml = Npml; return nothing)
@@ -133,7 +136,7 @@ set_background!(m::Maxwell, matname::String, ε::MatParam) = add_obj!(m, matname
 add_obj!(m::Maxwell, matname::String, ε::MatParam, shapes::Shape...) = add_obj!(m, matname, ε, [shapes...])
 
 function add_obj!(m::Maxwell, matname::String, ε::MatParam, shapes::AbsVec{<:Shape})
-    mat = EncodedMaterial(PRIM, Material(matname, ε=ε))
+    mat = Material(matname, ε=ε)
     for s = shapes  # shapes is tuple
         obj = Object(s, mat)
         add!(m.ovec, m.paramset, obj)
@@ -154,8 +157,8 @@ function get_param3d(m::Maxwell)
         pind3d = create_n3d(ParamInd, N)
         oind3d = create_n3d(ObjInd, N)
 
-        assign_param!(param3d, obj3d, pind3d, oind3d, m.ovec, g.ghosted.τl, g.isbloch)
-        smooth_param!(param3d, obj3d, pind3d, oind3d, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
+        assign_param!(param3d, obj3d, pind3d, oind3d, m.ovec, g.ghosted.τl, g.isbloch, m.boundft)
+        smooth_param!(param3d, obj3d, pind3d, oind3d, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ, m.boundft)
 
         m.param3d = param3d
     end
@@ -199,7 +202,7 @@ function get_curle(m::Maxwell)
         s∆l = get_stretched_∆l(m)
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Ce = create_curl([true,true,true], g.N, s∆l[nDL], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Ce = create_curl(m.boundft.==EE, g.N, s∆l[nDL], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
     end
 
     return m.Ce
@@ -211,7 +214,7 @@ function get_curlm(m::Maxwell)
         s∆l = get_stretched_∆l(m)
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Cm = create_curl([false,false,false], g.N, s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Cm = create_curl(m.boundft.==HH, g.N, s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
     end
 
     return m.Cm
@@ -265,12 +268,13 @@ function get_Mc(m::Maxwell)
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
         # Arguments of create_mean:
-        # - isfwd = [false,false,false] because we are doing backward averaging to get the
-        # field at the E-field locations from the voxel corner locations.
+        # - isfwd = (m.boundft.==HH) because we are doing backward averaging in the
+        # w-direction if the w-boundary field is the E-field boundary, in order to get the
+        # field at the voxel corner locations from the E-field locations.
         # - We supply ∆l and ∆l′ because we want to use weighted arithmetic averaging for
         # this backward averaging.
         # - kdiag = 0 for putting Ex, Ey, Ez to voxel corners.
-        m.Mc = create_mean([false,false,false], g.N, s∆l[nDL], s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, kdiag=0, reorder=true)
+        m.Mc = create_mean(m.boundft.==HH, g.N, s∆l[nDL], s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, kdiag=0, reorder=true)
     end
 
     return m.Mc
@@ -284,12 +288,13 @@ function get_Ml(m::Maxwell)
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
         # Arguments of create_mean:
-        # - isfwd = [true,true,true] because we are doing forward averaging to get the field
-        # at the E-field locations from the voxel corner locations.
+        # - isfwd = (m.boundft.==EE) because we are doing forward averaging in the
+        # w-direction if the w-boundary field is the E-field boundary, in order to get the
+        # field at the E-field locations from the voxel corner locations.
         # - We do not supply ∆l and ∆l′ because we want to use unweighted arithmetic
         # averaging for this forward averaging.
         # - kdiag = +1 for putting Ex, Ey, Ez to Ez, Ex, Ey locations.
-        m.Ml = create_mean([true,true,true], g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=1, reorder=true)
+        m.Ml = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=1, reorder=true)
     end
 
     return m.Ml
@@ -303,12 +308,13 @@ function get_Mr(m::Maxwell)
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
         # Arguments of create_mean:
-        # - isfwd = [true,true,true] because we are doing forward averaging to get the field
-        # at the E-field locations from the voxel corner locations.
+        # - isfwd = (m.boundft.==EE) because we are doing forward averaging in the
+        # w-direction if the w-boundary field is the E-field boundary, in order to get the
+        # field at the E-field locations from the voxel corner locations.
         # - We do not supply ∆l and ∆l′ because we want to use unweighted arithmetic
         # averaging for this forward averaging.
         # - kdiag = -1 for putting Ex, Ey, Ez to Ey, Ez, Ex locations.
-        m.Mr = create_mean([true,true,true], g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=-1, reorder=true)
+        m.Mr = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=-1, reorder=true)
     end
 
     return m.Mr

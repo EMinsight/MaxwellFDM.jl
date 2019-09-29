@@ -16,16 +16,16 @@ export bounds, max∆l, matparam, paramind, objind, add!, periodize  #, surfpt_n
 
 mutable struct Object{K,S<:Shape}  # use S<:Shape{K} after Julia issue #26321 is fixed
     shape::S
-    mat::EncodedMaterial
+    mat::Material
     ∆lmax::SVector{K,Float}
     oind::ObjInd  # object index; for comparison of sameness of objects quickly and more generally (e.g. when periodized; see add!)
-    pind::Tuple2{ParamInd}  # {primal material index, dual material index} (see add!)
+    pind::Tuple2{ParamInd}  # {electric material index, magnetic material index} (see add!)
     Object{K,S}(shape, mat, ∆lmax) where {K,S<:Shape{K}} = new(shape, mat, ∆lmax)
 end
 
-Object(shape::S, mat::EncodedMaterial, ∆lmax::SVector{K}=SVector(ntuple(k->Inf, Val(K)))) where {K,S<:Shape{K}} = Object{K,S}(shape, mat, ∆lmax)
-Object(shape::Shape{K}, mat::EncodedMaterial, ∆lmax::AbsVec) where {K} = Object(shape, mat, SVector{K}(∆lmax))
-Object(shape::Shape{K}, mat::EncodedMaterial, ∆lmax::Real) where {K} = Object(shape, mat, SVector(ntuple(k->∆lmax, Val(K))))
+Object(shape::S, mat::Material, ∆lmax::SVector{K}=SVector(ntuple(k->Inf, Val(K)))) where {K,S<:Shape{K}} = Object{K,S}(shape, mat, ∆lmax)
+Object(shape::Shape{K}, mat::Material, ∆lmax::AbsVec) where {K} = Object(shape, mat, SVector{K}(∆lmax))
+Object(shape::Shape{K}, mat::Material, ∆lmax::Real) where {K} = Object(shape, mat, SVector(ntuple(k->∆lmax, Val(K))))
 
 # Define Object with ∆lmax, Shape, and a material.
 const Object3 = Object{3}
@@ -38,13 +38,13 @@ Base.in(x::SVector{K}, o::Object{K}) where {K} = in(x, o.shape)
 Base.in(x::AbsVec, o::Object{K}) where {K} = in(SVector{K}(x), o)
 
 # Create the user interface such that maxwellsys.add(shape, material, ∆lmax) uses this function.
-# setmat!(o::Object, em::EncodedMaterial) = (o.mat = em; o)
+# setmat!(o::Object, m::Material) = (o.mat = m; o)
 # setmax∆l!(o::Object{K}, ∆lmax::AbsVec) where {K} = (o.∆lmax = SVector{K}(∆lmax); o)
 # setmax∆l!(o::Object{K}, ∆lmax::Number) where {K} = setmax∆l!(o, SVector(ntuple(k->∆lmax, Val(K))))
 
 max∆l(o::Object) = o.∆lmax
-matparam(o::Object, gt::GridType) = matparam(o.mat, gt)
-paramind(o::Object{K}, gt::GridType) where {K} = o.pind[Int(gt)]
+matparam(o::Object, ft::FieldType) = matparam(o.mat, ft)
+paramind(o::Object{K}, ft::FieldType) where {K} = o.pind[Int(ft)]
 objind(o::Object) = o.oind
 
 # Consider using resize! on ovec.
@@ -84,15 +84,15 @@ function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o
     push!(ovec, o)  # append o (for potential use of ovec with KDTree, must use pushfirst! to prepend)
 
     # Assign the material parameter indices to o.
-    p, pset = matparam(o,PRIM), paramset[nPR]
-    pind_prim = findlast(x -> x==p, pset)  # number if p is already in pset
-    pind_prim==nothing && (push!(pset, p); pind_prim = length(pset))  # update pind_prim if p is not in pset
+    p, pset = matparam(o,EE), paramset[nE]
+    pind_e = findlast(x -> x==p, pset)  # number if p is already in pset
+    pind_e==nothing && (push!(pset, p); pind_e = length(pset))  # update pind_e if p is not in pset
 
-    p, pset = matparam(o,DUAL), paramset[nDL]
-    pind_dual = findlast(x -> x==p, pset)  # number if p is already in psent
-    pind_dual==nothing && (push!(pset, p); pind_dual = length(pset))  # update pind_dual if p is not in pset
+    p, pset = matparam(o,HH), paramset[nH]
+    pind_h = findlast(x -> x==p, pset)  # number if p is already in psent
+    pind_h==nothing && (push!(pset, p); pind_h = length(pset))  # update pind_h if p is not in pset
 
-    o.pind = (pind_prim, pind_dual)
+    o.pind = (pind_e, pind_h)
 
     return nothing
 end

@@ -25,10 +25,10 @@
 #       simply use the forward difference (which is for primal fields) as ∂/∂w in
 #       constructing ∇_e.
 #
-# - The notion of U, V, and ξ, η is now not appropriate.  I used U to indicate the primal
-# field, but there is no such thing like the primal field, because the E-field, for example,
-# does not have to be completely on the primal grid planes.  The notion makes sense only in
-# one Cartesian direction.
+# - The notion of U, V, and ξ, η is now not appropriate.  I used to use U to indicate the
+# primal field, but there is no such thing like the primal field, because the E-field, for
+# example, does not have to be completely on the primal grid planes.  The notion makes sense
+# only in one Cartesian direction.
 
 
 # About the symmetry boundary condition
@@ -80,11 +80,16 @@
 export Grid  # types
 export isproper_blochphase, lghost  # functions
 
+# Below, the transformation τ refers to the transformation of a ghost point back to the
+# non-ghost point that the value at the ghost point comes from.  For the Bloch boundary
+# condition, τ transforms the ghost point to the other side of the domain; for the symmetry
+# boundary condition, τ transforms the ghost point to its mirror symmetry position with
+# respect to the boundary.
 struct Ghosted{K}
     l::Tuple2{NTuple{K,VecFloat}}  # l[PRIM][k] = primal vertex locations with ghost points in k-direction
-    τl::Tuple2{NTuple{K,VecFloat}}  # l[PRIM][k] = primal vertex locations with transformed ghost points in k-direction
+    τl::Tuple2{NTuple{K,VecFloat}}  # τl[PRIM][k] = primal vertex locations with transformed ghost points in k-direction
     τind::Tuple2{NTuple{K,VecInt}}  # τind[PRIM][k] = indices of Ghosted.l corresponding to transformed points by boundary conditions
-    ∆τ::Tuple2{NTuple{K,VecFloat}}  # ∆[PRIM][k] = amount of shift to get points shifted by Bloch boundary conditions (ignoring transformation by reflection by symmetry boundary)
+    ∆τ::Tuple2{NTuple{K,VecFloat}}  # ∆τ[PRIM][k] = amount of shift to get points shifted by Bloch boundary conditions (ignoring transformation by reflection by symmetry boundary)
 end
 
 # Consider storing lvxlbounds, which is
@@ -99,7 +104,7 @@ end
 # Then, for a voxel center l[gt][i], the voxel bounds are lvxlbounds[[i,i+1]], regardless of
 # the value of gt.
 struct Grid{K}
-    axis::SVector{K,Axis}  # axes of this grid (one of X̂, Ŷ, Ẑ, the instances of Axis)
+    axis::SVector{K,Axis}  # axes of this grid (X̂, Ŷ, Ẑ)
     unit::PhysUnit  # set of physical units used on computational grid
     N::SVector{K,Int}  # N[k] = number of grid cells in k-direction
     L::SVector{K,Float}  # L[k] = length of grid (domain) in k-direction
@@ -162,20 +167,20 @@ function Grid(axis::SVector{K,Axis},
 
     # Construct an instance of Ghosted.
     τind = (map(n->collect(1:n+1), N.data), map(n->collect(1:n+1), N.data))  # Tuple23{VecInt}
-    τindg_prim = .!isbloch.*N + 1  # SVec3Int: N+1 for symmetry; 1 for Bloch
-    τindg_dual = isbloch.*N + 1 + .!isbloch  # SVec3Int: 2 for symmetry; N+1 for Bloch
+    τindg_prim = .!isbloch.*N .+ 1  # SVec3Int: N+1 for symmetry; 1 for Bloch
+    τindg_dual = isbloch.*N .+ 1 .+ .!isbloch  # SVec3Int: 2 for symmetry; N+1 for Bloch
     τindg = (τindg_prim, τindg_dual)  # Tuple2{SVec3Int}
 
     τl = (deepcopy(lprim), deepcopy(ldual))
 
-    ∆τ = (zeros.((N+1).data), zeros.((N+1).data))  # Tuple23{VecFloat}
+    ∆τ = (zeros.((N.+1).data), zeros.((N.+1).data))  # Tuple23{VecFloat}
 
     for k = 1:K
         τind[nPR][k][end] = τindg[nPR][k]
         τind[nDL][k][1] = τindg[nDL][k]
 
-        τl[nPR][k][end] = getindex(lprim[k], τind[nPR][k][end])
-        τl[nDL][k][1] = getindex(ldual[k], τind[nDL][k][1])
+        τl[nPR][k][end] = getindex(lprim[k], τind[nPR][k][end])  # lprim[k][τind[nPR][k][end]]
+        τl[nDL][k][1] = getindex(ldual[k], τind[nDL][k][1])  # ldual[k][τind[nDL][k][1]]
 
         ∆τ[nPR][k][end] = -L[k] * isbloch[k]
         ∆τ[nDL][k][1] = L[k] * isbloch[k]
@@ -183,8 +188,8 @@ function Grid(axis::SVector{K,Axis},
 
     ghosted = Ghosted{K}((deepcopy(lprim), deepcopy(ldual)), τl, τind, ∆τ)
 
-    # Construct σ, which is false (not true) on symmetry boundary (non-Bloch boundaries).
-    # Note that σ's are vectors of length(N) and therefore do not include ghost points.
+    # Construct σ, which is false on non-Bloch (= symmetry) boundaries.
+    # Note that σ's are vectors of length-N and therefore do not include ghost points.
     σprim = ones.(Bool, N.data)
     σdual = ones.(Bool, N.data)
     for k = 1:K
@@ -207,7 +212,7 @@ function Grid(axis::SVector{K,Axis},
     return Grid{K}(axis, unit, N, L, l, ∆l, isbloch, σ, bounds, ghosted)
 end
 
-# To do
+# To-do
 # When needed, implement `section` (or `cross_section`) that returns Grid{K₁} from Grid{K₀}
 # for K₁ < K₀.  Provide the directions (Axis) across which the cross section in taken.  Use
 # the inner constructor of Grid to construct the cross section.

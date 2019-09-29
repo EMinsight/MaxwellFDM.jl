@@ -1,6 +1,6 @@
-# Consider creating Source module in src.jl under src/ directory.  Such a module can be used
-# by
-#    include("src/src.jl")
+# Consider creating Source module in source.jl under source/ directory.  Such a module can
+# be used by
+#    include("source/source.jl")
 #    importall (or using?) .Source
 # See "importall .LinAlg" in julia-0.6/base/sysimg.jl.
 
@@ -10,13 +10,13 @@
 # is assigned to ghost points.
 #
 # Depending on the boundary condition, we have to handle such a case differently.  Suppose
-# we are assiging a point source corresponding to the primal field parallel to the boundary.
-# We assign a portion of the source current at the nonghost point adjacent to the ghost
-# point.  The question is how to handle the portion of the source current to be assigned to
-# the ghost point.
+# we are assiging a point source corresponding to the primal field parallel to (but not on)
+# the boundary.  We assign a portion of the source current at the nonghost point adjacent to
+# the ghost point.  The question is how to handle the portion of the source current to be
+# assigned to the ghost point.
 #
 # - For Bloch, we have to assign a point source at the nonghost point corresponding to the
-# ghost point.  Note that this should be additive to the existing current density at the
+# ghost point.  Note that this should be additive to any existing current density at the
 # nonghost point.  (The same situation as two point sources in neighboring grid intervals:
 # at the shared grid point, the contributions from the two point sources are added.  The
 # first and last grid intervals are adjacent through the Bloch boundary condition.)
@@ -24,47 +24,64 @@
 # - For the symmetry boundary, putting current density component parallel to the boundary
 # effectively puts another anti-symmetric current density component at the mirror symmetry
 # position.  Usually these two current density components are sufficiently well-separated
-# and their contributions do not overlap.  However, in the situation considered here, they are
-# actually in neighboring cell intervals that share a point on the symmetry boundary.
+# and their contributions do not overlap.  However, in the situation considered here, they
+# are actually in neighboring cell intervals that share a point on the symmetry boundary.
 #
-# Now, when one point source is within a cell interval, the method to assign current density
-# to the two end points of the cell interval is (a) to find the current density we would get
-# when the source is exactly on one of the two points, and (b) calculate the portion of the
-# total current to assign, depending on the location of the point in the cell interval: if
-# the point is closer to one end point, assign a larger portion of the total current to that
-# point and less to the other end point.
+# If a point source is on a cell interval between two grid points A and B, the method to
+# assign current densities to A and B is the "sliding" method.  In this method, imagine the
+# point source location changes gradually from A to B.  When it is exactly at A, current
+# density is assigned only to A, and the magnitude J_A of the current density is determined
+# by dividing the current of the point source by the grid cell area occupied by A.  We can
+# similarly calculate the current density J_B to assign to B in the case where the point
+# source is exactly at B.  (Note that J_A ≠ J_B in general even though the current of the
+# point source is the same, because the area occupied by A and B can be different if the
+# grid is nonuniform.)  Now, if the point source location changes gradually from A to B, the
+# current density to assign to A should decrease linearly from J_A to 0, and the current
+# density to assign to B should increase linearly from 0 to J_B.  Therefore, if the point
+# source is located between A and B such that the ratio of the distances to A and B is
+# x:(1-x), then the current densities to assign to A and B should be J_A * (1-x) and J_B * x,
+# respectively.  Note that these becomes J_A and 0 for x = 0 (when the point source is at A)
+# and 0 and J_B for x = 1 (when the point source is at B).
 #
-# As the two point sources with opposite directions approach to the symmetry boundary, the
-# portions of the two point sources' currents assigned at the shared point on the boundary
-# exactly cancel each other.  Therefore, we always assign 0 current density on the ghost
-# point.  This makes us to simply ignore assiging current density to the point on the
-# symmetry boundary.  The portion of the total current to assign to the grid point adjacent
+# The situation of the symmetry boundary condition discussed earlier, where the two point
+# sources with opposite directions are placed at the mirror symmetry locations around the
+# symmetry boundary, can be thought of as assigning the current densities for each
+# individual point source using the above described recipe.  Note that as the two point
+# sources approach to the symmetry boundary, the portions of the two point sources' currents
+# assigned at the shared point on the boundary exactly cancel each other.  Therefore, we
+# always assign zero current density on the ghost point, which is at the symmetry boundary.
+# This makes us to simply ignore assiging current density to the point on the symmetry
+# boundary.  The portion of the total current to assign to the grid point adjacent
 # to the symmetry boundary is as usual, and this portion becomes zero as the point source
 # approaches the symmetry boundary.  This makes sense, because if the point source is
 # exactly on the symmetry boundary, being parallel to the boundary, then there must be no
 # current in the system at all.
 #
 #
+#
 # Now, consider assignment of a point source corresponding to the dual field parallel to the
-# boundary.  For Bloch, we proceed similarly.  For the symmetry boundary, now the imaginary
+# boundary.  For Bloch, we proceed similarly.  For the symmetry boundary, now the image
 # source put behind the boundary is in the same direction as the original source in the
 # domain.  Also, when the source is sufficiently close to the boundary, the actual and
-# imaginary sources are in the same dual grid cell interval (whose end points are dual grid
-# points), instead of the two adjacent cell intervals.  We don't have to assign a portion
-# of the total current of the point source to the point behind the symmetry boundary
-# ourselves: this is something that is automatically done by imposing symmetry.  However,
-# if the point source existing behind the symmetry boundary assigns some portion of its
-# total current to the point within the domain, that must be assigned ourselves.
+# image sources are in a single dual grid cell interval, whose end points are dual grid
+# points, which are referred to as A and B as before for convenience below, instead of the
+# two adjacent cell intervals.  Suppose A is within the domain and B is outside the domain.
+# We don't have to assign a portion of the total current of the real point source to B
+# ourselves, which is behind the symmetry boundary: this is something automatically done by
+# imposing symmetry.  However, if the image point source existing behind the symmetry
+# boundary assigns some portion of its total current to A, which is within the domain, that
+# must be assigned ourselves.
 #
 # Because the two point sources are at mirror-symmetric locations, the reduction in the
-# amount of the current assigned to the dual grid point within the domain by the point
-# source moving away is exactly compensated by the increase in the amount of the current
-# assigned to this point by the imaginary point source approaching to this point.
+# amount of the current assigned to A by the point source moving away from A towards the
+# symmetry boundary is exactly compensated by the increase in the amount of the current
+# assigned to A by the image point source to the symmetry boundary from behind the boundary.
 # Therefore, the net effect is the constant amount of current assigend to the dual grid
 # point, no matter where the point source is located inside this cell interval containing
 # the symmetry boundary.
 
-# We need to support both Je and Jm to realize unidirectional sources.
+
+# Note that we need to support both Je and Jm to realize unidirectional sources.
 
 export Source
 export add!
@@ -107,43 +124,45 @@ distweights(c::Real, gt::GridType, bounds::AbsVecReal, l::AbsVecReal, ∆l::AbsV
 # calculate the weights to distribute over the two points.  The output is in the form of
 # ([ind₁, ind₂], [wt₁, wt₂]), where wtₖ is the weight assigned to the grid point at indₖ.
 #
-# If the source is placed exactly at a grid point, weight distribution is unnecessary and
-# the output is in the form of ([ind], [wt]).  Note that the output type remains the same as
-# before.
+# If the source is placed exactly at one grid point, weight distribution is unnecessary and
+# the output is in the form of ([ind], [wt]).  Note that this output type remains the same
+# as before, which is a useful feature for achieving type stability of the function calling
+# this function.
 #
 # This function works for both longitudinal and transversal discretization with respect to
-# polarization.  Luckily, the above-described consideratino of the boundary conditions works
-# for both polarization.  For example, suppose we are distributing electric current along
-# the x-grid.  For Bloch, it is obvious that both polarizations are treated equally.  For
-# the symmetry boundary, we can handle both polarization with the same code by determining
-# whether the boundary condition is congruent with the polarization or not.  (See the
-# definition of `withcongbc` in the function definition.)
-#
-# - For Jy and Jz, the passed grid locations are primal, so the congruent boundary is the
-# symmetry boundary for primal fields.
-# - For Jx, the passed grid locatinos are dual, so the congruent boundary is the symmetry
-# boundary for dual fields.
+# polarization.  Luckily, the consideration of the boundary conditions discussed at the
+# beginning of this file works for both cases.  For example, suppose we are distributing
+# electric current source along the x-grid.  For Bloch, it is obvious that both
+# polarizations are treated equally.  For the symmetry boundary, we can handle both
+# polarization with the same code by determining whether the boundary condition is
+# "congruent" with the polarization or not (see the definition of `withcongbc` in the
+# function definition):
+# - For Jy and Jz, the passed grid locations are the E-field grid points, so the congruent
+# boundary is defined as the symmetry boundary with E-field as the boundary field.
+# - For Jx, the passed grid locations are the H-field grid point, so the congruent boundary
+# is defined as the symmetry boundary with H-field as the boundary field.
 #
 # For both cases,
 # - if the boundary is congruent, the source put beyond the boundary is antisymmetric to the
-# source put before the boundary, so the two sources are superposed destructively at the
+# source put within the boundary, so the two sources are superposed destructively at the
 # boundary (note the two sources are in adjacent cells), and
 # - if the boundary is incongruent, the source put beyond the boundary is symmetric to the
-# source put before the boundary, so the two sources are superposed constructively at the
+# source put within the boundary, so the two sources are superposed constructively at the
 # boundary (note the two sources are in the same cell).
 #
-# In the implementation, assume that the source value to distribute is something that does
+# In the implementation, assume that the source "value" to distribute is something that does
 # not change with discretization (e.g., Id of a point source and K of a plane source).  The
 # returned weights are the factors to multiply to this source value.
 #
-# When distributing a source between two points, the Bloch phase factor is not multiplied.
-# The source we are trying to distribute by this function is a delta-function-like source
-# in the axis of consideration (e.g., axis normal to a plane source).  It feels a bit
-# strange to impose phase difference between what were originally a single point.  Also,
-# I think it would be much easier to multiply the Bloch phase factors to the entire 3D array
-# of source when all the sources are assigned and properly distributed with weight factors.
-# That way, we don't have to implement multiplication of the Bloch phase factors in every
-# source type.  However, this decision can change later if needed.
+# When distributing a source between two points on the opposite sides of the Bloch boundary,
+# the Bloch phase factor is not multiplied. The source we are trying to distribute by this
+# function is a delta-function-like source in the axis of consideration (e.g., axis normal
+# to a plane source).  It feels a bit strange to impose phase difference between what were
+# originally a single point.  Also, I think it would be much easier to multiply the Bloch
+# phase factors to the entire 3D array of source when all the sources are assigned and
+# properly distributed with weight factors.  That way, we don't have to implement
+# multiplication of the Bloch phase factors in every source type.  However, this decision
+# can change later if needed.
 function distweights(c::Float,  # location of point (c means center)
                      gt::GridType,  # type of the grid planes
                      bounds::SVec2Float,  # [lneg, lpos]: negative- and positive-end boundaries of domain

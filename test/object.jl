@@ -6,10 +6,8 @@ intv1⁻ = (-one⁻, one⁻)
 
 @testset "Interval" begin
     vac = Material("vacuum")
-    ge = PRIM
-    evac = EncodedMaterial(ge, vac)
 
-    box_vac = Object(Box([0,1], [2,3]), evac, [0.1, 0.15])
+    box_vac = Object(Box([0,1], [2,3]), vac, [0.1, 0.15])
     b = bounds(box_vac)
     oi = OpenInterval(box_vac, nX)
     ci = ClosedInterval(box_vac, nY)
@@ -60,19 +58,17 @@ end
 
 @testset "Object" begin
     mat = Material("material", ε=rand(), μ=rand())
-    ge = PRIM
-    emat = EncodedMaterial(ge, mat)
 
     @testset "Box" begin
         ba = sort(rand(3,2), dims=2)  # array
         b = (ba[:,1], ba[:,2])
 
-        box_emat = Object(Box(b), emat)
+        box_mat = Object(Box(b), mat)
 
-        @test bounds(box_emat) ≈ b
-        @test all(b .∈ Ref(box_emat))
-        @test max∆l(box_emat) == fill(Inf,3)
-        @test matparam(box_emat,PRIM)==emat.param[nPR] && matparam(box_emat,DUAL)==emat.param[nDL]
+        @test bounds(box_mat) ≈ b
+        @test all(b .∈ Ref(box_mat))
+        @test max∆l(box_mat) == fill(Inf,3)
+        @test matparam(box_mat,EE)==mat.param[nE] && matparam(box_mat,HH)==mat.param[nH]
     end  # @testset "Box"
 
     # @testset "Ellipsoid" begin
