@@ -4,7 +4,7 @@ export HV, nHRZ, nVRT, nHV
 export NP, nN, nP, nNP
 export PD, nPR, nDL, nPD
 export EH, nE, nH, nEH
-export numel, next1, next2, next3, prev1, prev2, prev3, alter  # functions
+export numel, next1, next2, next3, prev1, prev2, prev3, alter, ft2gt  # functions
 
 # 3D axes
 const nX, nY, nZ = 1, 2, 3  # x, y, z coordinates
@@ -73,6 +73,10 @@ const EH = SVector(EE, HH)
 for ins in instances(FieldType); @eval export $(Symbol(ins)); end  # export all instances
 Base.string(ins::FieldType) = ins==EE ? "E" : "H"
 alter(ins::FieldType) = ins==EE ? HH : EE
+
+# Given boundary field types, determine whether the grid planes specified by the given field
+# type ft are primal or dual grid planes in the Cartesian directions.
+ft2gt(ft::FieldType, boundft::FieldType) = PD[2 - (boundft==ft)]
 
 
 # Boundary conditions

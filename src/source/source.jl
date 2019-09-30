@@ -88,18 +88,20 @@ export add!
 
 abstract type Source end
 
-add!(j3d::AbsArrNumber{4}, gt::GridType, bounds::Tuple2{<:AbsVecReal}, l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, e⁻ⁱᵏᴸ::AbsVecNumber, srcs::Source...) =
-    add!(j3d, gt, SVec3Float.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVec3(e⁻ⁱᵏᴸ), srcs...)
+add!(j3d::AbsArrNumber{4}, ft::FieldType, boundft::AbsVec{FieldType}, bounds::Tuple2{<:AbsVecReal},
+     l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, isbloch::AbsVecBool, srcs::Source...) =
+    add!(j3d, ft, SVec3(boundft), SVec3Float.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVec3(isbloch), srcs...)
 
 function add!(j3d::AbsArrNumber{4},  # 4D array of Je (electric current density) or Jm (magnetic current density)
-              gt::GridType,  # type of source (primal or dual)
+              ft::FieldType,  # type of source (electric or magnetic)
+              boundft::SVec3{FieldType},  # boundary field type
               bounds::Tuple2{SVec3Float},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
               l::Tuple23{<:AbsVecFloat},  # l[PRIM][k] = primal vertex locations in k-direction
               ∆l::Tuple23{<:AbsVecFloat},  # ∆l[PRIM][k] = (∆l at primal vertices in w) == diff(l[DUAL][k] including ghost point)
-              e⁻ⁱᵏᴸ::SVec3Number,  # Bloch phase factors
+              isbloch::SVec3Bool,  # Bloch boundary conditions
               srcs::Source...)  # sources; sources put later overwrite sources put earlier
     for src = srcs
-        add!(j3d, bounds, l, ∆l, gt, src)
+        add!(j3d, ft, boundft, bounds, l, ∆l, isbloch, src)
     end
 end
 

@@ -197,7 +197,7 @@ function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # (electric, magnetic
     for nft = nEH
         ft = EH[nft]
         nft′ = alter(nft)
-        gt_cmp₀ = PD[2 .- (boundft .== ft)]  # grid type of voxel corners
+        gt_cmp₀ = ft2gt.(ft, boundft)  # grid type of voxel corners
         for nw = 1:4
             # Set the grid types of the x-, y-, z-locations of Fw.
             gt_cmp = broadcast((k,w,g)->(k==w ? alter(g) : g), nXYZ, nw, gt_cmp₀)  # grid type of Fw; no change if nw = 4

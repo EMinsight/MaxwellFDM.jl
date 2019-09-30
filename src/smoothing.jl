@@ -79,7 +79,7 @@ function smooth_param!(param3d::AbsArrComplex{5},  # parameter array to smooth
                        σ::Tuple23{AbsVecBool},  # false if on symmetry boundary
                        ∆τ′::Tuple23{AbsVecReal})  # amount of shift by Bloch boundary conditions
     nft = Int(ft)
-    gt_cmp₀ = PD[2 .- (boundft .== ft)]  # grid type of voxel corners
+    gt_cmp₀ = ft2gt.(ft, boundft)  # grid type of voxel corners
     for nw = 1:4  # w = X̂, Ŷ, Ẑ, grid node
         # Set the grid types of the x-, y-, z-locations of Fw.
         gt_cmp = broadcast((k,w,g)->(k==w ? alter(g) : g), nXYZ, nw, gt_cmp₀)  # grid type of Fw; no change if nw = 4

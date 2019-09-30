@@ -131,8 +131,11 @@ unit = PhysUnit(L₀)
     g3 = Grid(unit, lprim, isbloch)
     ∆a = 1.0^2  # area element
 
+    ft = EE
+    boundft = SVector(EE,EE,EE)
+
     j3d = create_field3d(g3.N)
-    add!(j3d, PRIM, g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
+    add!(j3d, ft, boundft, g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
 
     @test maximum(abs, j3d) == 1.0  # J = K / ∆z
     @test all(j3d[:,:,:,nY] .== 0)  # Jy = 0
@@ -143,7 +146,7 @@ unit = PhysUnit(L₀)
     g3_fine = Grid(unit, lprim, isbloch)
 
     j3d_fine = create_field3d(g3_fine.N)
-    add!(j3d_fine, PRIM, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
+    add!(j3d_fine, ft, boundft, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
     ∆a_fine = 0.5^2  # area element
 
     @test sum(j3d[1,:,:,nX]) * ∆a ≈ sum(j3d_fine[1,:,:,nX]) * ∆a_fine  # total current through x-normal cross section is independent of grid resolution
@@ -160,7 +163,7 @@ unit = PhysUnit(L₀)
     ∆zprim = g3_nu.∆l[nPR][nZ]
 
     j3d_nu = create_field3d(g3_nu.N)
-    add!(j3d_nu, PRIM, g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
+    add!(j3d_nu, ft, boundft, g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
 
     @test sum(j3d[1,:,:,nX]) * ∆a ≈ sum(j3d_nu[1,:,:,nX] .* (∆yprim * transpose(∆zprim)))  # total current through x-normal cross section is independent of grid resolution
 
