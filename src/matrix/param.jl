@@ -2,18 +2,20 @@ export param3d2mat
 
 
 param3d2mat(param3d::AbsArrComplex{5},
-            gt::AbsVec{GridType},  # gt[w] = PRIM|DUAL for primal|dual grid planes as w-normal voxel faces
+            ft::FieldType,  # type (electric or magnetic) of material parameter
+            boundft::AbsVec{FieldType},  # boundary field type
             N::AbsVecInteger,  # size of grid
             ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
             ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
             isbloch::AbsVecBool,  # boundary conditions in x, y, z
             e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
             reorder::Bool=true) =  # true for more tightly banded matrix
-    (K = length(N); param3d2mat(param3d, SVector{K}(gt), SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
+    (K = length(N); param3d2mat(param3d, ft, SVector{K}(boundft), SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 
-function param3d2mat(param3d::AbsArrComplex{5},
-                     gt::SVec3{GridType},  # gt[w] = PRIM|DUAL for primal|dual grid planes as w-normal voxel faces
+function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
+                     ft::FieldType,  # type (electric or magnetic) of material parameter
+                     boundft::SVec3{FieldType},  # boundary field type
                      N::SVec3Int,  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
@@ -44,8 +46,15 @@ function param3d2mat(param3d::AbsArrComplex{5},
     # - to distribute the resulting output fields in the v(≠w)-direction back to voxel edges,
     # the output fields need to be forward(backward)-averaged along the v-direction if the
     # v-normal voxel faces are primal (dual) grid planes.
-    isfwd_in = gt.==Ref(DUAL)  # true if input fields need to be forward-averaged
-    isfwd_out = gt.==Ref(PRIM)  # true if output fields need to be backward-averaged
+    #
+    # This means if the w-boundaries are E-field boundaries,
+    # - the input E(H)-field needs to be backward(forward)-averaged in the w-direction, and
+    # - the output E(H)-field needs to be forward(backward)-averaged in the w-direction.
+    #
+    # Below, do we still need to use Ref(ft)?  Previously we had to use Ref(PRIM) and Ref(DUAL)
+    # for type stability.
+    isfwd_in = boundft.!=ft  # SVec3Bool; true if input fields need to be forward-averaged
+    isfwd_out = boundft.==ft  # SVec3Bool; true if output fields need to be backward-averaged
 
     # For the output averaging, ∆l and ∆l′ are not supplied to create_mean in order to
     # create a simple arithmetic averaging operator.  This is because the area factor matrix
@@ -84,7 +93,7 @@ function create_param3dmat(param3d::AbsArrComplex{5},
                            N::SVec3Int;  # size of grid
                            reorder::Bool=true)  # true for more tightly banded matrix
     # Note that param3d's i, j, k indices run from 1 to N+1 rather than to N, so we should
-    # not iterate those indices from 1 to end.
+    # not iterate those indices from 1 to end (= N+1).
     M = prod(N)
     I = VecInt(undef, 3M)
     J = VecInt(undef, 3M)

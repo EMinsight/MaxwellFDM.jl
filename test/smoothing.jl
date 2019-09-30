@@ -49,18 +49,24 @@ end  # @testset "sort8!"
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
-    param3d = create_param3d(N)
-    obj3d = create_n3d(Object3, N)
-    pind3d = create_n3d(ParamInd, N)
-    oind3d = create_n3d(ObjInd, N)
+    ε3d = create_param3d(N)
+    εobj3d = create_n3d(Object3, N)
+    εind3d = create_n3d(ParamInd, N)
+    εoind3d = create_n3d(ObjInd, N)
+
+    μ3d = create_param3d(N)
+    μobj3d = create_n3d(Object3, N)
+    μind3d = create_n3d(ParamInd, N)
+    μoind3d = create_n3d(ObjInd, N)
 
     boundft = SVector(EE,EE,EE)
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch, boundft)
+    assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
     # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
 
-    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ, boundft)
+    ft = EE
+    smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    ε3d = view(param3d[nPR], 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
+    ε3dred = view(ε3d, 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
 
     # Construct an expected ε3d.
     ε3dexp = Array{ComplexF64}(undef,3,3,3,3,3)
@@ -123,8 +129,8 @@ end  # @testset "sort8!"
 
     for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
         # @info "(i,j,k) = $((i,j,k))"  # uncomment this to know where test fails
-        @test @view(ε3d[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
-        @test issymmetric(@view(ε3d[i,j,k,:,:]))
+        @test @view(ε3dred[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
+        @test issymmetric(@view(ε3dred[i,j,k,:,:]))
     end
 end  # @testset "smoothing, box with odd number of voxels"
 
@@ -155,16 +161,23 @@ end  # @testset "smoothing, box with odd number of voxels"
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
-    param3d = create_param3d(N)
-    obj3d = create_n3d(Object3, N)
-    pind3d = create_n3d(ParamInd, N)
-    oind3d = create_n3d(ObjInd, N)
+    ε3d = create_param3d(N)
+    εobj3d = create_n3d(Object3, N)
+    εind3d = create_n3d(ParamInd, N)
+    εoind3d = create_n3d(ObjInd, N)
+
+    μ3d = create_param3d(N)
+    μobj3d = create_n3d(Object3, N)
+    μind3d = create_n3d(ParamInd, N)
+    μoind3d = create_n3d(ObjInd, N)
 
     boundft = SVector(EE,EE,EE)
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch, boundft)
-    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ, boundft)
+    assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
 
-    ε3d = view(param3d[nPR], 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
+    ft = EE
+    smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+
+    ε3dred = view(ε3d, 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
 
     # Construct an expected ε3d.
     ε3dexp = Array{ComplexF64}(undef,4,4,4,3,3)
@@ -345,8 +358,8 @@ end  # @testset "smoothing, box with odd number of voxels"
 
     for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
         # @info "(i,j,k) = $((i,j,k))"  # uncomment this to know where test fails
-        @test @view(ε3d[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
-        @test issymmetric(@view(ε3d[i,j,k,:,:]))
+        @test @view(ε3dred[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
+        @test issymmetric(@view(ε3dred[i,j,k,:,:]))
     end
 end  # @testset "smoothing, box with even number of voxels"
 

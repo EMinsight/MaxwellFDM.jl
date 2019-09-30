@@ -34,6 +34,7 @@ prev3(nw::Int) = ACYC_nAXES[nw]
 prev2(nw::Int) = (p3 = ACYC_nAXES[nw]; SVector(p3[1], p3[2]))
 prev1(nw::Int) = prev3(nw)[1]
 
+
 # 2D directions
 const nHRZ, nVRT = 1, 2  # horizontal, vertical directions
 const nHV = SVector(nHRZ,nVRT)  # tuple allocation is more efficient than array allocation
@@ -42,6 +43,7 @@ const HV = SVector(HRZ, VRT)
 for ins in instances(Dir); @eval export $(Symbol(ins)); end  # export all instances
 Base.string(ins::Dir) = ins==HRZ ? "horizontal" : "vertical"
 alter(ins::Dir) = ins==HRZ ? VRT : HRZ
+
 
 # Signs
 const nN, nP = 1, 2  # negative, positive directions
@@ -52,6 +54,7 @@ for ins in instances(Sign); @eval export $(Symbol(ins)); end  # export all insta
 Base.string(ins::Sign) = ins==NEG ? "negative" : "positive"
 alter(ins::Sign) = ins==NEG ? POS : NEG
 
+
 # Grid types
 const nPR, nDL = 1, 2  # primal, dual grids
 const nPD = SVector(nPR,nDL)  # tuple allocation is more efficient than array allocation
@@ -60,6 +63,7 @@ const PD = SVector(PRIM, DUAL)
 for ins in instances(GridType); @eval export $(Symbol(ins)); end  # export all instances
 Base.string(ins::GridType) = ins==PRIM ? "primal" : "dual"
 alter(ins::GridType) = ins==PRIM ? DUAL : PRIM
+
 
 # Field types
 const nE, nH = 1, 2  # E-, H-fields
@@ -70,18 +74,19 @@ for ins in instances(FieldType); @eval export $(Symbol(ins)); end  # export all 
 Base.string(ins::FieldType) = ins==EE ? "E" : "H"
 alter(ins::FieldType) = ins==EE ? HH : EE
 
-const SVec3FT = SVec3{FieldType}
 
 # Boundary conditions
 @enum BC PERIODIC=1 PEC PMC
 for ins in instances(BC); @eval export $(Symbol(ins)); end  # export all instances
 Base.string(ins::BC) = ins==PEC ? "PEC" : (ins==PMC ? "PMC" : "periodic")
 
+
 # PML types
 @enum PML SCPML=1 UPML
 for ins in instances(PML); @eval export $(Symbol(ins)); end  # export all instances
 Base.string(ins::PML) = ins==SCPML ? "SC-PML" : "UPML"
 alter(ins::PML) = ins==SCPML ? UPML : SCPML
+
 
 # Functions for enumerated types
 numel(::Type{T}) where {T<:Enum} = length(instances(T))

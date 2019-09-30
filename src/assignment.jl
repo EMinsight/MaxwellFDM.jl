@@ -65,30 +65,29 @@ export create_param3d, create_n3d, assign_param!, assign_val_shape!
 # (i,j,k+1/2), respectively.  Also, six εvw's with v ≠ w are defined at (i,j,k).
 
 
-# Creates param3d of size N.+1.  It is created with size N+1 to match the sizes of other
-# matrices created by create_n3d and hence to simplify the algorithm, but only the first N
-# portion is used.
+# Creates param3d to be of size N.+1 in the (i,j,k)-dimensions.  It is created with size N+1
+# to match the sizes of other matrices created by create_n3d and hence to simplify the
+# algorithm, but only the first N portion is used.
 #
-# The output param3d is indexd as param3d[ft][i,j,k,v,w], where ft is the field type; (i,j,k)
-# is the grid cell location; v and w are the row and column indices of the 3×3 tensorial
-# material parameters (like the ε tensor and μ tensor).
+# The output param3d is indexd as param3d[i,j,k,v,w], where (i,j,k) is the grid cell
+# location, and v and w are the row and column indices of the 3×3 tensorial material
+# parameters (like the ε tensor and μ tensor).
 #
 # In the future, this function might be generalized for 1D and 2D cases, such that it can be
 # used for 1D and 2D problems.
-create_param3d(N::SVec3Int) =
-    (s = (N.+1).data; (zeros(CFloat, s..., 3, 3), zeros(CFloat, s..., 3, 3)))  # 3 = numel(Axis)
+create_param3d(N::SVec3Int) = (s = (N.+1).data; zeros(CFloat, s..., 3, 3))  # 3 = numel(Axis)
 
 # Below, zeros cannot be used instead of Array{T}, because zero for the type T may not be
 # well-defined (e.g., T = Object3)
 #
-# The output n3d is indexed as n3d[ft][w][i,j,k].  For example, if ft = EE and w = X̂, then
-# n3d[ft][w][i,j,k] indicates some properties related to Ex[i,j,k].  Below, we have n3d = obj3d,
-# pind3d, oind3d, and n3d[EE][X̂][i,j,k] is used to store the electric material properties
-# evaluated at the Hx[i,j,k] (not Ex[i,j,k]) point.  These electric material properties that
-# are seemingly evaluated at wrong locations are still related to Ex[i,j,k], because they
-# are used to determine how to smooth the electric properties at the Ex[i,j,k] point.
-create_n3d(::Type{T}, N::SVec3Int) where {T} =
-    (s = (N.+1).data; ((t->Array{T}(undef,t)).((s,s,s,s)), (t->Array{T}(undef,t)).((s,s,s,s))))  # Tuple24{Array{T,3}}
+# The output n3d is indexed as n3d[w][i,j,k].  For example, if w = X̂ and we are dealing with
+# electric materials, then n3d[w][i,j,k] indicates some properties related to Ex[i,j,k].
+# Below, we have n3d = obj3d, pind3d, oind3d, and n3d[X̂][i,j,k] is used to store the
+# electric material properties evaluated at the Hx[i,j,k] (not Ex[i,j,k]) point.  These
+# electric material properties that are seemingly evaluated at wrong locations are still
+# related to Ex[i,j,k], because they are used to determine how to smooth the electric
+# properties at the Ex[i,j,k] point in smoothing.jl.
+create_n3d(::Type{T}, N::SVec3Int) where {T} = (s = (N.+1).data; (t->Array{T}(undef,t)).((s,s,s,s)))  # Tuple4{Array{T,3}}
 
 
 # Notes on ghost point transformation by boundary conditions:
@@ -141,14 +140,18 @@ create_n3d(::Type{T}, N::SVec3Int) where {T} =
 # dynamic dispatch.  To reduce the amount of dynamic dispatch, oind3d and pind3d must be set
 # up object-by-object rather than point-by-point.  This means that it is inevitable to
 # construct pind3d and oind3d arrays.
-function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # parameter array to set
-                       obj3d::Tuple24{AbsArr{<:Object3,3}},  # object array to set
-                       pind3d::Tuple24{AbsArr{ParamInd,3}},  # material parameter index array to set
-                       oind3d::Tuple24{AbsArr{ObjInd,3}},  # object index array to set
+
+# Unlike smoothing.jl/smooth_param! and param.jl/param3d2mat, assign_param! has to handle
+# both electric and magnetic material properties simultaneously; see the comments inside the
+# function body towards the end of the function.
+function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # (electric, magnetic) parameter arrays to set
+                       obj3d::Tuple24{AbsArr{<:Object3,3}},  # (electric, magnetic) object arrays to set
+                       pind3d::Tuple24{AbsArr{ParamInd,3}},  # (electric, magnetic) material parameter index arrays to set
+                       oind3d::Tuple24{AbsArr{ObjInd,3}},  # (electric, magnetic) object index arrays to set
+                       boundft::SVec3{FieldType},  # boundary field type
                        ovec::AbsArr{<:Object3},  # object vector; later object overwrites earlier.
                        τl::Tuple23{AbsVecReal},  # field component locations transformed by boundary conditions
-                       isbloch::SVec3Bool,  # boundary conditions
-                       boundft::SVec3FT)  # boundary field type
+                       isbloch::SVec3Bool)  # boundary conditions
     # Circularly shift subscripts for Bloch boundary condition.  This makes sure τl[sub[w]]
     # is always sorted for all boundary conditions.  Sorted τl is necessary to use findfirst
     # and findlast in assign_param_obj!.
@@ -232,7 +235,7 @@ function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # parameter array to 
             oind3d_cmp = view(oind3d[nft′][nw], sub_cmp...)
 
             # Set various arrays for the current component.
-            assign_param_cmp!(ft, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec, τlcmp)
+            assign_param_cmp!(param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ft, nw, ovec, τlcmp)
         end
     end
 
@@ -255,12 +258,12 @@ end
 # function, where as the ft entry of param3d was chosen as param3d_cmp there.  This also
 # explains why the ft′ component was chosen as pind′ whereas the ft component was chosen as
 # param in the present function.
-function assign_param_cmp!(ft::FieldType,  # E- or H-field
-                           nw::Integer,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
-                           param3d_cmp::AbsArrComplex{5},  # parameter array to set
+function assign_param_cmp!(param3d_cmp::AbsArrComplex{5},  # parameter array to set
                            obj3d_cmp::AbsArr{Object3,3},  # object array to set
                            pind3d_cmp::AbsArr{ParamInd,3},  # material parameter index array to set
                            oind3d_cmp::AbsArr{ObjInd,3},  # object index array to set
+                           ft::FieldType,  # E- or H-field
+                           nw::Integer,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
                            ovec::AbsVec{<:Object3},  # object vector; later object overwrites earlier.
                            τlcmp::Tuple3{AbsVecReal})  # location of field components
     for o = ovec  # last in ovec is last object added; see object.jl/add!

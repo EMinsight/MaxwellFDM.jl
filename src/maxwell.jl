@@ -34,7 +34,7 @@ mutable struct Maxwell
     g::Grid{3}
     bounds::Tuple2{AbsVecReal}  # ([xmin,ymin,zmin], [xmax,ymax,zmax])
     ∆l::AbsVecReal  # [∆x,∆y,∆z]
-    boundft::SVec3FT  # boundary field type
+    boundft::SVec3{FieldType}  # boundary field type
     isbloch::AbsVecBool  # [Bool,Bool,Bool]
     kbloch::AbsVecReal  # [Real,Real,Real]
     e⁻ⁱᵏᴸ::AbsVecComplex
@@ -152,15 +152,23 @@ function get_param3d(m::Maxwell)
         N = g.N
 
         # Initialize other fields that depend on the grid.
-        param3d = create_param3d(N)
-        obj3d = create_n3d(Object3, N)
-        pind3d = create_n3d(ParamInd, N)
-        oind3d = create_n3d(ObjInd, N)
+        ε3d = create_param3d(N)
+        εobj3d = create_n3d(Object3, N)
+        εind3d = create_n3d(ParamInd, N)
+        εoind3d = create_n3d(ObjInd, N)
 
-        assign_param!(param3d, obj3d, pind3d, oind3d, m.ovec, g.ghosted.τl, g.isbloch, m.boundft)
-        smooth_param!(param3d, obj3d, pind3d, oind3d, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ, m.boundft)
+        assign_param!(ε3d, εobj3d, εind3d, εoind3d, m.ovec, g.ghosted.τl, g.isbloch, m.boundft)
+        smooth_param!(ε3d, εobj3d, εind3d, εoind3d, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ, m.boundft)
 
-        m.param3d = param3d
+        μ3d = create_param3d(N)
+        μobj3d = create_n3d(Object3, N)
+        μind3d = create_n3d(ParamInd, N)
+        μoind3d = create_n3d(ObjInd, N)
+
+        assign_param!(μ3d, μobj3d, μind3d, μoind3d, m.ovec, g.ghosted.τl, g.isbloch, m.boundft)
+        smooth_param!(μ3d, μobj3d, μind3d, μoind3d, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ, m.boundft)
+
+        m.param3d = (ε3d, μ3d)
     end
 
     return m.param3d

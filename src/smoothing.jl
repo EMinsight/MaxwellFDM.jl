@@ -68,60 +68,52 @@ SVector(1.,1.,-1.), SVector(-1.,1.,-1.), SVector(1.,-1.,-1.), SVector(-1.,-1.,-1
 #             - If the corner is outside the symmetry boundary, zero the nout componnent normal to the boundary (using σvxl).
 #             - ∆fg and σvxl can be obtained simply by looking at the indices and BC.
 
-function smooth_param!(param3d::Tuple2{AbsArrComplex{5}},  # parameter array to smooth
-                       obj3d::Tuple24{AbsArr{<:Object3,3}},  # object array (does not change)
-                       pind3d::Tuple24{AbsArr{ParamInd,3}},  # material parameter index array (does not chaneg)
-                       oind3d::Tuple24{AbsArr{ObjInd,3}},  # object index array (does not change)
+function smooth_param!(param3d::AbsArrComplex{5},  # parameter array to smooth
+                       obj3d::Tuple4{AbsArr{<:Object3,3}},  # object array (does not change)
+                       pind3d::Tuple4{AbsArr{ParamInd,3}},  # material parameter index array (does not chaneg)
+                       oind3d::Tuple4{AbsArr{ObjInd,3}},  # object index array (does not change)
+                       ft::FieldType,  # material type (electric or magnetic) of arrays to smooth
+                       boundft::SVec3{FieldType},  # boundary field type
                        l::Tuple23{AbsVecReal},  # location of field components
                        l′::Tuple23{AbsVecReal},  # location of voxel corners without transformation by boundary conditions
                        σ::Tuple23{AbsVecBool},  # false if on symmetry boundary
-                       ∆τ′::Tuple23{AbsVecReal},  # amount of shift by Bloch boundary conditions
-                       boundft::SVec3FT)  # boundary field type
-    for nft = nEH
-        param3d_ft = param3d[nft]
-        ft = EH[nft]
-        gt_cmp₀ = PD[2 .- (boundft .== ft)]  # grid type of voxel corners
-        for nw = 1:4  # w = X̂, Ŷ, Ẑ, grid node
-            # Set the grid types of the x-, y-, z-locations of Fw.
-            gt_cmp = broadcast((k,w,g)->(k==w ? alter(g) : g), nXYZ, nw, gt_cmp₀)  # grid type of Fw; no change if nw = 4
+                       ∆τ′::Tuple23{AbsVecReal})  # amount of shift by Bloch boundary conditions
+    nft = Int(ft)
+    gt_cmp₀ = PD[2 .- (boundft .== ft)]  # grid type of voxel corners
+    for nw = 1:4  # w = X̂, Ŷ, Ẑ, grid node
+        # Set the grid types of the x-, y-, z-locations of Fw.
+        gt_cmp = broadcast((k,w,g)->(k==w ? alter(g) : g), nXYZ, nw, gt_cmp₀)  # grid type of Fw; no change if nw = 4
 
-            # Set the grid types of the voxel corners surroundnig Fw.
-            gt_cmp′ = alter.(gt_cmp)
+        # Set the grid types of the voxel corners surroundnig Fw.
+        gt_cmp′ = alter.(gt_cmp)
 
-            # Choose vectors for Fw (which is at the centers of the voxel defined by the
-            # voxel corners below).
-            lcmp = t_ind(l, gt_cmp)
-            σcmp = t_ind(σ, gt_cmp)
+        # Choose vectors for Fw (which is at the centers of the voxel defined by the
+        # voxel corners below).
+        lcmp = t_ind(l, gt_cmp)
+        σcmp = t_ind(σ, gt_cmp)
 
-            # Choose arrays and vectors for voxel corners.
-            lcmp′ = t_ind(l′, gt_cmp′)
-            ∆τcmp′ = t_ind(∆τ′, gt_cmp′)
+        # Choose arrays and vectors for voxel corners.
+        lcmp′ = t_ind(l′, gt_cmp′)
+        ∆τcmp′ = t_ind(∆τ′, gt_cmp′)
 
-            # Below, we don't use alter(nft) because nft components of obj3d, pind3d, oind3d
-            # contain ft materials.  (However, the locations where these materials were
-            # evaluated are the complementary field locations, i.e., Hw locations for
-            # electric materials if the present loop is smoothing the electric material
-            # associated with Ew, because the Hw locations are the corners of the voxels
-            # centered at the Ew locations.)
-            obj3d_cmp′ = obj3d[nft][nw]
-            pind3d_cmp′ = pind3d[nft][nw]
-            oind3d_cmp′ = oind3d[nft][nw]
+        obj3d_cmp′ = obj3d[nw]
+        pind3d_cmp′ = pind3d[nw]
+        oind3d_cmp′ = oind3d[nw]
 
-            # Set various arrays for the current component.
-            smooth_param_cmp!(ft, nw, param3d_ft, obj3d_cmp′, pind3d_cmp′, oind3d_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
-        end
+        # Set various arrays for the current component.
+        smooth_param_cmp!(param3d, obj3d_cmp′, pind3d_cmp′, oind3d_cmp′, ft, nw, lcmp, lcmp′, σcmp, ∆τcmp′)
     end
 
     return nothing
 end
 
 # Below, XXX_cmp has size N, whereas XXX_cmp′ has size N+1 (and corresponds to voxel corners).
-function smooth_param_cmp!(ft::FieldType,  # E- or H-field
-                           nw::Int,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
-                           param3d_ft::AbsArrComplex{5},  # parameter array to smooth
+function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to smooth
                            obj3d_cmp′::AbsArr{O,3},  # object array (does not change)
                            pind3d_cmp′::AbsArr{ParamInd,3},  # material parameter index array (does not chaneg)
                            oind3d_cmp′::AbsArr{ObjInd,3},  # object index array (does not change)
+                           ft::FieldType,  # E- or H-field
+                           nw::Int,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
                            lcmp::Tuple3{AbsVecReal},  # location of field components
                            lcmp′::Tuple3{AbsVecReal},  # location of voxel corners without transformation by boundary conditions
                            σcmp::Tuple3{AbsVecBool},  # false if on symmetry boundary

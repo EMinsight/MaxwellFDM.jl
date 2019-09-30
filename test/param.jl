@@ -29,23 +29,29 @@
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
-    param3d = create_param3d(N)
-    obj3d = create_n3d(Object3, N)
-    pind3d = create_n3d(ParamInd, N)
-    oind3d = create_n3d(ObjInd, N)
+    ε3d = create_param3d(N)
+    εobj3d = create_n3d(Object3, N)
+    εind3d = create_n3d(ParamInd, N)
+    εoind3d = create_n3d(ObjInd, N)
+
+    μ3d = create_param3d(N)
+    μobj3d = create_n3d(Object3, N)
+    μind3d = create_n3d(ParamInd, N)
+    μoind3d = create_n3d(ObjInd, N)
 
     boundft = SVector(EE,EE,EE)
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch, boundft)
+    assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
     # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
 
-    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ, boundft)
+    ft = EE
+    smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mξ = param3d2mat(param3d[nE], ge, N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
+    Mε = param3d2mat(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, reorder=false)
 
-    @test issymmetric(Mξ)
+    @test issymmetric(Mε)
 
     # Code I used to reveal the matrix structure while debugging:
-    # (i,j) = (nX,nY); full(real.(Mξ3))[27(i-1)+1:27i, 27(j-1)+1:27j]
+    # (i,j) = (nX,nY); full(real.(Mε3))[27(i-1)+1:27i, 27(j-1)+1:27j]
 end  # @testset "param3d2mat"
 
 @testset "symmetry of param3d2mat, nonuniform grid" begin
@@ -76,18 +82,24 @@ end  # @testset "param3d2mat"
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
-    param3d = create_param3d(N)
-    obj3d = create_n3d(Object3, N)
-    pind3d = create_n3d(ParamInd, N)
-    oind3d = create_n3d(ObjInd, N)
+    ε3d = create_param3d(N)
+    εobj3d = create_n3d(Object3, N)
+    εind3d = create_n3d(ParamInd, N)
+    εoind3d = create_n3d(ObjInd, N)
+
+    μ3d = create_param3d(N)
+    μobj3d = create_n3d(Object3, N)
+    μind3d = create_n3d(ParamInd, N)
+    μoind3d = create_n3d(ObjInd, N)
 
     boundft = SVector(EE,EE,EE)
-    assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch, boundft)
+    assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
     # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
 
-    smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ, boundft)
+    ft = EE
+    smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mξ = param3d2mat(param3d[nE], ge, N, g3.∆l[nDL], g3.∆l[nPR], isbloch, reorder=false)
+    Mε = param3d2mat(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, reorder=false)
 
     # Ml
     ∆lprim = g3.∆l[nPR]
@@ -115,12 +127,12 @@ end  # @testset "param3d2mat"
     ∆a = ∆A[:]
     Ma = sparse(Diagonal(∆a))
 
-    Mξ_sym = Ma * Mξ * Ml⁻¹
+    Mε_sym = Ma * Mε * Ml⁻¹
 
-    @test Mξ_sym ≈ transpose(Mξ_sym)
+    @test Mε_sym ≈ transpose(Mε_sym)
 
     # Code I used to reveal the matrix structure while debugging:
-    # (i,j) = (nX,nY); full(real.(Mξ3))[27(i-1)+1:27i, 27(j-1)+1:27j]
+    # (i,j) = (nX,nY); full(real.(Mε3))[27(i-1)+1:27i, 27(j-1)+1:27j]
 end  # @testset "param3d2mat"
 
 # Need to test if PML still works after the field-averaging operator applied to the material
