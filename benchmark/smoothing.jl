@@ -284,10 +284,10 @@ g3 = Grid(unit, lprim, isbloch)
 
 # Create materials.
 εvac = 1.0
-vac = EncodedMaterial(PRIM, Material("Vacuum", ε=εvac))
+vac = Material("Vacuum", ε=εvac)
 
 εdiel = 12.0
-diel = EncodedMaterial(PRIM, Material("Dielectric", ε=εdiel))
+diel = Material("Dielectric", ε=εdiel)
 
 # Create objects.
 dom_vac = Object(Box(g3.bounds), vac)
@@ -307,10 +307,16 @@ paramset = (SMat3Complex[], SMat3Complex[])
 # add!(ovec, paramset, dom_vac, obj_diel)
 add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
 
-param3d = create_param3d(g3.N)
-obj3d = create_n3d(Object3, g3.N)
-pind3d = create_n3d(ParamInd, g3.N)
-oind3d = create_n3d(ObjInd, g3.N)
+N = g3.N
+ε3d = create_param3d(N)
+εobj3d = create_n3d(Object3, N)
+εind3d = create_n3d(ParamInd, N)
+εoind3d = create_n3d(ObjInd, N)
+
+μ3d = create_param3d(N)
+μobj3d = create_n3d(Object3, N)
+μind3d = create_n3d(ParamInd, N)
+μoind3d = create_n3d(ObjInd, N)
 
 τl = g3.ghosted.τl
 
@@ -336,10 +342,10 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # τl.  Even though all arrays are for same locations, param3d_cmp contains gt
 # material, whereas obj3d_cmp, pind3d_cmp, oind3d_cmp contain alter(gt)
 # material, so use ngt′ instead of ngt for them.
-param3d_cmp = view(param3d[ngt], ind_cmp..., nXYZ, nXYZ)
-obj3d_cmp = view(obj3d[ngt′][nw], ind_cmp...)
-pind3d_cmp = view(pind3d[ngt′][nw], ind_cmp...)
-oind3d_cmp = view(oind3d[ngt′][nw], ind_cmp...)
+ε3d_cmp = view(ε3d, ind_cmp..., nXYZ, nXYZ)
+μobj3d_cmp = view(μobj3d[nw], ind_cmp...)
+μind3d_cmp = view(μind3d[nw], ind_cmp...)
+μoind3d_cmp = view(μoind3d[nw], ind_cmp...)
 
 # o = ovec[2]  # ovec[1]: Box, ovec[2]: Sphere
 # shape = o.shape
@@ -369,7 +375,8 @@ oind3d_cmp = view(oind3d[ngt′][nw], ind_cmp...)
 # @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec, τlcmp)
 # @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
 
-@time assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
+boundft = SVector(EE,EE,EE)
+@time assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
 
 # gt_cmp′ = alter.(gt_cmp)
 # lcmp = MaxwellFDM.t_ind(g3.l, gt_cmp)
@@ -384,8 +391,8 @@ oind3d_cmp = view(oind3d[ngt′][nw], ind_cmp...)
 
 # @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj3d_cmp′, pind3d_cmp′, oind3d_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
 
-@time smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
-
+ft = EE
+@time smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
 # # Construct arguments and call assign_param!.
 # kd = KDTree(ovec)

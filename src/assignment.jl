@@ -277,14 +277,28 @@ function assign_param_cmp!(param3d_cmp::AbsArrComplex{5},  # parameter array to 
         oind = objind(o)  # used to set up oind3d
 
         # Set the values to the arrays.
-        # Note that assign_val_shape! was designed to perform assignment on multiple arrays
-        # at once.  This is achieved by passing a tuple named `arrays` below.
-        arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
-        vals = (pind′, oind, o)
+        # Below, each of the four arrays pind3d_cmp, oind3d_cmp, obj3d_cmp, param3d_cmp is
+        # individually set by assign_val_shape!.  This means that for each point p and shape
+        # sh, the same test p ϵ sh is repeated four times.  This is inefficient, and an
+        # alternative implementation is to create a function similar to assign_val_shape!
+        # that takes all these arrays, test p ϵ sh once, and set all the arrays
+        # simultaneously.  This may seem more efficient, but it performs a dynamic dispatch
+        # of assign_val! for every p ϵ sh, causing a huge number of allocations and
+        # performance degradation.  Therefore, I choose to set up each array individually
+        # and avoid too many dynamic dispatches.
+        assign_val_shape!(pind3d_cmp, pind′, shape, τlcmp)
+        assign_val_shape!(oind3d_cmp, oind, shape, τlcmp)
+        assign_val_shape!(obj3d_cmp, o, shape, τlcmp)
         if nw == 4
-            assign_val_shape!((arrays..., param3d_cmp), (vals..., param), shape, τlcmp)
+            # Assign parameters at voxel corners where the v-component E and H affects the
+            # w≠v components of D and B.  This will use assign_val(..., tensor, ...) for
+            # setting off-diagonal entries of the material parameter tensor.
+            assign_val_shape!(param3d_cmp, param, shape, τlcmp)
         else  # nw = 1, 2, 3
-            assign_val_shape!((arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
+            # Assign parameters at Yee's field points where the v-component E and H affects
+            # the w=v components of D and B.  This will use assign_val(..., scalar, ...) for
+            # setting diagonal entries of the material parameter tensor.
+            assign_val_shape!(@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
         end
     end
 
@@ -292,14 +306,19 @@ function assign_param_cmp!(param3d_cmp::AbsArrComplex{5},  # parameter array to 
 end
 
 
+# The only role of these wrappers assign_val_shape! is to limit the types of array and val
+# to either (AbsArr{T,3}, T) or (AbsArr{T,5}, AbsMat{T}).  There is no performance benefit.
+assign_val_shape!(array::AbsArr{T,3}, val::T, shape::Shape{3}, τlcmp::Tuple3{AbsVecReal}) where {T} =
+    assign_val_shape_impl!(array, val, shape, τlcmp)
+
+assign_val_shape!(array::AbsArr{T,5}, val::AbsMat{T}, shape::Shape{3}, τlcmp::Tuple3{AbsVecReal}) where {T} =
+    assign_val_shape_impl!(array, val, shape, τlcmp)
+
 # Given a shape, assign value at the points within the shape.
-#
-# This function is written to handle a variable-length list of (array, value, function)'s in
-# assign_param_cmp, but the usage is suppressed for performance.
-function assign_val_shape!(array::NTuple{N,AbsArr},
-                           val::NTuple{N,Any},
-                           shape::Shape{3},
-                           τlcmp::Tuple3{AbsVecReal}) where {N}
+function assign_val_shape_impl!(array::AbsArr{T},
+                                val::Union{T,AbsMat{T}},
+                                shape::Shape{3},
+                                τlcmp::Tuple3{AbsVecReal}) where {T}
     # Set the location indices of object boundaries.
     @assert all(issorted.(τlcmp))
     bn, bp = bounds(shape)  # (SVec3, SVec3)
@@ -309,18 +328,13 @@ function assign_val_shape!(array::NTuple{N,AbsArr},
 
 
     if shape isa Box{3,9} && (shape::Box{3,9}).p == LinearAlgebra.I  # shape is Cartesian box
-        for i = 1:length(array)
-            assign_val!(array[i], val[i], CI)
-        end
+        assign_val!(array, val, CI)
     else  # shape is not Cartesian box
         for ci = CI
             pt = t_ind(τlcmp, ci)
             if pt ∈ shape
-                for i = 1:length(array)
-                    assign_val!(array[i], val[i], ci)
-                end
+                assign_val!(array, val, ci)
             end  # if pt ∈ shape
-
         end  # for ci = ...
     end  # if shape isa ...
 

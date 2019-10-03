@@ -157,16 +157,15 @@ function get_param3d(m::Maxwell)
         εind3d = create_n3d(ParamInd, N)
         εoind3d = create_n3d(ObjInd, N)
 
-        assign_param!(ε3d, εobj3d, εind3d, εoind3d, m.ovec, g.ghosted.τl, g.isbloch, m.boundft)
-        smooth_param!(ε3d, εobj3d, εind3d, εoind3d, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ, m.boundft)
-
         μ3d = create_param3d(N)
         μobj3d = create_n3d(Object3, N)
         μind3d = create_n3d(ParamInd, N)
         μoind3d = create_n3d(ObjInd, N)
 
-        assign_param!(μ3d, μobj3d, μind3d, μoind3d, m.ovec, g.ghosted.τl, g.isbloch, m.boundft)
-        smooth_param!(μ3d, μobj3d, μind3d, μoind3d, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ, m.boundft)
+        assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), m.boundft, m.ovec, g.ghosted.τl, g.isbloch)
+
+        smooth_param!(ε3d, εobj3d, εind3d, εoind3d, EE, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
+        smooth_param!(μ3d, μobj3d, μind3d, μoind3d, HH, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
 
         m.param3d = (ε3d, μ3d)
     end
@@ -198,7 +197,12 @@ function get_εmatrix(m::Maxwell)
         param3d = get_param3d(m)
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Mε = param3d2mat(param3d[nPR], [PRIM,PRIM,PRIM], g.N, s∆l[nDL], s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        gh = ft2gt.(HH, m.boundft)
+        ∆l = t_ind(s∆l, gh)  # Ew is multiplied with ∆l centered at Hw
+        ∆l′ = t_ind(s∆l, alter.(gh))
+
+        ε3d = m.param3d[nE]
+        m.Mε = param3d2mat(ε3d, EE, m.boundft, g.N, ∆l, ∆l′, g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
     end
 
     return m.Mε
@@ -335,7 +339,7 @@ function add_srce!(m::Maxwell, src::Source)
         m.je3d = create_field3d(g.N)
     end
 
-    add!(m.je3d, PRIM, g.bounds, g.l, g.∆l, g.isbloch, src)
+    add!(m.je3d, EE, m.boundft, g.bounds, g.l, g.∆l, g.isbloch, src)
 
     return nothing
 end
@@ -346,13 +350,14 @@ function add_srcm!(m::Maxwell, src::Source)
         m.jm3d = create_field3d(g.N)
     end
 
-    add!(m.jm3d, DUAL, g.bounds, g.l, g.∆l, g.isbloch, src)
+    add!(m.jm3d, HH, m.boundft, g.bounds, g.l, g.∆l, g.isbloch, src)
 
     return nothing
 end
 
 function get_bvector(m::Maxwell)
     if ~isdefined(m, :b)
+        # To-do: this is where e⁻ⁱᵏᴸ needs to be applied.
         je = field3d2vec(m.je3d, reorder=true)
         jm = field3d2vec(m.jm3d, reorder=true)
 
