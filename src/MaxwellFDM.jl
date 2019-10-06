@@ -2,7 +2,8 @@ module MaxwellFDM
 
 # @reexport makes all exported symbols of the exported packages available in module using MaxwellFDM.
 using Reexport
-@reexport using GeometryPrimitives, StaticArrays, SparseArrays, LinearAlgebra
+using StaticArrays
+@reexport using GeometryPrimitives, SparseArrays, LinearAlgebra
 
 export SVec3Complex, SMat3Complex, ParamInd, ObjInd
 
