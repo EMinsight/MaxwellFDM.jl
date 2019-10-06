@@ -23,12 +23,10 @@ end  # @testset "sort8!"
 
 @testset "smoothing, box with odd number of voxels" begin
     # Create a grid.
-    L₀ = 1e-9
-    unit = PhysUnit(L₀)
     isbloch = [true, true, true]
     # isbloch = [true, false, false]
     lprim = ([-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5])
-    g3 = Grid(unit, lprim, isbloch)
+    g3 = Grid(lprim, isbloch)
     N = g3.N
 
     # Create materials.
@@ -136,11 +134,9 @@ end  # @testset "smoothing, box with odd number of voxels"
 
 @testset "smoothing, box with even number of voxels" begin
     # Create a grid.
-    L₀ = 1e-9
-    unit = PhysUnit(L₀)
     lprim = ([-2,-1,0,1,2], [-2,-1,0,1,2], [-2,-1,0,1,2])
     isbloch = [true, true, true]
-    g3 = Grid(unit, lprim, isbloch)
+    g3 = Grid(lprim, isbloch)
     N = g3.N
 
     # Create materials.
@@ -366,11 +362,9 @@ end  # @testset "smoothing, box with even number of voxels"
 # Not sure if this test was completed.  It was commented out.  When uncommented, the test failed.
 # @testset "smoothing, inspired from SALT3D/test/usage2d_phcwg_test_sym" begin
 #     # Create a grid.
-#     L₀ = 1e-9
-#     unit = PhysUnit(L₀)
 #     lprim = ([-0.5,0.5], [-2,-1,0,1,2], [-0.5,0.5])
 #     isbloch = [true, true, true]
-#     g3 = Grid(unit, lprim, isbloch)
+#     g3 = Grid(lprim, isbloch)
 #     N = g3.N
 #
 #     # Create materials.

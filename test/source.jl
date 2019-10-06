@@ -4,7 +4,7 @@
     ∆lg = collect(2:2:22)  # make sure ∆l's are varying to prevent false positive
     l′ = cumsum([-1; ∆lg])  # [-1,1,5,11,19,29,41,55,71,89,109,131]: spacing is even
 
-    lprim_g = MaxwellFDM.movingavg(l′)  # [0,3,8,15,24,35,48,63,80,99,120]: spacing is odd, 11 entries (l has 10 entry)
+    lprim_g = StaggeredGridCalculus.movingavg(l′)  # [0,3,8,15,24,35,48,63,80,99,120]: spacing is odd, 11 entries (l has 10 entry)
     ldual_g = l′[1:end-1]  # [-1,1,5,11,19,29,41,55,71,89,109]: spacing is even
 
     domain = [lprim_g[1], lprim_g[end]]
@@ -118,9 +118,6 @@
     @test sum(wt_c₁) ≈ sum(wt_c₂) ≈ 1 / ∆ldual[1]
 end  # @testset "distweights"
 
-L₀ = 1e-9
-unit = PhysUnit(L₀)
-
 @testset "PlaneSrc" begin
     src = PlaneSrc(Ẑ, 0, X̂)  # x-polarized source in z-normal plane
 
@@ -128,7 +125,7 @@ unit = PhysUnit(L₀)
 
     # Coarse grid
     lprim = (collect(-10:10), collect(-10:10), collect(-10:10))
-    g3 = Grid(unit, lprim, isbloch)
+    g3 = Grid(lprim, isbloch)
     ∆a = 1.0^2  # area element
 
     ft = EE
@@ -143,7 +140,7 @@ unit = PhysUnit(L₀)
 
     # Fine grid
     lprim = (collect(-10:0.5:10), collect(-10:0.5:10), collect(-10:0.5:10))
-    g3_fine = Grid(unit, lprim, isbloch)
+    g3_fine = Grid(lprim, isbloch)
 
     j3d_fine = create_field3d(g3_fine.N)
     add!(j3d_fine, ft, boundft, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
@@ -157,7 +154,7 @@ unit = PhysUnit(L₀)
     z_avg = mean(zprim)
     zprim .-= z_avg  # z = 0 is within the z-range
     lprim = (collect(-10:10), collect(-10:10), zprim)
-    g3_nu = Grid(unit, lprim, isbloch)
+    g3_nu = Grid(lprim, isbloch)
 
     ∆yprim = g3_nu.∆l[nPR][nY]
     ∆zprim = g3_nu.∆l[nPR][nZ]

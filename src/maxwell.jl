@@ -103,7 +103,7 @@ function get_grid(m::Maxwell)
         N = round.(Int, L ./ m.∆l)
         lprim = map((lmin,lmax,n)->collect(range(lmin, stop=lmax, length=n+1)), m.bounds[nN], m.bounds[nP], N)
 
-        m.g = Grid(get_unit(m), (lprim...,), m.isbloch)
+        m.g = Grid((lprim...,), m.isbloch)
     end
 
     return m.g

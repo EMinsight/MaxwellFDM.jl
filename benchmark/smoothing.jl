@@ -1,5 +1,6 @@
 using MaxwellFDM
 using BenchmarkTools
+using StaticArrays
 
 xprim = [
 -400.0000
@@ -276,11 +277,9 @@ println("M = $M")
 
 lprim = (xprim, yprim, zprim)
 
-L₀ = 1e-9
-unit = PhysUnit(L₀)
 isbloch = [true, true, true]
 
-g3 = Grid(unit, lprim, isbloch)
+g3 = Grid(lprim, isbloch)
 
 # Create materials.
 εvac = 1.0

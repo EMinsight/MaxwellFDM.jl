@@ -3,12 +3,10 @@
 # Need to test symmetry of param3dmat for different boundary conditions.
 @testset "symmetry of param3d2mat, uniform grid" begin
     # Create a grid.
-    L₀ = 1e-9
-    unit = PhysUnit(L₀)
     isbloch = [true, true, true]
     # isbloch = [true, false, false]
     lprim = ([-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5], [-1.5, -0.5, 0.5, 1.5])
-    g3 = Grid(unit, lprim, isbloch)
+    g3 = Grid(lprim, isbloch)
     N = g3.N
 
     # Create materials.
@@ -56,12 +54,10 @@ end  # @testset "param3d2mat"
 
 @testset "symmetry of param3d2mat, nonuniform grid" begin
     # Create a grid.
-    L₀ = 1e-9
-    unit = PhysUnit(L₀)
     isbloch = [true, true, true]
     # isbloch = [true, false, false]
     lprim = ([-1.5, -0.4, 0.3, 1.5], [-1.5, -0.4, 0.3, 1.5], [-1.5, -0.4, 0.3, 1.5])
-    g3 = Grid(unit, lprim, isbloch)
+    g3 = Grid(lprim, isbloch)
     N = g3.N
 
     # Create materials.

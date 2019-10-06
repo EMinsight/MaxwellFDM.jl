@@ -2,8 +2,8 @@ module MaxwellFDM
 
 # @reexport makes all exported symbols of the exported packages available in module using MaxwellFDM.
 using Reexport
+@reexport using LinearAlgebra, SparseArrays, StaggeredGridCalculus, GeometryPrimitives
 using StaticArrays
-@reexport using GeometryPrimitives, SparseArrays, LinearAlgebra
 
 export SVec3Complex, SMat3Complex, ParamInd, ObjInd
 
@@ -74,18 +74,15 @@ const ObjInd = UInt16  # change this to handle more than 2¹⁶ = 65536 objects
 # The order of inclusion matters: if types or functions in file A are used in file B, file A
 # must be included first.
 include("enumtype.jl")
-include("base.jl")
+include("util.jl")
 include("phys.jl")
-include("grid.jl")
 include("material.jl")
 include("object.jl")
 include("field.jl")
 include("source/source.jl")
-include("gridgen.jl")
 include("assignment.jl")
 include("smoothing.jl")
-include("matrix/matrix.jl")
-include("pml.jl")
+include("param.jl")
 # include("equation.jl")
 include("maxwell.jl")
 
