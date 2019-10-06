@@ -1,7 +1,7 @@
 # MaxwellFDM
 
 [![Build Status](https://travis-ci.org/wsshin/MaxwellFDM.jl.svg?branch=master)](https://travis-ci.org/wsshin/MaxwellFDM.jl)
-[![Build status](https://ci.appveyor.com/api/projects/status/wo68v47m6pxg4g2b?svg=true)](https://ci.appveyor.com/project/wsshin/maxwellfdm-jl)
+[![Build status](https://ci.appveyor.com/api/projects/status/wo68v47m6pxg4g2b/branch/master?svg=true)](https://ci.appveyor.com/project/wsshin/maxwellfdm-jl/branch/master)
 [![codecov](https://codecov.io/gh/wsshin/MaxwellFDM.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/wsshin/MaxwellFDM.jl)
 
 MaxwellFDM is a high-performance finite-difference frequency-domain (FDFD) solver package
