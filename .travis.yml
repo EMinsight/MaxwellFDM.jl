@@ -16,6 +16,7 @@ notifications:
 script:
  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
  - julia -e 'using Pkg;
+             Pkg.clone("https://github.com/wsshin/StaggeredGridCalculus.jl.git");
              Pkg.clone("https://github.com/stevengj/GeometryPrimitives.jl.git");
              Pkg.clone(pwd()); Pkg.build("MaxwellFDM"); Pkg.test("MaxwellFDM"; coverage=true)'
 after_success:
