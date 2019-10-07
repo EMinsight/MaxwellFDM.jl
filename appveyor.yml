@@ -29,8 +29,8 @@ install:
 build_script:
   - echo "%JL_BUILD_SCRIPT%"
   - C:\julia\bin\julia -e "using Pkg;
-                           Pkg.add(\"https://github.com/wsshin/StaggeredGridCalculus.jl\");
-                           Pkg.add(\"https://github.com/stevengj/GeometryPrimitives.jl\");
+                           Pkg.clone(\"https://github.com/wsshin/StaggeredGridCalculus.jl\");
+                           Pkg.clone(\"https://github.com/stevengj/GeometryPrimitives.jl\");
                            %JL_BUILD_SCRIPT%"
 
 test_script:
