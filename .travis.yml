@@ -16,8 +16,8 @@ notifications:
 script:
  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
  - julia -e 'using Pkg;
-             Pkg.add("https://github.com/wsshin/StaggeredGridCalculus.jl.git");
-             Pkg.add("https://github.com/stevengj/GeometryPrimitives.jl.git");
+             Pkg.add("https://github.com/wsshin/StaggeredGridCalculus.jl");
+             Pkg.add("https://github.com/stevengj/GeometryPrimitives.jl");
              Pkg.add(pwd()); Pkg.build("MaxwellFDM"); Pkg.test("MaxwellFDM"; coverage=true)'
 after_success:
   # push coverage results to Coveralls
