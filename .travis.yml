@@ -1,14 +1,10 @@
 # Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
 os:
-  - linux
   - osx
+  - linux
 julia:
-  - 1.4
   - nightly
-matrix:
-  allow_failures:
-    - julia: nightly
 notifications:
   email: false
 # uncomment the following lines to override the default test script
@@ -18,7 +14,4 @@ notifications:
 #  - julia --project --color=yes --check-bounds=yes -e 'using Pkg; Pkg.instantiate(); Pkg.build();'
 #  - julia -e 'using Pkg; Pkg.build(); Pkg.test(coverage=true)'
 after_success:
-  # push coverage results to Coveralls
-  - julia -e 'using Pkg; cd(Pkg.dir("MaxwellFDM")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
-  # push coverage results to Codecov
-  - julia -e 'using Pkg; cd(Pkg.dir("MaxwellFDM")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - codecov
