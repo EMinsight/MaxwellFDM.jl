@@ -1,11 +1,9 @@
 environment:
   matrix:
-  - julia_version: 0.7
-  - julia_version: 1.0
+  - julia_version: 1.4
   - julia_version: nightly
 
 platform:
-  - x86 # 32-bit
   - x64 # 64-bit
 
 matrix:
@@ -28,10 +26,7 @@ install:
 
 build_script:
   - echo "%JL_BUILD_SCRIPT%"
-  - C:\julia\bin\julia -e "using Pkg;
-                           Pkg.clone(\"https://github.com/wsshin/StaggeredGridCalculus.jl\");
-                           Pkg.clone(\"https://github.com/stevengj/GeometryPrimitives.jl\");
-                           %JL_BUILD_SCRIPT%"
+  - C:\julia\bin\julia -e "%JL_BUILD_SCRIPT%"
 
 test_script:
   - echo "%JL_TEST_SCRIPT%"

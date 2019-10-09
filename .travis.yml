@@ -4,8 +4,7 @@ os:
   - linux
   - osx
 julia:
-  - 0.7
-  - 1.0
+  - 1.4
   - nightly
 matrix:
   allow_failures:
@@ -13,12 +12,11 @@ matrix:
 notifications:
   email: false
 # uncomment the following lines to override the default test script
-script:
- - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
- - julia -e 'using Pkg;
-             Pkg.clone("https://github.com/wsshin/StaggeredGridCalculus.jl");
-             Pkg.clone("https://github.com/stevengj/GeometryPrimitives.jl");
-             Pkg.clone(pwd()); Pkg.build("MaxwellFDM"); Pkg.test("MaxwellFDM"; coverage=true)'
+# script:
+#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+#  - julia --project --color=yes --check-bounds=yes -e 'using Pkg; Pkg.develop(PackageSpec(path="/home/travis/build/path_to_private_Dependency")); Pkg.instantiate()'
+#  - julia --project --color=yes --check-bounds=yes -e 'using Pkg; Pkg.instantiate(); Pkg.build();'
+#  - julia -e 'using Pkg; Pkg.build(); Pkg.test(coverage=true)'
 after_success:
   # push coverage results to Coveralls
   - julia -e 'using Pkg; cd(Pkg.dir("MaxwellFDM")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
