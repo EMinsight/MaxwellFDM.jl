@@ -7,8 +7,5 @@ julia:
   - nightly
 notifications:
   email: false
-script:
-  - julia -e 'using UUIDs; write("Project.toml", replace(read("Project.toml", String), r"uuid = .*?\n" =>"uuid = \"$(uuid4())\"\n"))'
-  - julia --project --color=yes --check-bounds=yes -e 'using Pkg; Pkg.instantiate(); Pkg.build(); Pkg.test(coverage=true)'
 after_success:
   - codecov
