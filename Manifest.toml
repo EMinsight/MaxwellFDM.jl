@@ -22,8 +22,8 @@ deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[GeometryPrimitives]]
-deps = ["Compat", "LinearAlgebra", "Random", "StaticArrays", "Statistics", "Test"]
-git-tree-sha1 = "b50a9c4b895e9d2143db7a65f070ed57bdf93243"
+deps = ["Compat", "LinearAlgebra", "StaticArrays", "Statistics"]
+git-tree-sha1 = "cf3db90c08dc2cdf2db93ae409be70cd9e6a31e6"
 repo-rev = "master"
 repo-url = "https://github.com/stevengj/GeometryPrimitives.jl"
 uuid = "17051e67-205e-509e-8301-03b320b998e6"
@@ -93,8 +93,8 @@ deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[StaggeredGridCalculus]]
-deps = ["LinearAlgebra", "Reexport", "SparseArrays", "StaticArrays", "Statistics", "Test"]
-git-tree-sha1 = "466867a9b05c3b6eec4dbd9605034f2b509f000b"
+deps = ["LinearAlgebra", "Reexport", "SparseArrays", "StaticArrays"]
+git-tree-sha1 = "8e27d04bc11b07db38302aeaad7304e707b84c86"
 repo-rev = "master"
 repo-url = "https://github.com/wsshin/StaggeredGridCalculus.jl"
 uuid = "fead5d43-7759-5ac8-9dff-97135399d9eb"
