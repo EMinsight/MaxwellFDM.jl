@@ -8,7 +8,7 @@ julia:
 notifications:
   email: false
 script:
-  - julia --color=yes -e 'using Pkg; Pkg.build()''
+  - julia --color=yes -e 'using Pkg; Pkg.build()'
   - julia --color=yes -e 'using Pkg; Pkg.test(coverage=true)'
 after_success:
   - codecov
