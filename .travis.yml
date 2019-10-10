@@ -8,6 +8,6 @@ julia:
 notifications:
   email: false
 script:
-  - julia -e 'using Pkg; pkg"add https://github.com/stevengj/GeometryPrimitives.jl"; pkg"add https://github.com/wsshin/StaggeredGridCalculus.jl"; Pkg.build(); Pkg.test(coverage=true)'
+  - julia -e 'using Pkg; pkg"dev https://github.com/stevengj/GeometryPrimitives.jl"; pkg"dev https://github.com/wsshin/StaggeredGridCalculus.jl"; Pkg.build(); Pkg.test(coverage=true)'
 after_success:
   - codecov
