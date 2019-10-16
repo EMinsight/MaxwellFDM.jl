@@ -105,20 +105,20 @@ function add!(j3d::AbsArrNumber{4},  # 4D array of Je (electric current density)
     end
 end
 
-# I could define distweights with more abstractly typed arguments, such as c::Real, bounds::AbsVecReal,
-# l::AbsVecReal, ∆l::AbsVecReal and let the type inference system create distweights for each
-# distinct set of types.  However, then I cannot control the behavior of the function perfectly.
-# because the two numbers used in division could be integer or float.  Therefore, I implement the
-# kernel for a specific type later, and here I define a wrapper that converts the arguments into
-# those specific type.
+# I could have defined distweights with more abstractly typed arguments, such as c::Real,
+# bounds::AbsVecReal, l::AbsVecReal, ∆l::AbsVecReal, and have let the type inference system
+# create distweights for each distinct set of types.  However, then I cannot control the
+# behavior of the function perfectly, because the two numbers used in division could be
+# integer or float.  Therefore, I implement the kernel for a specific type later, and here I
+# define a wrapper that converts the arguments into those specific type.
 #
-# Another advantage of this approach is that even though several different versions of the wrapper
-# will be generated, the kernel will be generated only once for the specific type.  This makes
-# the amount of compiled code minimal.
+# Another advantage of this approach is that even though several different versions of the
+# wrapper will be generated, the kernel will be generated only once for the specific type.
+# This makes the amount of compiled code minimal.
 #
-# Note that the situation here is a bit different from create_curl.  There, I wanted to create a
-# curl operator of differnt types, such as Float, CFloat, and even Int.  Therefore, I had to allow
-# generation of different kernel code for different argument types.
+# Note that the situation here is a bit different from create_curl.  There, I wanted to
+# create a curl operator of differnt types, such as Float, CFloat, and even Int.  Therefore,
+# I had to allow generation of different kernel code for different argument types.
 distweights(c::Real, gt::GridType, bounds::AbsVecReal, l::AbsVecReal, ∆l::AbsVecReal, isbloch::Bool) =
     distweights(float(c), gt, SVec2Float(bounds), float(l), float(∆l), isbloch)
 
@@ -264,6 +264,27 @@ end
 
 # funciton calc_blochphase()
 # function j3d2j()
+
+# When defining concrete source types below, try to use the following order of arguments in
+# the constructor:
+# - geometry (e.g., direction normal to a plane)
+# - location (e.g., location for a point, intercept for a plane)
+# - polarization
+# - strength (e.g., current dipole, current, sheet current density)
+
+# I think I can define a "uniform source" that populates a uniform current inside a given
+# geometrical object specified with a GeometryPrimitives type.  This can cover various
+# primitive source types, such as a point source, line source, and a plane source.  The
+# source assignment function will accept a vector of sources, assign these sources similarly
+# as assign_param! in assignment.jl (i.e., iterate over a vector of shapes and assign points
+# included in each shape).  A main different is that I have to find voxels that overlap with
+# the shape, instead of points in the shape.  Once such voxels are found, I need to assign
+# source current density to the edges of the voxels.  (I have to think about subvoxel
+# smoothing in a voxel that is partially included in the shape.)
+#
+# Even more generally, I think I can create a single source that accepts a geometry and
+# source strength function.  The uniform sources are a special case with a constant
+# source strength.
 
 include("pointsrc.jl")
 include("planesrc.jl")
