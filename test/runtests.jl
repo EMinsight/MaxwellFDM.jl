@@ -1,7 +1,7 @@
 using MaxwellFDM
 using Test
 using Statistics: mean
-using LinearAlgebra, SparseArrays, StaticArrays, StaggeredGridCalculus, GeometryPrimitives
+using StaticArrays
 
 Base.isapprox(a::Tuple, b::Tuple; kws...) = all(p -> isapprox(p...; kws...), zip(a,b))
 
