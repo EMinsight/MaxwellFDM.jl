@@ -40,12 +40,17 @@ function add!(j3d::AbsArrNumber{4},  # 4D array of Je (electric current density)
 
     lr, ∆lr = l[ngt][nr], ∆l[ngt][nr]
     ind, wt = distweights(src.c, gt, t_ind(bounds,nr,nr), lr, ∆lr, isbloch[nr])
-    Jp, Jq = Kp*wt, Kq*wt  # Jp and Jq has one of two elements, like wt
+    Jp, Jq = Kp*wt, Kq*wt  # Jp and Jq has two elements, like wt
 
+    # Below, V[Base.setindex(axes(V), iw:iw, nw)...] mimics the implementation of slicedim
+    # and means V[:,iw:iw,:] for w = y.  (axes(V) = (1:Nx,1:Ny,1:Nz) and setindex(t,v,i)
+    # does t[i] = v, so Base.setindex(axes(V),iw:iw,nw) creates (1:Nx,iw:iw,1:Nz) for w = y.)
+    # The use of iw:iw instead of iw is to support 1D arrays.  If V is 1D, then V[iw] is a
+    # scalar and the dot equal on V[iw] fails.
     jp3d, jq3d = @view(j3d[:,:,:,np]), @view(j3d[:,:,:,nq])
-    for k = 1:length(ind)
-        jp3d[Base.setindex(axes(jp3d), ind[k], nr)...] .+= Jp[k]
-        jq3d[Base.setindex(axes(jq3d), ind[k], nr)...] .+= Jq[k]
+    for k = 1:2  # 2 == length(ind)
+        jp3d[Base.setindex(axes(jp3d), ind[k]:ind[k], nr)...] .+= Jp[k]
+        jq3d[Base.setindex(axes(jq3d), ind[k]:ind[k], nr)...] .+= Jq[k]
     end
 
     return nothing

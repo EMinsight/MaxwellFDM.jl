@@ -196,9 +196,10 @@ function distweights(c::Float,  # location of point (c means center)
     # - For DUAL,
     #       - for Bloch, l[1] ≤ c < l[end], and
     #       - for symmetry, l[1] ≤ c < l[end].
-    # Therefore, only the case with the primal field and symmetry boundary is different.
-    # I will call it a case with a boundary condition congruent with the field type, because
-    # it is the boundary that is effective for the field type of interest.
+    # Therefore, only the case with the primal field and symmetry boundary is different from
+    # other cases.  I will call this a case with a boundary condition "congruent" with the
+    # field type, because it is the boundary that is effective for the field type of
+    # interest.
     cong_bc = gt==PRIM && !isbloch
     indn = cong_bc ? 2 : 1
     indp = N
@@ -246,18 +247,20 @@ function distweights(c::Float,  # location of point (c means center)
     # - even if c is not exactly at a grid point, if it is in the region where the result is
     # affected by the boundary but the boundary is non-Bloch (= symmetry).
     if c==l[ind₁] || (!bc_noeff && !isbloch)
-        # Return only one weight factor.
-        ind = [ind₁]
-        wt = [wt₁]
+        # We want to return only one weight factor in this case, but in order to keep the
+        # output SVector type the same (SVector{2} rather than SVector{1}), introduce a
+        # dummy second weight factor.
+        ind₂ = ind₁
+        wt₂ = 0.0
     else
         # Return two weight factors.  Make sure all the cases handled by this else block
         # have ind₂ defined already.
         wt₂ = 1.0 / ∆l[ind₂]
         (bc_noeff || isbloch) && (wt₂ *= r)
-
-        ind = [ind₁, ind₂]
-        wt = [wt₁, wt₂]
     end
+
+    ind = SVector(ind₁, ind₂)
+    wt = SVector(wt₁, wt₂)
 
     return (ind, wt)
 end
