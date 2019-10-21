@@ -1,7 +1,7 @@
 @testset "source" begin
 
 @testset "distweights" begin
-    ∆lg = collect(2:2:22)  # make sure ∆l's are varying to prevent false positive
+    ∆lg = 2:2:22  # make sure ∆l's are varying to prevent false positive
     l′ = cumsum([-1; ∆lg])  # [-1,1,5,11,19,29,41,55,71,89,109,131]: spacing is even
 
     lprim_g = StaggeredGridCalculus.movingavg(l′)  # [0,3,8,15,24,35,48,63,80,99,120]: spacing is odd, 11 entries (l has 10 entry)
@@ -124,7 +124,7 @@ end  # @testset "distweights"
     isbloch = [true, true, true]
 
     # Coarse grid
-    lprim = (collect(-10:10), collect(-10:10), collect(-10:10))
+    lprim = (-10:10, -10:10, -10:10)
     g3 = Grid(lprim, isbloch)
     ∆a = 1.0^2  # area element
 
@@ -139,7 +139,7 @@ end  # @testset "distweights"
     @test all(j3d[:,:,:,nZ] .== 0)  # Jz = 0
 
     # Fine grid
-    lprim = (collect(-10:0.5:10), collect(-10:0.5:10), collect(-10:0.5:10))
+    lprim = (-10:0.5:10, -10:0.5:10, -10:0.5:10)
     g3_fine = Grid(lprim, isbloch)
 
     j3d_fine = create_field3d(g3_fine.N)
@@ -153,7 +153,7 @@ end  # @testset "distweights"
     zprim = sort(rand(21)) * 20
     z_avg = mean(zprim)
     zprim .-= z_avg  # z = 0 is within the z-range
-    lprim = (collect(-10:10), collect(-10:10), zprim)
+    lprim = (-10:10, -10:10, zprim)
     g3_nu = Grid(lprim, isbloch)
 
     ∆yprim = g3_nu.∆l[nPR][nY]
@@ -168,7 +168,56 @@ end  # @testset "distweights"
 end  # @testset "PlaneSrc"
 
 @testset "PointSrc" begin
-    src = PointSrc([0,0,0], [1,1,1])
+    src = PointSrc([0.7,0.7,0.7], [1,1,1])  # polarized in [1,1,1] direction
+
+    isbloch = [true, true, true]
+
+    # Coarse grid
+    lprim = (-10:10, -10:10, -10:10)
+    g3 = Grid(lprim, isbloch)
+    ∆v = 1.0^3  # volume element (dipole-normal area element * dipole length)
+
+    ft = EE
+    boundft = SVector(EE,EE,EE)
+
+    j3d = create_field3d(g3.N)
+    add!(j3d, ft, boundft, g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
+
+    @test sum(j3d[:,:,:,nX] .!= 0) == sum(j3d[:,:,:,nY] .!= 0) == sum(j3d[:,:,:,nZ] .!= 0) == 8
+    @test sum(j3d[:,:,:,nX]) * ∆v == src.Id * src.p[nX]
+    @test sum(j3d[:,:,:,nY]) * ∆v == src.Id * src.p[nY]
+    @test sum(j3d[:,:,:,nZ]) * ∆v == src.Id * src.p[nZ]
+
+    # Fine grid
+    lprim = (-10:0.5:10, -10:0.5:10, -10:0.5:10)
+    g3_fine = Grid(lprim, isbloch)
+
+    j3d_fine = create_field3d(g3_fine.N)
+    add!(j3d_fine, ft, boundft, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
+    ∆v_fine = 0.5^3  # volume element (dipole-normal area element * dipole length)
+
+    @test sum(j3d_fine[:,:,:,nX] .!= 0) == sum(j3d_fine[:,:,:,nY] .!= 0) == sum(j3d_fine[:,:,:,nZ] .!= 0) == 8
+    @test sum(j3d_fine[:,:,:,nX]) * ∆v_fine == src.Id * src.p[nX]
+    @test sum(j3d_fine[:,:,:,nY]) * ∆v_fine == src.Id * src.p[nY]
+    @test sum(j3d_fine[:,:,:,nZ]) * ∆v_fine == src.Id * src.p[nZ]
+
+
+    # Nonuniform grid in x, y, z
+    xprim = sort(rand(21)) * 20; x_avg = mean(xprim); xprim .-= (x_avg-0.7)  # x = 0.7 is within the x-range (average x location is moved to 0.7)
+    yprim = sort(rand(21)) * 20; y_avg = mean(yprim); yprim .-= (y_avg-0.7)  # y = 0.7 is within the y-range (average y location is moved to 0.7)
+    zprim = sort(rand(21)) * 20; z_avg = mean(zprim); zprim .-= (z_avg-0.7)  # z = 0.7 is within the z-range (average z location is moved to 0.7)
+    lprim = (xprim, yprim, zprim)
+    g3_nu = Grid(lprim, isbloch)
+
+    ∆xprim = g3_nu.∆l[nPR][nX]
+    ∆yprim = g3_nu.∆l[nPR][nY]
+    ∆zdual = g3_nu.∆l[nDL][nZ]
+
+    j3d_nu = create_field3d(g3_nu.N)
+    add!(j3d_nu, ft, boundft, g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
+
+    Nx, Ny, Nz = g3_nu.N.data
+    @test sum(j3d[:,:,:,nZ]) * ∆v ≈ sum(j3d_nu[:,:,:,nZ] .* (reshape(∆xprim,Nx,1,1) .* reshape(∆yprim,1,Ny,1) .* reshape(∆zdual,1,1,Nz)))  # total current through x-normal cross section is independent of grid resolution
 
     # Verify if the total current dipole strength does not change with the location of the point
     # source in 3D for Bloch.
