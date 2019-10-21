@@ -23,7 +23,7 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[GeometryPrimitives]]
 deps = ["Compat", "LinearAlgebra", "StaticArrays", "Statistics"]
-git-tree-sha1 = "cf3db90c08dc2cdf2db93ae409be70cd9e6a31e6"
+git-tree-sha1 = "d72cd4022d282e2d2a6d621cebbcfbcb8e92bb72"
 repo-rev = "master"
 repo-url = "https://github.com/stevengj/GeometryPrimitives.jl"
 uuid = "17051e67-205e-509e-8301-03b320b998e6"
@@ -94,7 +94,7 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[StaggeredGridCalculus]]
 deps = ["LinearAlgebra", "Reexport", "SparseArrays", "StaticArrays"]
-git-tree-sha1 = "8e27d04bc11b07db38302aeaad7304e707b84c86"
+git-tree-sha1 = "1ff9915f771828442af58ae0aa7eaaebe1370526"
 repo-rev = "master"
 repo-url = "https://github.com/wsshin/StaggeredGridCalculus.jl"
 uuid = "fead5d43-7759-5ac8-9dff-97135399d9eb"
