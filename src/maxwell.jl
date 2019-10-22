@@ -333,23 +333,31 @@ function get_Mr(m::Maxwell)
 end
 
 #= Setters and getters for sources =#
-function add_srce!(m::Maxwell, src::Source)
+function require_je3d!(m::Maxwell)
     if ~isdefined(m, :je3d)
         g = get_grid(m)
         m.je3d = create_field3d(g.N)
     end
+end
 
+function require_jm3d!(m::Maxwell)
+    if ~isdefined(m, :jm3d)
+        g = get_grid(m)
+        m.jm3d = create_field3d(g.N)
+    end
+end
+
+function add_srce!(m::Maxwell, src::Source)
+    require_je3d!(m)
+    g = get_grid(m)
     add!(m.je3d, EE, m.boundft, g.bounds, g.l, g.∆l, g.isbloch, src)
 
     return nothing
 end
 
 function add_srcm!(m::Maxwell, src::Source)
-    if ~isdefined(m, :jm3d)
-        g = get_grid(m)
-        m.jm3d = create_field3d(g.N)
-    end
-
+    require_jm3d!(m)
+    g = get_grid(m)
     add!(m.jm3d, HH, m.boundft, g.bounds, g.l, g.∆l, g.isbloch, src)
 
     return nothing
@@ -358,6 +366,9 @@ end
 function get_bvector(m::Maxwell)
     if ~isdefined(m, :b)
         # To-do: this is where e⁻ⁱᵏᴸ needs to be applied.
+        require_je3d!(m)
+        require_jm3d!(m)
+
         je = field3d2vec(m.je3d, reorder=true)
         jm = field3d2vec(m.jm3d, reorder=true)
 
