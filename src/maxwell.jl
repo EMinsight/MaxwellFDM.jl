@@ -15,8 +15,8 @@
 # that needs to be called after all the setters are called.  This is still an option, but I
 # think there were cases some getters need to be called before all the setters are called.)
 export Maxwell
-export set_unitlen!, set_bounds!, set_∆l!, set_isbloch!, set_kbloch!, set_Npml!, set_wvlen!,
-    set_freq!, get_unit, get_osc, get_grid, set_background!, add_obj!, get_param3d,
+export set_unitlen!, set_bounds!, set_∆l!, set_boundft!, set_isbloch!, set_kbloch!, set_Npml!,
+    set_wvlen!, set_freq!, get_unit, get_osc, get_grid, set_background!, add_obj!, get_param3d,
     get_stretched_∆l, get_εmatrix, get_curle, get_curlm, get_curls, get_dblcurl, get_Amatrix,
     get_Mc, get_Ml, get_Mr, add_srce!, add_srcm!, get_bvector
 
@@ -86,7 +86,7 @@ end
 set_unitlen!(m::Maxwell, unitlen::Real) = (m.unitlen = unitlen; return nothing)
 set_bounds!(m::Maxwell, bounds::Tuple2{AbsVecReal}) = (m.bounds = bounds; return nothing)
 set_∆l!(m::Maxwell, ∆l::AbsVecReal) = (m.∆l = ∆l; return nothing)
-set_boundft(m::Maxwell, boundft::AbsVec{FieldType}) = (m.∆boundft = boundft; return nothing)
+set_boundft!(m::Maxwell, boundft::AbsVec{FieldType}) = (m.boundft = boundft; return nothing)
 set_isbloch!(m::Maxwell, isbloch::AbsVecBool) = (m.isbloch = isbloch; return nothing)
 set_kbloch!(m::Maxwell, kbloch::AbsVecReal) = (m.kbloch = kbloch; return nothing)
 set_Npml!(m::Maxwell, Npml::Tuple2{AbsVecInteger}) = (m.Npml = Npml; return nothing)
