@@ -212,9 +212,10 @@ function get_curle(m::Maxwell)
     if ~isdefined(m, :Ce)
         g = get_grid(m)
         s∆l = get_stretched_∆l(m)
+        gh = ft2gt.(HH, m.boundft)  # HH, not EE, because ∆l for Ce is defined at H-field locations
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Ce = create_curl(m.boundft.==EE, g.N, s∆l[nDL], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Ce = create_curl(m.boundft.==EE, g.N, t_ind(s∆l,gh), g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
     end
 
     return m.Ce
@@ -224,9 +225,10 @@ function get_curlm(m::Maxwell)
     if ~isdefined(m, :Cm)
         g = get_grid(m)
         s∆l = get_stretched_∆l(m)
+        ge = ft2gt.(EE, m.boundft)  # EE, not HH, because ∆l for Cm is defined at E-field locations
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Cm = create_curl(m.boundft.==HH, g.N, s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Cm = create_curl(m.boundft.==HH, g.N, t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
     end
 
     return m.Cm
@@ -277,6 +279,8 @@ function get_Mc(m::Maxwell)
     if ~isdefined(m, :Mc)
         g = get_grid(m)
         s∆l = get_stretched_∆l(m)
+        ge = ft2gt.(EE, m.boundft)  # EE, not HH, because ∆l for Cm is defined at E-field locations
+        gh = ft2gt.(HH, m.boundft)  # HH, not EE, because ∆l for Ce is defined at H-field locations
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
         # Arguments of create_mean:
@@ -286,7 +290,7 @@ function get_Mc(m::Maxwell)
         # - We supply ∆l and ∆l′ because we want to use weighted arithmetic averaging for
         # this backward averaging.
         # - kdiag = 0 for putting Ex, Ey, Ez to voxel corners.
-        m.Mc = create_mean(m.boundft.==HH, g.N, s∆l[nDL], s∆l[nPR], g.isbloch, e⁻ⁱᵏᴸ, kdiag=0, reorder=true)
+        m.Mc = create_mean(m.boundft.==HH, g.N, t_ind(s∆l,gh), t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, kdiag=0, reorder=true)
     end
 
     return m.Mc
