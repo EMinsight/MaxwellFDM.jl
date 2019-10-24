@@ -10,7 +10,7 @@ mutable struct PlaneSrc <: Source
     ϕ::Float  # angle indicating polarization direction around n; ϕ = 0 is Cartesian direction cyclically next to n (e.g., for n = Ŷ, ϕ = 0 in z-direction)
     K::CFloat # sheet current density (current per unit in-plane length normal to flow direction); default value = 1
 
-    PlaneSrc(n::Axis, c::Real, ϕ::Real, K::Number=1.0) = new(n, ϕ, c, K)
+    PlaneSrc(n::Axis, c::Real, ϕ::Real, K::Number=1.0) = new(n, c, ϕ, K)
 end
 
 function PlaneSrc(n::Axis, c::Real, p::Axis, K::Number=1.0)
