@@ -124,8 +124,8 @@ end
 end  # @testset "Object"
 
 # @testset "Object Vector" begin
-#     ovec = Object3[]
-#     paramset = (SMat3Complex[], SMat3Complex[])
+#     ovec = Object{3}[]
+#     paramset = (SComplex33[], SComplex33[])
 #     vac = Material("vacuum")
 #     Si = Material("Si", ε = 12)
 #
@@ -168,8 +168,8 @@ end  # @testset "Object"
 #     @test all(map(x->(x==matparam(c_eSi,PRIM)), matparam.(obj_array,PRIM)))
 #     @test all(map(x->(x==matparam(c_eSi,DUAL)), matparam.(obj_array,DUAL)))
 #
-#     ovec = Object3[]
-#     paramset = (SMat3Complex[], SMat3Complex[])
+#     ovec = Object{3}[]
+#     paramset = (SComplex33[], SComplex33[])
 #     add!(ovec, paramset, obj_array)
 # end  # @testset "periodize"
 

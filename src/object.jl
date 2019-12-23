@@ -8,7 +8,7 @@
 # bounds, then only this is exported.  So, when defining bounds for Interval, we have to
 # "extend" bounds for Shape by defining it as GeometryPrimitives.bounds(::Interval) = ....
 # Then, exporting bounds exports this whole collection of bounds, both for Shape and Interval.
-export OpenInterval, ClosedInterval, KDTree, Object, Object3
+export OpenInterval, ClosedInterval, KDTree, Object
 export bounds, max∆l, matparam, paramind, objind, add!, periodize  #, surfpt_nearby, normal
 # export lsf, bound_, L_, center_, dist2bound, bound_contains, ∆lmax, sphere, transform,
 #     surfnormal, surfpoint  # functions
@@ -26,9 +26,6 @@ end
 Object(shape::S, mat::Material, ∆lmax::SVector{K}=SVector(ntuple(k->Inf, Val(K)))) where {K,S<:Shape{K}} = Object{K,S}(shape, mat, ∆lmax)
 Object(shape::Shape{K}, mat::Material, ∆lmax::AbsVec) where {K} = Object(shape, mat, SVector{K}(∆lmax))
 Object(shape::Shape{K}, mat::Material, ∆lmax::Real) where {K} = Object(shape, mat, SVector(ntuple(k->∆lmax, Val(K))))
-
-# Define Object with ∆lmax, Shape, and a material.
-const Object3 = Object{3}
 
 # Add a new convenience constructor
 GeometryPrimitives.Box(b::Tuple2{AbsVec}, axes=Matrix{Float}(I,length(b[1]),length(b[1]))) = Box((b[1]+b[2])/2, abs.(b[2]-b[1]), axes)
@@ -48,14 +45,14 @@ paramind(o::Object{K}, ft::FieldType) where {K} = o.pind[Int(ft)]
 objind(o::Object) = o.oind
 
 # Consider using resize! on ovec.
-function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, os::AbsVec{<:Object{K}}) where {K}
+function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SComplex33}}, os::AbsVec{<:Object{K}}) where {K}
     for o = os
         add!(ovec, paramset, o)
     end
 end
 
 # Consider using resize! on ovec.
-function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, os::Object{K}...) where {K}
+function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SComplex33}}, os::Object{K}...) where {K}
     for o = os
         add!(ovec, paramset, o)
     end
@@ -78,7 +75,7 @@ end
 # Assigining the same object index is specifically to treat an object across a periodic
 # boundary.  Therefore, we should not assign the same object index to the dintinct periodic
 # objects in the domain (e.g., holes in a photonic crystal slab).
-function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
+function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SComplex33}}, o::Object{K}) where {K}
     # Assign the object index to o.
     o.oind = isempty(ovec) ? 1 : objind(ovec[end])+1  # not just length(ovec)+1 to handle periodized objects (see comments above)
     push!(ovec, o)  # append o (for potential use of ovec with KDTree, must use pushfirst! to prepend)

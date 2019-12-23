@@ -15,12 +15,12 @@ param3d2mat(param3d::AbsArrComplex{5},
 
 function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
                      ft::FieldType,  # type (electric or magnetic) of material parameter
-                     boundft::SVec3{FieldType},  # boundary field type
-                     N::SVec3Int,  # size of grid
+                     boundft::SVector{3,FieldType},  # boundary field type
+                     N::SInt{3},  # size of grid
                      ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
                      ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-                     isbloch::SVec3Bool,  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SVec3Number;  # Bloch phase factor in x, y, z
+                     isbloch::SBool{3},  # boundary conditions in x, y, z
+                     e⁻ⁱᵏᴸ::SNumber{3};  # Bloch phase factor in x, y, z
                      reorder::Bool=true)  # true for more tightly banded matrix
     M = prod(N)
 
@@ -53,8 +53,8 @@ function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
     #
     # Below, do we still need to use Ref(ft)?  Previously we had to use Ref(PRIM) and Ref(DUAL)
     # for type stability.
-    isfwd_in = boundft.!=ft  # SVec3Bool; true if input fields need to be forward-averaged
-    isfwd_out = boundft.==ft  # SVec3Bool; true if output fields need to be backward-averaged
+    isfwd_in = boundft.!=ft  # SBool{3}; true if input fields need to be forward-averaged
+    isfwd_out = boundft.==ft  # SBool{3}; true if output fields need to be backward-averaged
 
     # For the output averaging, ∆l and ∆l′ are not supplied to create_mean in order to
     # create a simple arithmetic averaging operator.  This is because the area factor matrix
@@ -65,7 +65,7 @@ function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
 
 
     kdiag = 0
-    p3dmat = create_param3dmat(param3d, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
+    p3dmat = create_param_arraymat(param3d, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
     for kdiag = (1,-1)  # (superdiagonal, subdiagonal) components of ε tensor
         # For the input averaging, ∆l and ∆l′ are supplied to create min in order to create
         # a line integral averaging operator.  This is because the inverse of the length
@@ -80,7 +80,7 @@ function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
         # = 0), block-superdiagonal (kdiag = +1), or block-subdiagonal (kdiag = -1) material
         # parameter matrices.  See my bullet point entitled [Update (May/13/2018)] in
         # RN - Subpixel Smoothing.
-        p3dmatₖ = create_param3dmat(param3d, kdiag, N, reorder=reorder)
+        p3dmatₖ = create_param_arraymat(param3d, kdiag, N, reorder=reorder)
         p3dmat += Mout * p3dmatₖ * Min
     end
 
@@ -88,9 +88,9 @@ function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
 end
 
 
-function create_param3dmat(param3d::AbsArrComplex{5},
+function create_param_arraymat(param3d::AbsArrComplex{5},
                            kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
-                           N::SVec3Int;  # size of grid
+                           N::SInt{3};  # size of grid
                            reorder::Bool=true)  # true for more tightly banded matrix
     # Note that param3d's i, j, k indices run from 1 to N+1 rather than to N, so we should
     # not iterate those indices from 1 to end (= N+1).

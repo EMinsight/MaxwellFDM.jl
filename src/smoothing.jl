@@ -55,7 +55,7 @@ SVector(1.,1.,-1.), SVector(-1.,1.,-1.), SVector(1.,-1.,-1.), SVector(-1.,-1.,-1
 
 # Overall smoothing algorithm
 #
-# Below, obj, pind, oind refers to an Object3 instance, parameter index (integer value) that
+# Below, obj, pind, oind refers to an Object{3} instance, parameter index (integer value) that
 # distinguishes different material parameters, and oind that distinguishes different objects.
 #
 # - Assign obj, pind, oind to arrays object-by-object (see assignment.jl).
@@ -70,11 +70,11 @@ SVector(1.,1.,-1.), SVector(-1.,1.,-1.), SVector(1.,-1.,-1.), SVector(-1.,-1.,-1
 #             - ∆fg and σvxl can be obtained simply by looking at the indices and BC.
 
 function smooth_param!(param3d::AbsArrComplex{5},  # parameter array to smooth
-                       obj3d::Tuple4{AbsArr{<:Object3,3}},  # object array (does not change)
+                       obj3d::Tuple4{AbsArr{<:Object{3},3}},  # object array (does not change)
                        pind3d::Tuple4{AbsArr{ParamInd,3}},  # material parameter index array (does not chaneg)
                        oind3d::Tuple4{AbsArr{ObjInd,3}},  # object index array (does not change)
                        ft::FieldType,  # material type (electric or magnetic) of arrays to smooth
-                       boundft::SVec3{FieldType},  # boundary field type
+                       boundft::SVector{3,FieldType},  # boundary field type
                        l::Tuple23{AbsVecReal},  # location of field components
                        l′::Tuple23{AbsVecReal},  # location of voxel corners without transformation by boundary conditions
                        σ::Tuple23{AbsVecBool},  # false if on symmetry boundary
@@ -119,7 +119,7 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
                            lcmp′::Tuple3{AbsVecReal},  # location of voxel corners without transformation by boundary conditions
                            σcmp::Tuple3{AbsVecBool},  # false if on symmetry boundary
                            ∆τcmp′::Tuple3{AbsVecReal}  # amount of shift by Bloch boundary conditions
-                          ) where {O<:Object3}
+                          ) where {O<:Object{3}}
     Nx, Ny, Nz = length.(lcmp)
 
     obj_vxl = Vector{O}(undef, 8)  # object inside voxel
@@ -129,7 +129,7 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
 
     for k = 1:Nz, j = 1:Ny, i = 1:Nx
         ijk_cmp = SVector(i,j,k)
-        ijk_vxl = (ijk_cmp, ijk_cmp.+1)  # Tuple2{SVec3Int}
+        ijk_vxl = (ijk_cmp, ijk_cmp.+1)  # Tuple2{SInt{3}}
 
         # Retrieve the elements assigned to voxel corners from 3D arrays.
         #
@@ -233,26 +233,26 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
                     # the surface of a single object, so we estimate nout simply from the
                     # locations of the corners occupied by the two materials.
                     param_fg, param_bg, nout, rvol =
-                        kottke_input_simple(ind_c, n_change, obj_fg, obj_bg, ft)::Tuple{SMat3Complex,SMat3Complex,SVec3Float,Float}
+                        kottke_input_simple(ind_c, n_change, obj_fg, obj_bg, ft)::Tuple{SComplex33,SComplex33,SFloat{3},Float}
                 else  # two objects
                     # When Nparam_vxl == Nobj_vxl == 2, different material parameters
                     # must correspond to different objects.
-                    x₀ = t_ind(lcmp, ijk_cmp)  # SVec3Float: location of center of smoothing voxel
+                    x₀ = t_ind(lcmp, ijk_cmp)  # SFloat{3}: location of center of smoothing voxel
                     σvxl = t_ind(σcmp, ijk_cmp)
                     lvxl = (t_ind(lcmp′,ijk_cmp), t_ind(lcmp′,ijk_cmp.+1))
 
                     sub_fg = CartesianIndices((2,2,2))[ind_fg].I  # subscritpt of corner ind_fg
-                    ∆fg = t_ind(∆τcmp′, ijk_cmp + SVector(sub_fg) .- 1)  # SVec3Float; nonzero if corner ind_fg is outside periodic boundary
+                    ∆fg = t_ind(∆τcmp′, ijk_cmp + SVector(sub_fg) .- 1)  # SFloat{3}; nonzero if corner ind_fg is outside periodic boundary
 
                     # See "Overall smoothing algorithm" above.
                     param_fg, param_bg, nout, rvol =
-                        kottke_input_accurate(x₀, σvxl, lvxl, ∆fg, obj_fg, obj_bg, ft)::Tuple{SMat3Complex,SMat3Complex,SVec3Float,Float}
+                        kottke_input_accurate(x₀, σvxl, lvxl, ∆fg, obj_fg, obj_bg, ft)::Tuple{SComplex33,SComplex33,SFloat{3},Float}
                 end  # if !with2objs
 
                 if iszero(nout)  # includes case of Nparam_vxl ≥ 3
                     # Give up Kottke's subpixel smoothing and take simple averaging.
-                    param_cmp = ft==EE ? amean_param(obj3d_cmp′, ijk_vxl, ft)::SMat3Complex :
-                                           hmean_param(obj3d_cmp′, ijk_vxl, ft)::SMat3Complex
+                    param_cmp = ft==EE ? amean_param(obj3d_cmp′, ijk_vxl, ft)::SComplex33 :
+                                           hmean_param(obj3d_cmp′, ijk_vxl, ft)::SComplex33
                 else
                     # Perform Kottke's subpixel smoothing.
                     param_cmp = kottke_avg_param(param_fg, param_bg, nout, rvol)  # defined in material.jl
@@ -272,8 +272,8 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
     return nothing
 end
 
-function amean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{SVec3Int}, ft::FieldType)
-    p = SMat3Complex(0,0,0, 0,0,0, 0,0,0)
+function amean_param(obj3d_cmp′::AbsArr{<:Object{3},3}, ijk_vxl::Tuple2{SInt{3}}, ft::FieldType)
+    p = SComplex33(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
         o = obj3d_cmp′[ic,jc,kc]
         p += matparam(o, ft)
@@ -281,8 +281,8 @@ function amean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{SVec3Int
     return p / 8
 end
 
-function hmean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{SVec3Int}, ft::FieldType)
-    p = SMat3Complex(0,0,0, 0,0,0, 0,0,0)
+function hmean_param(obj3d_cmp′::AbsArr{<:Object{3},3}, ijk_vxl::Tuple2{SInt{3}}, ft::FieldType)
+    p = SComplex33(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
         o = obj3d_cmp′[ic,jc,kc]
         p += inv(matparam(o, ft))
@@ -290,7 +290,7 @@ function hmean_param(obj3d_cmp′::AbsArr{<:Object3,3}, ijk_vxl::Tuple2{SVec3Int
     return inv(p / 8)
 end
 
-function kottke_input_simple(ind_c::AbsVecInteger, n_change::Integer, obj_fg::Object3, obj_bg::Object3, ft::FieldType)
+function kottke_input_simple(ind_c::AbsVecInteger, n_change::Integer, obj_fg::Object{3}, obj_bg::Object{3}, ft::FieldType)
     param_fg = matparam(obj_fg, ft)  # foreground material
     param_bg = matparam(obj_bg, ft)  # background material
 
@@ -303,7 +303,7 @@ function kottke_input_simple(ind_c::AbsVecInteger, n_change::Integer, obj_fg::Ob
     return param_fg, param_bg, nout, rvol
 end
 
-function kottke_input_accurate(x₀::SVec3Float, σvxl::SVec3Bool, lvxl::Tuple2{SVec3Float}, ∆fg::SVec3Float, obj_fg::Object3, obj_bg::Object3, ft::FieldType)
+function kottke_input_accurate(x₀::SFloat{3}, σvxl::SBool{3}, lvxl::Tuple2{SFloat{3}}, ∆fg::SFloat{3}, obj_fg::Object{3}, obj_bg::Object{3}, ft::FieldType)
     param_fg, param_bg = matparam(obj_fg, ft), matparam(obj_bg, ft)
 
     r₀, nout = surfpt_nearby(x₀ + ∆fg, obj_fg.shape)

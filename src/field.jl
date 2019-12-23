@@ -17,7 +17,7 @@ export create_field3d, field3d2vec
 # Therefore, again the E[i,j,k,w] indexing scheme results in an operation on a more
 # contiguous block in memory space.
 
-create_field3d(N::SVec3Int) = zeros(CFloat, N.data..., 3)  # 3 = numel(Axis)
+create_field3d(N::SInt{3}) = zeros(CFloat, N.data..., 3)  # 3 = numel(Axis)
 
 # Below, permutedims(f3d, ...) create a new array, whereas reshape(f3d, :) doesn't.
 # Therefore, if implemented naively, this function creates a new array for reorder = true

@@ -1,4 +1,4 @@
-# Below, obj3d and oind3d are different: obj3d stores references to Object3 instances,
+# Below, obj3d and oind3d are different: obj3d stores references to Object{3} instances,
 # whereas oind3d stores object indices.  The reason for this is to handle the case where
 # objects touching the negative-side boundary and objects touching the positive-side
 # boundary are joined to form a single object by being wrapped around by the periodic
@@ -12,16 +12,16 @@
 # as well, by constructing an 8-vector oid3d_vxl, like pind3d_vxl and oind3d_vxl.
 #
 # The rationale for this trick is that assigning an Int to VecInt is faster than assigning a
-# concrete Object (like Box) to Vector{Object3}.  In my test,
+# concrete Object (like Box) to Vector{Object{3}}.  In my test,
 #   setindex!(::VecInt, ::Int, <index>)
 # was about twice as fast as
-#   setindex!(::Vector{Object3}, ::Box, <index>), though both took only a few nanoseconds.
+#   setindex!(::Vector{Object{3}}, ::Box, <index>), though both took only a few nanoseconds.
 #
 # Currently the performance of assignment and smoothing seems satisfactory, so I will not
 # pursue this extra optimization.  If I need to assign many objects, the situation may
 # change and I may need to implement this optimization.
 
-export create_param3d, create_n3d, assign_param!, assign_val_shape!
+export create_param_array, create_n3d, assign_param!, assign_val_shape!
 
 # About the order of indices of param3d
 #
@@ -75,10 +75,10 @@ export create_param3d, create_n3d, assign_param!, assign_val_shape!
 #
 # In the future, this function might be generalized for 1D and 2D cases, such that it can be
 # used for 1D and 2D problems.
-create_param3d(N::SVec3Int) = (s = (N.+1).data; zeros(CFloat, s..., 3, 3))  # 3 = numel(Axis)
+create_param_array(N::SInt{3}) = (s = (N.+1).data; zeros(CFloat, s..., 3, 3))  # 3 = numel(Axis)
 
 # Below, zeros cannot be used instead of Array{T}, because zero for the type T may not be
-# well-defined (e.g., T = Object3)
+# well-defined (e.g., T = Object{3})
 #
 # The output n3d is indexed as n3d[w][i,j,k].  For example, if w = X̂ and we are dealing with
 # electric materials, then n3d[w][i,j,k] indicates some properties related to Ex[i,j,k].
@@ -87,7 +87,7 @@ create_param3d(N::SVec3Int) = (s = (N.+1).data; zeros(CFloat, s..., 3, 3))  # 3 
 # electric material properties that are seemingly evaluated at wrong locations are still
 # related to Ex[i,j,k], because they are used to determine how to smooth the electric
 # properties at the Ex[i,j,k] point in smoothing.jl.
-create_n3d(::Type{T}, N::SVec3Int) where {T} = (s = (N.+1).data; (t->Array{T}(undef,t)).((s,s,s,s)))  # Tuple4{Array{T,3}}
+create_n3d(::Type{T}, N::SInt{3}) where {T} = (s = (N.+1).data; (t->Array{T}(undef,t)).((s,s,s,s)))  # Tuple4{Array{T,3}}
 
 
 # Notes on ghost point transformation by boundary conditions:
@@ -145,13 +145,13 @@ create_n3d(::Type{T}, N::SVec3Int) where {T} = (s = (N.+1).data; (t->Array{T}(un
 # both electric and magnetic material properties simultaneously; see the comments inside the
 # function body towards the end of the function.
 function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # (electric, magnetic) parameter arrays to set
-                       obj3d::Tuple24{AbsArr{<:Object3,3}},  # (electric, magnetic) object arrays to set
+                       obj3d::Tuple24{AbsArr{<:Object{3},3}},  # (electric, magnetic) object arrays to set
                        pind3d::Tuple24{AbsArr{ParamInd,3}},  # (electric, magnetic) material parameter index arrays to set
                        oind3d::Tuple24{AbsArr{ObjInd,3}},  # (electric, magnetic) object index arrays to set
-                       boundft::SVec3{FieldType},  # boundary field type
-                       ovec::AbsArr{<:Object3},  # object vector; later object overwrites earlier.
+                       boundft::SVector{3,FieldType},  # boundary field type
+                       ovec::AbsArr{<:Object{3}},  # object vector; later object overwrites earlier.
                        τl::Tuple23{AbsVecReal},  # field component locations transformed by boundary conditions
-                       isbloch::SVec3Bool)  # boundary conditions
+                       isbloch::SBool{3})  # boundary conditions
     # Circularly shift subscripts for Bloch boundary condition.  This makes sure τl[sub[w]]
     # is always sorted for all boundary conditions.  Sorted τl is necessary to use findfirst
     # and findlast in assign_param_obj!.
@@ -259,12 +259,12 @@ end
 # explains why the ft′ component was chosen as pind′ whereas the ft component was chosen as
 # param in the present function.
 function assign_param_cmp!(param3d_cmp::AbsArrComplex{5},  # parameter array to set
-                           obj3d_cmp::AbsArr{Object3,3},  # object array to set
+                           obj3d_cmp::AbsArr{Object{3},3},  # object array to set
                            pind3d_cmp::AbsArr{ParamInd,3},  # material parameter index array to set
                            oind3d_cmp::AbsArr{ObjInd,3},  # object index array to set
                            ft::FieldType,  # E- or H-field
                            nw::Integer,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
-                           ovec::AbsVec{<:Object3},  # object vector; later object overwrites earlier.
+                           ovec::AbsVec{<:Object{3}},  # object vector; later object overwrites earlier.
                            τlcmp::Tuple3{AbsVecReal})  # location of field components
     for o = ovec  # last in ovec is last object added; see object.jl/add!
         # Retrieve shape once here, so that it can be passed to the function barrier.
@@ -321,7 +321,7 @@ function assign_val_shape_impl!(array::AbsArr{T},
                                 τlcmp::Tuple3{AbsVecReal}) where {T}
     # Set the location indices of object boundaries.
     @assert all(issorted.(τlcmp))
-    bn, bp = bounds(shape)  # (SVec3, SVec3)
+    bn, bp = bounds(shape)  # (SVector{3}, SVector{3})
     subn = map((l,b) -> (n = findfirst(l.≥b); n==nothing ? 1 : n), τlcmp, bn.data)  # Tuple3{Int}
     subp = map((l,b) -> (n = findlast(l.≤b); n==nothing ? length(l) : n), τlcmp, bp.data)  # Tuple3{Int}
     CI = CartesianIndices(map((nᵢ,nₑ) -> nᵢ:nₑ, subn, subp))  # CartesianIndices{3}

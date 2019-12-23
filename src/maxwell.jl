@@ -34,7 +34,7 @@ mutable struct Maxwell
     g::Grid{3}
     bounds::Tuple2{AbsVecReal}  # ([xmin,ymin,zmin], [xmax,ymax,zmax])
     ∆l::AbsVecReal  # [∆x,∆y,∆z]
-    boundft::SVec3{FieldType}  # boundary field type
+    boundft::SVector{3,FieldType}  # boundary field type
     isbloch::AbsVecBool  # [Bool,Bool,Bool]
     kbloch::AbsVecReal  # [Real,Real,Real]
     e⁻ⁱᵏᴸ::AbsVecComplex
@@ -47,8 +47,8 @@ mutable struct Maxwell
     εdom::Real
 
     # Objects and materials
-    ovec::AbsVec{Object3}
-    paramset::Tuple2{AbsVec{SMat3Complex}}
+    ovec::AbsVec{Object{3}}
+    paramset::Tuple2{AbsVec{SComplex33}}
     param3d::Tuple2{AbsArrComplex{5}}
 
     # Sources
@@ -75,8 +75,8 @@ mutable struct Maxwell
         m.kbloch = @SVector zeros(3)
         m.∆l = @SVector ones(3)
 
-        m.ovec = Object3[]
-        m.paramset = (SMat3Complex[], SMat3Complex[])
+        m.ovec = Object{3}[]
+        m.paramset = (SComplex33[], SComplex33[])
 
         return m
     end
@@ -116,7 +116,7 @@ function get_e⁻ⁱᵏᴸ(m::Maxwell)
         else
             g = get_grid(m)
             L = g.L
-            kbloch = SVec3(m.kbloch)
+            kbloch = SVector{3}(m.kbloch)
 
             m.e⁻ⁱᵏᴸ = exp.(-im .* kbloch .* L)
         end
@@ -152,13 +152,13 @@ function get_param3d(m::Maxwell)
         N = g.N
 
         # Initialize other fields that depend on the grid.
-        ε3d = create_param3d(N)
-        εobj3d = create_n3d(Object3, N)
+        ε3d = create_param_array(N)
+        εobj3d = create_n3d(Object{3}, N)
         εind3d = create_n3d(ParamInd, N)
         εoind3d = create_n3d(ObjInd, N)
 
-        μ3d = create_param3d(N)
-        μobj3d = create_n3d(Object3, N)
+        μ3d = create_param_array(N)
+        μobj3d = create_n3d(Object{3}, N)
         μind3d = create_n3d(ParamInd, N)
         μoind3d = create_n3d(ObjInd, N)
 

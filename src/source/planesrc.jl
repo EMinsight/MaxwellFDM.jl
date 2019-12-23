@@ -21,11 +21,11 @@ end
 
 function add!(j3d::AbsArrNumber{4},  # 4D array of Je (electric current density) or Jm (magnetic current density)
               ft::FieldType,  # type of source (electric or magnetic)
-              boundft::SVec3{FieldType},  # boundary field type
-              bounds::Tuple2{SVec3Float},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
+              boundft::SVector{3,FieldType},  # boundary field type
+              bounds::Tuple2{SFloat{3}},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
               l::Tuple23{<:AbsVecFloat},  # l[PRIM][k] = primal vertex locations in k-direction
               ∆l::Tuple23{<:AbsVecFloat},  # ∆l[PRIM][k] = (∆l at primal vertices in w) == diff(l[DUAL][k] including ghost point)
-              isbloch::SVec3Bool,  # Bloch boundary conditions
+              isbloch::SBool{3},  # Bloch boundary conditions
               src::PlaneSrc)  # plane source to add
     # Set the coordinate axes.
     nr = Int(src.n)

@@ -90,15 +90,15 @@ abstract type Source end
 
 add!(j3d::AbsArrNumber{4}, ft::FieldType, boundft::AbsVec{FieldType}, bounds::Tuple2{<:AbsVecReal},
      l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, isbloch::AbsVecBool, srcs::Source...) =
-    add!(j3d, ft, SVec3(boundft), SVec3Float.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVec3(isbloch), srcs...)
+    add!(j3d, ft, SVector{3}(boundft), SFloat{3}.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVector{3}(isbloch), srcs...)
 
 function add!(j3d::AbsArrNumber{4},  # 4D array of Je (electric current density) or Jm (magnetic current density)
               ft::FieldType,  # type of source (electric or magnetic)
-              boundft::SVec3{FieldType},  # boundary field type
-              bounds::Tuple2{SVec3Float},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
+              boundft::SVector{3,FieldType},  # boundary field type
+              bounds::Tuple2{SFloat{3}},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
               l::Tuple23{<:AbsVecFloat},  # l[PRIM][k] = primal vertex locations in k-direction
               ∆l::Tuple23{<:AbsVecFloat},  # ∆l[PRIM][k] = (∆l at primal vertices in w) == diff(l[DUAL][k] including ghost point)
-              isbloch::SVec3Bool,  # Bloch boundary conditions
+              isbloch::SBool{3},  # Bloch boundary conditions
               srcs::Source...)  # sources; sources put later overwrite sources put earlier
     for src = srcs
         add!(j3d, ft, boundft, bounds, l, ∆l, isbloch, src)
@@ -120,7 +120,7 @@ end
 # create a curl operator of differnt types, such as Float, CFloat, and even Int.  Therefore,
 # I had to allow generation of different kernel code for different argument types.
 distweights(c::Real, gt::GridType, bounds::AbsVecReal, l::AbsVecReal, ∆l::AbsVecReal, isbloch::Bool) =
-    distweights(float(c), gt, SVec2Float(bounds), float(l), float(∆l), isbloch)
+    distweights(float(c), gt, SFloat{2}(bounds), float(l), float(∆l), isbloch)
 
 # In a given Cartesian direction, if the source is located between two grid points,
 # calculate the weights to distribute over the two points.  The output is in the form of
@@ -167,7 +167,7 @@ distweights(c::Real, gt::GridType, bounds::AbsVecReal, l::AbsVecReal, ∆l::AbsV
 # can change later if needed.
 function distweights(c::Float,  # location of point (c means center)
                      gt::GridType,  # type of the grid planes
-                     bounds::SVec2Float,  # [lneg, lpos]: negative- and positive-end boundaries of domain
+                     bounds::SFloat{2},  # [lneg, lpos]: negative- and positive-end boundaries of domain
                      l::AbsVecFloat,  # location of grid planes without ghost points
                      ∆l::AbsVecFloat,  # size of grid cell centered at l (not lg)
                      isbloch::Bool)  # boundary condition

@@ -5,7 +5,7 @@ using Reexport
 @reexport using LinearAlgebra, SparseArrays, StaggeredGridCalculus, GeometryPrimitives
 using StaticArrays
 
-export SVec3Complex, SMat3Complex, ParamInd, ObjInd
+export SComplex, SComplex33, ParamInd, ObjInd
 
 ## Type aliases
 # Below, use Int instead of Int64 for compatibility with 32-bit systems (e.g., x86 in appveyor.yml).
@@ -51,20 +51,13 @@ const AbsMatNumber = AbsMat{<:Number}
 const AbsArrComplex = AbsArr{CFloat}
 const AbsArrNumber{N} = AbsArr{<:Number,N}
 
-const SVec1 = SVector{1}
-const SVec2 = SVector{2}
-const SVec3 = SVector{3}
+const SBool{K} = SVector{K,Bool}
+const SFloat{K} = SVector{K,Float}
+const SInt{K} = SVector{K,Int}
+const SComplex{K} = SVector{K,CFloat}
+const SNumber{K} = SVector{K,<:Number}
 
-const SVec2Bool = SVec2{Bool}
-const SVec3Bool = SVec3{Bool}
-const SVec2Float = SVec2{Float}
-const SVec3Float = SVec3{Float}
-const SVec2Int = SVec2{Int}
-const SVec3Int = SVec3{Int}
-const SVec3Complex = SVec3{CFloat}
-const SVec3Number = SVec3{<:Number}
-
-const SMat3Complex = SMatrix{3,3,CFloat,9}
+const SComplex33 = SMatrix{3,3,CFloat,9}
 
 const MatParam = Union{Number,AbsVecNumber,AbsMatNumber}
 const ParamInd = UInt8  # change this to handle more than 2⁸ = 256 materials

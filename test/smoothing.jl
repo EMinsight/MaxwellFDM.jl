@@ -42,18 +42,18 @@ end  # @testset "sort8!"
     # obj_diel = Object(Sphere([0,0,0], 1), diel)
 
     # Add objects.
-    ovec = Object3[]
-    paramset = (SMat3Complex[], SMat3Complex[])
+    ovec = Object{3}[]
+    paramset = (SComplex33[], SComplex33[])
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
-    ε3d = create_param3d(N)
-    εobj3d = create_n3d(Object3, N)
+    ε3d = create_param_array(N)
+    εobj3d = create_n3d(Object{3}, N)
     εind3d = create_n3d(ParamInd, N)
     εoind3d = create_n3d(ObjInd, N)
 
-    μ3d = create_param3d(N)
-    μobj3d = create_n3d(Object3, N)
+    μ3d = create_param_array(N)
+    μobj3d = create_n3d(Object{3}, N)
     μind3d = create_n3d(ParamInd, N)
     μoind3d = create_n3d(ObjInd, N)
 
@@ -152,18 +152,18 @@ end  # @testset "smoothing, box with odd number of voxels"
     # obj_diel = Object(Sphere([0,0,0], 1), diel)
 
     # Add objects.
-    ovec = Object3[]
-    paramset = (SMat3Complex[], SMat3Complex[])
+    ovec = Object{3}[]
+    paramset = (SComplex33[], SComplex33[])
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
-    ε3d = create_param3d(N)
-    εobj3d = create_n3d(Object3, N)
+    ε3d = create_param_array(N)
+    εobj3d = create_n3d(Object{3}, N)
     εind3d = create_n3d(ParamInd, N)
     εoind3d = create_n3d(ObjInd, N)
 
-    μ3d = create_param3d(N)
-    μobj3d = create_n3d(Object3, N)
+    μ3d = create_param_array(N)
+    μobj3d = create_n3d(Object{3}, N)
     μind3d = create_n3d(ParamInd, N)
     μoind3d = create_n3d(ObjInd, N)
 
@@ -380,13 +380,13 @@ end  # @testset "smoothing, box with even number of voxels"
 #     # obj_diel = Object(Sphere([0,0,0], 1), diel)
 #
 #     # Add objects.
-#     ovec = Object3[]
-#     paramset = (SMat3Complex[], SMat3Complex[])
+#     ovec = Object{3}[]
+#     paramset = (SComplex33[], SComplex33[])
 #     add!(ovec, paramset, dom_vac, obj_diel)
 #
 #     # Construct arguments and call assign_param!.
-#     param3d = create_param3d(N)
-#     obj3d = create_n3d(Object3, N)
+#     param3d = create_param_array(N)
+#     obj3d = create_n3d(Object{3}, N)
 #     pind3d = create_n3d(ParamInd, N)
 #     oind3d = create_n3d(ObjInd, N)
 #

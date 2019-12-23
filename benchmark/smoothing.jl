@@ -300,20 +300,20 @@ obj_zn_diel = Object(Sphere([0,0,-150], 75), diel)
 obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 
 # Add objects.
-ovec = Object3[]
-paramset = (SMat3Complex[], SMat3Complex[])
+ovec = Object{3}[]
+paramset = (SComplex33[], SComplex33[])
 # add!(ovec, paramset, dom_vac)
 # add!(ovec, paramset, dom_vac, obj_diel)
 add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
 
 N = g3.N
-ε3d = create_param3d(N)
-εobj3d = create_n3d(Object3, N)
+ε3d = create_param_array(N)
+εobj3d = create_n3d(Object{3}, N)
 εind3d = create_n3d(ParamInd, N)
 εoind3d = create_n3d(ObjInd, N)
 
-μ3d = create_param3d(N)
-μobj3d = create_n3d(Object3, N)
+μ3d = create_param_array(N)
+μobj3d = create_n3d(Object{3}, N)
 μind3d = create_n3d(ParamInd, N)
 μoind3d = create_n3d(ObjInd, N)
 
