@@ -3,10 +3,11 @@
 # - How do we handle TF/SF?  Need a capability to do subpixel smoothing only inside some
 # region.
 #
-# - When an object touching a symmetry boundary is flipped into the space behind the
-# boundary, the material axes must be flipped as well if the material is anisotropic.
-# Currently, let's leave it unsupported.  In other words, anisotropic materials must touch
-# the boundaries only when the boundary conditions are Bloch.
+# - A symmetry boundary puts the mirror image of the boundary-touching object in the space
+# behind the boundary.  When this happens, not only the shape but also the material of the
+# object must be flipped with respect to the symmetry boundary.  Such material flip is
+# currently unsupported: only the Bloch boundary condition is valid for the boundary
+# touching anisotropic materials.
 
 export smooth_param!
 
