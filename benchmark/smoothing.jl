@@ -308,14 +308,14 @@ add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, o
 
 N = g3.N
 ε3d = create_param_array(N)
-εobj3d = create_n3d(Object{3}, N)
-εind3d = create_n3d(ParamInd, N)
-εoind3d = create_n3d(ObjInd, N)
+εobj3d = create_p_storage(Object{3}, N)
+εind3d = create_p_storage(ParamInd, N)
+εoind3d = create_p_storage(ObjInd, N)
 
 μ3d = create_param_array(N)
-μobj3d = create_n3d(Object{3}, N)
-μind3d = create_n3d(ParamInd, N)
-μoind3d = create_n3d(ObjInd, N)
+μobj3d = create_p_storage(Object{3}, N)
+μind3d = create_p_storage(ParamInd, N)
+μoind3d = create_p_storage(ObjInd, N)
 
 τl = g3.ghosted.τl
 
@@ -338,13 +338,13 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 τlcmp = view.(MaxwellFDM.t_ind(τl,gt_cmp), ind_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
 
 # Prepare the circularly shifted viewes of various arrays to match the sorted
-# τl.  Even though all arrays are for same locations, param3d_cmp contains gt
-# material, whereas obj3d_cmp, pind3d_cmp, oind3d_cmp contain alter(gt)
+# τl.  Even though all arrays are for same locations, param_cmp contains gt
+# material, whereas obj_cmp, pind_cmp, oind_cmp contain alter(gt)
 # material, so use ngt′ instead of ngt for them.
 ε3d_cmp = view(ε3d, ind_cmp..., nXYZ, nXYZ)
-μobj3d_cmp = view(μobj3d[nw], ind_cmp...)
+μobj_cmp = view(μobj3d[nw], ind_cmp...)
 μind3d_cmp = view(μind3d[nw], ind_cmp...)
-μoind3d_cmp = view(μoind3d[nw], ind_cmp...)
+μoind_cmp = view(μoind3d[nw], ind_cmp...)
 
 # o = ovec[2]  # ovec[1]: Box, ovec[2]: Sphere
 # shape = o.shape
@@ -354,24 +354,24 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # pind′ = paramind(o,gt′)
 # oind = objind(o)
 #
-# arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
+# arrays = (pind_cmp, oind_cmp, obj_cmp)
 # vals = (pind′, oind, o)
 #
 # println("# of objects = $(length(ovec))")
-# # @time assign_val_shape!((arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
-# # @code_warntype assign_val_shape!((arrays..., param3d_cmp), (vals, param), shape, τlcmp)
+# # @time assign_val_shape!((arrays..., @view(param_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
+# # @code_warntype assign_val_shape!((arrays..., param_cmp), (vals, param), shape, τlcmp)
 
-# assign_val_shape!(pind3d_cmp, pind′, shape, τlcmp)
-# assign_val_shape!(oind3d_cmp, oind, shape, τlcmp)
-# assign_val_shape!(obj3d_cmp, o, shape, τlcmp)
+# assign_val_shape!(pind_cmp, pind′, shape, τlcmp)
+# assign_val_shape!(oind_cmp, oind, shape, τlcmp)
+# assign_val_shape!(obj_cmp, o, shape, τlcmp)
 # if nw == 4
-#     assign_val_shape!(param3d_cmp, param, shape, τlcmp)
+#     assign_val_shape!(param_cmp, param, shape, τlcmp)
 # else  # nw = 1, 2, 3
-#     assign_val_shape!(@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
+#     assign_val_shape!(@view(param_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
 # end
 
 
-# @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec, τlcmp)
+# @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param_cmp, obj_cmp, pind_cmp, oind_cmp, ovec, τlcmp)
 # @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
 
 boundft = SVector(EE,EE,EE)
@@ -384,11 +384,11 @@ boundft = SVector(EE,EE,EE)
 # ∆τcmp′ = MaxwellFDM.t_ind(g3.ghosted.∆τ, gt_cmp′)
 #
 # param3d_gt = param3d[ngt]
-# obj3d_cmp′ = obj3d[ngt][nw]
-# pind3d_cmp′ = pind3d[ngt][nw]
-# oind3d_cmp′ = oind3d[ngt][nw]
+# obj_cmp′ = obj3d[ngt][nw]
+# pind_cmp′ = pind3d[ngt][nw]
+# oind_cmp′ = oind3d[ngt][nw]
 
-# @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj3d_cmp′, pind3d_cmp′, oind3d_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
+# @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj_cmp′, pind_cmp′, oind_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
 
 ft = EE
 @time smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)

@@ -97,12 +97,12 @@ function smooth_param!(param3d::AbsArrComplex{5},  # parameter array to smooth
         lcmp′ = t_ind(l′, gt_cmp′)
         ∆τcmp′ = t_ind(∆τ′, gt_cmp′)
 
-        obj3d_cmp′ = obj3d[nw]
-        pind3d_cmp′ = pind3d[nw]
-        oind3d_cmp′ = oind3d[nw]
+        obj_cmp′ = obj3d[nw]
+        pind_cmp′ = pind3d[nw]
+        oind_cmp′ = oind3d[nw]
 
         # Set various arrays for the current component.
-        smooth_param_cmp!(param3d, obj3d_cmp′, pind3d_cmp′, oind3d_cmp′, ft, nw, lcmp, lcmp′, σcmp, ∆τcmp′)
+        smooth_param_cmp!(param3d, obj_cmp′, pind_cmp′, oind_cmp′, ft, nw, lcmp, lcmp′, σcmp, ∆τcmp′)
     end
 
     return nothing
@@ -110,9 +110,9 @@ end
 
 # Below, XXX_cmp has size N, whereas XXX_cmp′ has size N+1 (and corresponds to voxel corners).
 function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to smooth
-                           obj3d_cmp′::AbsArr{O,3},  # object array (does not change)
-                           pind3d_cmp′::AbsArr{ParamInd,3},  # material parameter index array (does not chaneg)
-                           oind3d_cmp′::AbsArr{ObjInd,3},  # object index array (does not change)
+                           obj_cmp′::AbsArr{O,3},  # object array (does not change)
+                           pind_cmp′::AbsArr{ParamInd,3},  # material parameter index array (does not chaneg)
+                           oind_cmp′::AbsArr{ObjInd,3},  # object index array (does not change)
                            ft::FieldType,  # E- or H-field
                            nw::Int,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
                            lcmp::Tuple3{AbsVecReal},  # location of field components
@@ -142,9 +142,9 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
         c = 0
         for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
             c += 1
-            @inbounds obj_vxl[c] = obj3d_cmp′[ic,jc,kc]
-            @inbounds pind_vxl[c] = pind3d_cmp′[ic,jc,kc]
-            @inbounds oind_vxl[c] = oind3d_cmp′[ic,jc,kc]
+            @inbounds obj_vxl[c] = obj_cmp′[ic,jc,kc]
+            @inbounds pind_vxl[c] = pind_cmp′[ic,jc,kc]
+            @inbounds oind_vxl[c] = oind_cmp′[ic,jc,kc]
         end
 
         # We could use Nparam_vxl calculated below instead of is_vxl_uniform: if Nparam_vxl
@@ -251,8 +251,8 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
 
                 if iszero(nout)  # includes case of Nparam_vxl ≥ 3
                     # Give up Kottke's subpixel smoothing and take simple averaging.
-                    param_cmp = ft==EE ? amean_param(obj3d_cmp′, ijk_vxl, ft)::SComplex33 :
-                                           hmean_param(obj3d_cmp′, ijk_vxl, ft)::SComplex33
+                    param_cmp = ft==EE ? amean_param(obj_cmp′, ijk_vxl, ft)::SComplex33 :
+                                           hmean_param(obj_cmp′, ijk_vxl, ft)::SComplex33
                 else
                     # Perform Kottke's subpixel smoothing.
                     param_cmp = kottke_avg_param(param_fg, param_bg, nout, rvol)  # defined in material.jl
@@ -272,19 +272,19 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
     return nothing
 end
 
-function amean_param(obj3d_cmp′::AbsArr{<:Object{3},3}, ijk_vxl::Tuple2{SInt{3}}, ft::FieldType)
+function amean_param(obj_cmp′::AbsArr{<:Object{3},3}, ijk_vxl::Tuple2{SInt{3}}, ft::FieldType)
     p = SComplex33(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
-        o = obj3d_cmp′[ic,jc,kc]
+        o = obj_cmp′[ic,jc,kc]
         p += matparam(o, ft)
     end
     return p / 8
 end
 
-function hmean_param(obj3d_cmp′::AbsArr{<:Object{3},3}, ijk_vxl::Tuple2{SInt{3}}, ft::FieldType)
+function hmean_param(obj_cmp′::AbsArr{<:Object{3},3}, ijk_vxl::Tuple2{SInt{3}}, ft::FieldType)
     p = SComplex33(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
-        o = obj3d_cmp′[ic,jc,kc]
+        o = obj_cmp′[ic,jc,kc]
         p += inv(matparam(o, ft))
     end
     return inv(p / 8)

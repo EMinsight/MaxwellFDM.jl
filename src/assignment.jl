@@ -21,7 +21,7 @@
 # pursue this extra optimization.  If I need to assign many objects, the situation may
 # change and I may need to implement this optimization.
 
-export create_param_array, create_n3d, assign_param!, assign_val_shape!
+export create_param_array, create_p_storage, assign_param!, assign_val_shape!
 
 # About the order of indices of param3d
 #
@@ -66,28 +66,25 @@ export create_param_array, create_n3d, assign_param!, assign_val_shape!
 
 
 # Creates param3d to be of size N.+1 in the (i,j,k)-dimensions.  It is created with size N+1
-# to match the sizes of other matrices created by create_n3d and hence to simplify the
+# to match the sizes of other matrices created by create_p_storage and hence to simplify the
 # algorithm, but only the first N portion is used.
 #
-# The output param3d is indexd as param3d[i,j,k,v,w], where (i,j,k) is the grid cell
-# location, and v and w are the row and column indices of the 3×3 tensorial material
-# parameters (like the ε tensor and μ tensor).
-#
-# In the future, this function might be generalized for 1D and 2D cases, such that it can be
-# used for 1D and 2D problems.
+# For length(N) = 2, the output param_array is indexd as param_array[i,j,v,w], where (i,j)
+# is the grid cell location, and v and w are the row and column indices of the 3×3 tensorial
+# material parameters (like the ε tensor and μ tensor).
 create_param_array(N::SInt{3}) = (s = (N.+1).data; zeros(CFloat, s..., 3, 3))  # 3 = numel(Axis)
 
 # Below, zeros cannot be used instead of Array{T}, because zero for the type T may not be
 # well-defined (e.g., T = Object{3})
 #
-# The output n3d is indexed as n3d[w][i,j,k].  For example, if w = X̂ and we are dealing with
+# The output p_arrays is indexed as n3d[w][i,j,k].  For example, if w = X̂ and we are dealing with
 # electric materials, then n3d[w][i,j,k] indicates some properties related to Ex[i,j,k].
 # Below, we have n3d = obj3d, pind3d, oind3d, and n3d[X̂][i,j,k] is used to store the
 # electric material properties evaluated at the Hx[i,j,k] (not Ex[i,j,k]) point.  These
 # electric material properties that are seemingly evaluated at wrong locations are still
 # related to Ex[i,j,k], because they are used to determine how to smooth the electric
 # properties at the Ex[i,j,k] point in smoothing.jl.
-create_n3d(::Type{T}, N::SInt{3}) where {T} = (s = (N.+1).data; (t->Array{T}(undef,t)).((s,s,s,s)))  # Tuple4{Array{T,3}}
+create_p_storage(::Type{T}, N::SInt{3}) where {T} = (s = (N.+1).data; (t->Array{T}(undef,t)).((s,s,s,s)))  # Tuple4{Array{T,3}}
 
 
 # Notes on ghost point transformation by boundary conditions:
@@ -210,8 +207,8 @@ function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # (electric, magnetic
             τlcmp = view.(t_ind(τl,gt_cmp), sub_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
 
             # Prepare the circularly shifted viewes of various arrays to match the sorted
-            # τl.  Even though all arrays are for same locations (τlcmp), param3d_cmp
-            # contains ft material, whereas obj3d_cmp, pind3d_cmp, oind3d_cmp contain
+            # τl.  Even though all arrays are for same locations (τlcmp), param_cmp
+            # contains ft material, whereas obj_cmp, pind_cmp, oind_cmp contain
             # alter(ft) material (so use nft′ instead of nft for them).
             #
             # Explanation.  We set up obj3d, pind3d, oind3d (param3d excluded) such that
@@ -229,13 +226,13 @@ function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # (electric, magnetic
             # would want to set the magnetic material properties in obj3d, pind3d, oind3d.
             # This is why for the same τlcmp locations we set up the ft-entry of param3d but
             # alter(ft)-entries of obj3d, pind3d, and oind3d.
-            param3d_cmp = view(param3d[nft], psub_cmp..., nXYZ, nXYZ)
-            obj3d_cmp = view(obj3d[nft′][nw], sub_cmp...)
-            pind3d_cmp = view(pind3d[nft′][nw], sub_cmp...)
-            oind3d_cmp = view(oind3d[nft′][nw], sub_cmp...)
+            param_cmp = view(param3d[nft], psub_cmp..., nXYZ, nXYZ)
+            obj_cmp = view(obj3d[nft′][nw], sub_cmp...)
+            pind_cmp = view(pind3d[nft′][nw], sub_cmp...)
+            oind_cmp = view(oind3d[nft′][nw], sub_cmp...)
 
             # Set various arrays for the current component.
-            assign_param_cmp!(param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ft, nw, ovec, τlcmp)
+            assign_param_cmp!(param_cmp, obj_cmp, pind_cmp, oind_cmp, ft, nw, ovec, τlcmp)
         end
     end
 
@@ -247,21 +244,21 @@ end
 # of specific element types).
 #
 # The goal of this function is to set all the arrays' entries, where the arrays are
-# param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, at the same locations (τlcmp).  For each
+# param_cmp, obj_cmp, pind_cmp, oind_cmp, at the same locations (τlcmp).  For each
 # shape we iterate over grid points and test if each point is included in the shape.
 # Because there are so many grid points, the total time taken for these tests is somewhat
 # substantial, so we don't want to test the same point again.  Therefore, for a point that
 # is tested being included in the shape, we want to set up all the arrays that need to be
 # set up.  If the point is an Ew point, it is where the electric material properties ε_ww is
 # set up in param3d, but it is also where the magnetic material parameter index is set up in
-# pind3d.  This is why the ft′ entry of pind3d was chosen as pind3d_cmp in the enclosing
-# function, where as the ft entry of param3d was chosen as param3d_cmp there.  This also
+# pind3d.  This is why the ft′ entry of pind3d was chosen as pind_cmp in the enclosing
+# function, where as the ft entry of param3d was chosen as param_cmp there.  This also
 # explains why the ft′ component was chosen as pind′ whereas the ft component was chosen as
 # param in the present function.
-function assign_param_cmp!(param3d_cmp::AbsArrComplex{5},  # parameter array to set
-                           obj3d_cmp::AbsArr{Object{3},3},  # object array to set
-                           pind3d_cmp::AbsArr{ParamInd,3},  # material parameter index array to set
-                           oind3d_cmp::AbsArr{ObjInd,3},  # object index array to set
+function assign_param_cmp!(param_cmp::AbsArrComplex{5},  # parameter array to set
+                           obj_cmp::AbsArr{Object{3},3},  # object array to set
+                           pind_cmp::AbsArr{ParamInd,3},  # material parameter index array to set
+                           oind_cmp::AbsArr{ObjInd,3},  # object index array to set
                            ft::FieldType,  # E- or H-field
                            nw::Integer,  # w = X̂ (1), Ŷ (2), Ẑ (3), grid node (4)
                            ovec::AbsVec{<:Object{3}},  # object vector; later object overwrites earlier.
@@ -277,7 +274,7 @@ function assign_param_cmp!(param3d_cmp::AbsArrComplex{5},  # parameter array to 
         oind = objind(o)  # used to set up oind3d
 
         # Set the values to the arrays.
-        # Below, each of the four arrays pind3d_cmp, oind3d_cmp, obj3d_cmp, param3d_cmp is
+        # Below, each of the four arrays pind_cmp, oind_cmp, obj_cmp, param_cmp is
         # individually set by assign_val_shape!.  This means that for each point p and shape
         # sh, the same test p ϵ sh is repeated four times.  This is inefficient, and an
         # alternative implementation is to create a function similar to assign_val_shape!
@@ -286,19 +283,19 @@ function assign_param_cmp!(param3d_cmp::AbsArrComplex{5},  # parameter array to 
         # of assign_val! for every p ϵ sh, causing a huge number of allocations and
         # performance degradation.  Therefore, I choose to set up each array individually
         # and avoid too many dynamic dispatches.
-        assign_val_shape!(pind3d_cmp, pind′, shape, τlcmp)
-        assign_val_shape!(oind3d_cmp, oind, shape, τlcmp)
-        assign_val_shape!(obj3d_cmp, o, shape, τlcmp)
+        assign_val_shape!(pind_cmp, pind′, shape, τlcmp)
+        assign_val_shape!(oind_cmp, oind, shape, τlcmp)
+        assign_val_shape!(obj_cmp, o, shape, τlcmp)
         if nw == 4
             # Assign parameters at voxel corners where the v-component E and H affects the
             # w≠v components of D and B.  This will use assign_val(..., tensor, ...) for
             # setting off-diagonal entries of the material parameter tensor.
-            assign_val_shape!(param3d_cmp, param, shape, τlcmp)
+            assign_val_shape!(param_cmp, param, shape, τlcmp)
         else  # nw = 1, 2, 3
             # Assign parameters at Yee's field points where the v-component E and H affects
             # the w=v components of D and B.  This will use assign_val(..., scalar, ...) for
             # setting diagonal entries of the material parameter tensor.
-            assign_val_shape!(@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
+            assign_val_shape!(@view(param_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
         end
     end
 

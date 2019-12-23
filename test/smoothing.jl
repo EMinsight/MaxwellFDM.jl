@@ -48,14 +48,14 @@ end  # @testset "sort8!"
 
     # Construct arguments and call assign_param!.
     ε3d = create_param_array(N)
-    εobj3d = create_n3d(Object{3}, N)
-    εind3d = create_n3d(ParamInd, N)
-    εoind3d = create_n3d(ObjInd, N)
+    εobj3d = create_p_storage(Object{3}, N)
+    εind3d = create_p_storage(ParamInd, N)
+    εoind3d = create_p_storage(ObjInd, N)
 
     μ3d = create_param_array(N)
-    μobj3d = create_n3d(Object{3}, N)
-    μind3d = create_n3d(ParamInd, N)
-    μoind3d = create_n3d(ObjInd, N)
+    μobj3d = create_p_storage(Object{3}, N)
+    μind3d = create_p_storage(ParamInd, N)
+    μoind3d = create_p_storage(ObjInd, N)
 
     boundft = SVector(EE,EE,EE)
     assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
@@ -158,14 +158,14 @@ end  # @testset "smoothing, box with odd number of voxels"
 
     # Construct arguments and call assign_param!.
     ε3d = create_param_array(N)
-    εobj3d = create_n3d(Object{3}, N)
-    εind3d = create_n3d(ParamInd, N)
-    εoind3d = create_n3d(ObjInd, N)
+    εobj3d = create_p_storage(Object{3}, N)
+    εind3d = create_p_storage(ParamInd, N)
+    εoind3d = create_p_storage(ObjInd, N)
 
     μ3d = create_param_array(N)
-    μobj3d = create_n3d(Object{3}, N)
-    μind3d = create_n3d(ParamInd, N)
-    μoind3d = create_n3d(ObjInd, N)
+    μobj3d = create_p_storage(Object{3}, N)
+    μind3d = create_p_storage(ParamInd, N)
+    μoind3d = create_p_storage(ObjInd, N)
 
     boundft = SVector(EE,EE,EE)
     assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
@@ -386,9 +386,9 @@ end  # @testset "smoothing, box with even number of voxels"
 #
 #     # Construct arguments and call assign_param!.
 #     param3d = create_param_array(N)
-#     obj3d = create_n3d(Object{3}, N)
-#     pind3d = create_n3d(ParamInd, N)
-#     oind3d = create_n3d(ObjInd, N)
+#     obj3d = create_p_storage(Object{3}, N)
+#     pind3d = create_p_storage(ParamInd, N)
+#     oind3d = create_p_storage(ObjInd, N)
 #
 #     assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
 #     smooth_param!(param3d, obj3d, pind3d, oind3d, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
