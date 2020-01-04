@@ -5,7 +5,7 @@ using Reexport
 @reexport using LinearAlgebra, SparseArrays, StaggeredGridCalculus, GeometryPrimitives
 using StaticArrays
 
-export SComplex, SComplex33, ParamInd, ObjInd
+export SComplex, SSComplex3, ParamInd, ObjInd
 
 ## Type aliases
 # Below, use Int instead of Int64 for compatibility with 32-bit systems (e.g., x86 in appveyor.yml).
@@ -57,7 +57,11 @@ const SInt{K} = SVector{K,Int}
 const SComplex{K} = SVector{K,CFloat}
 const SNumber{K} = SVector{K,<:Number}
 
-const SComplex33 = SMatrix{3,3,CFloat,9}
+const SSComplex{K,L} = SMatrix{K,K,CFloat,L}
+
+const SSComplex1 = SSComplex{1,1}
+const SSComplex2 = SSComplex{2,4}
+const SSComplex3 = SSComplex{3,9}
 
 const MatParam = Union{Number,AbsVecNumber,AbsMatNumber}
 const ParamInd = UInt8  # change this to handle more than 2⁸ = 256 materials

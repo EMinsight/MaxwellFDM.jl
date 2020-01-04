@@ -43,7 +43,7 @@ end  # @testset "sort8!"
 
     # Add objects.
     ovec = Object{3}[]
-    paramset = (SComplex33[], SComplex33[])
+    paramset = (SSComplex3[], SSComplex3[])
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
@@ -153,7 +153,7 @@ end  # @testset "smoothing, box with odd number of voxels"
 
     # Add objects.
     ovec = Object{3}[]
-    paramset = (SComplex33[], SComplex33[])
+    paramset = (SSComplex3[], SSComplex3[])
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
@@ -381,7 +381,7 @@ end  # @testset "smoothing, box with even number of voxels"
 #
 #     # Add objects.
 #     ovec = Object{3}[]
-#     paramset = (SComplex33[], SComplex33[])
+#     paramset = (SSComplex3[], SSComplex3[])
 #     add!(ovec, paramset, dom_vac, obj_diel)
 #
 #     # Construct arguments and call assign_param!.

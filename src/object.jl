@@ -45,14 +45,14 @@ paramind(o::Object{K}, ft::FieldType) where {K} = o.pind[Int(ft)]
 objind(o::Object) = o.oind
 
 # Consider using resize! on ovec.
-function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SComplex33}}, os::AbsVec{<:Object{K}}) where {K}
+function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SSComplex3}}, os::AbsVec{<:Object{K}}) where {K}
     for o = os
         add!(ovec, paramset, o)
     end
 end
 
 # Consider using resize! on ovec.
-function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SComplex33}}, os::Object{K}...) where {K}
+function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SSComplex3}}, os::Object{K}...) where {K}
     for o = os
         add!(ovec, paramset, o)
     end
@@ -75,7 +75,7 @@ end
 # Assigining the same object index is specifically to treat an object across a periodic
 # boundary.  Therefore, we should not assign the same object index to the dintinct periodic
 # objects in the domain (e.g., holes in a photonic crystal slab).
-function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SComplex33}}, o::Object{K}) where {K}
+function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SSComplex3}}, o::Object{K}) where {K}
     # Assign the object index to o.
     o.oind = isempty(ovec) ? 1 : objind(ovec[end])+1  # not just length(ovec)+1 to handle periodized objects (see comments above)
     push!(ovec, o)  # append o (for potential use of ovec with KDTree, must use pushfirst! to prepend)

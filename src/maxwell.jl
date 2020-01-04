@@ -48,7 +48,7 @@ mutable struct Maxwell
 
     # Objects and materials
     ovec::AbsVec{Object{3}}
-    paramset::Tuple2{AbsVec{SComplex33}}
+    paramset::Tuple2{AbsVec{SSComplex3}}
     param3d::Tuple2{AbsArrComplex{5}}
 
     # Sources
@@ -76,7 +76,7 @@ mutable struct Maxwell
         m.∆l = @SVector ones(3)
 
         m.ovec = Object{3}[]
-        m.paramset = (SComplex33[], SComplex33[])
+        m.paramset = (SSComplex3[], SSComplex3[])
 
         return m
     end

@@ -23,7 +23,7 @@
 
     # Add objects.
     ovec = Object{3}[]
-    paramset = (SComplex33[], SComplex33[])
+    paramset = (SSComplex3[], SSComplex3[])
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
@@ -74,7 +74,7 @@ end  # @testset "param3d2mat"
 
     # Add objects.
     ovec = Object{3}[]
-    paramset = (SComplex33[], SComplex33[])
+    paramset = (SSComplex3[], SSComplex3[])
     add!(ovec, paramset, dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.

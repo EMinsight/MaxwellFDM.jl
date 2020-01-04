@@ -233,7 +233,7 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
                     # the surface of a single object, so we estimate nout simply from the
                     # locations of the corners occupied by the two materials.
                     param_fg, param_bg, nout, rvol =
-                        kottke_input_simple(ind_c, n_change, obj_fg, obj_bg, ft)::Tuple{SComplex33,SComplex33,SFloat{3},Float}
+                        kottke_input_simple(ind_c, n_change, obj_fg, obj_bg, ft)::Tuple{SSComplex3,SSComplex3,SFloat{3},Float}
                 else  # two objects
                     # When Nparam_vxl == Nobj_vxl == 2, different material parameters
                     # must correspond to different objects.
@@ -246,13 +246,13 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
 
                     # See "Overall smoothing algorithm" above.
                     param_fg, param_bg, nout, rvol =
-                        kottke_input_accurate(x₀, σvxl, lvxl, ∆fg, obj_fg, obj_bg, ft)::Tuple{SComplex33,SComplex33,SFloat{3},Float}
+                        kottke_input_accurate(x₀, σvxl, lvxl, ∆fg, obj_fg, obj_bg, ft)::Tuple{SSComplex3,SSComplex3,SFloat{3},Float}
                 end  # if !with2objs
 
                 if iszero(nout)  # includes case of Nparam_vxl ≥ 3
                     # Give up Kottke's subpixel smoothing and take simple averaging.
-                    param_cmp = ft==EE ? amean_param(obj_cmp′, ijk_vxl, ft)::SComplex33 :
-                                           hmean_param(obj_cmp′, ijk_vxl, ft)::SComplex33
+                    param_cmp = ft==EE ? amean_param(obj_cmp′, ijk_vxl, ft)::SSComplex3 :
+                                           hmean_param(obj_cmp′, ijk_vxl, ft)::SSComplex3
                 else
                     # Perform Kottke's subpixel smoothing.
                     param_cmp = kottke_avg_param(param_fg, param_bg, nout, rvol)  # defined in material.jl
@@ -273,7 +273,7 @@ function smooth_param_cmp!(param3d_ft::AbsArrComplex{5},  # parameter array to s
 end
 
 function amean_param(obj_cmp′::AbsArr{<:Object{3},3}, ijk_vxl::Tuple2{SInt{3}}, ft::FieldType)
-    p = SComplex33(0,0,0, 0,0,0, 0,0,0)
+    p = SSComplex3(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
         o = obj_cmp′[ic,jc,kc]
         p += matparam(o, ft)
@@ -282,7 +282,7 @@ function amean_param(obj_cmp′::AbsArr{<:Object{3},3}, ijk_vxl::Tuple2{SInt{3}}
 end
 
 function hmean_param(obj_cmp′::AbsArr{<:Object{3},3}, ijk_vxl::Tuple2{SInt{3}}, ft::FieldType)
-    p = SComplex33(0,0,0, 0,0,0, 0,0,0)
+    p = SSComplex3(0,0,0, 0,0,0, 0,0,0)
     for kc = t_ind(ijk_vxl,nZ,nZ), jc = t_ind(ijk_vxl,nY,nY), ic = t_ind(ijk_vxl,nX,nX)
         o = obj_cmp′[ic,jc,kc]
         p += inv(matparam(o, ft))

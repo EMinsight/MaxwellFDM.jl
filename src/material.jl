@@ -16,7 +16,7 @@ string(m::Material) = m.name
 matparam(m::Material, ft::FieldType) = m.param[Int(ft)]
 
 kottke_avg_param(param1::AbsMatNumber, param2::AbsMatNumber, n12::AbsVecReal, rvol1::Real) =
-    kottke_avg_param(SComplex33(param1), SComplex33(param2), SFloat{3}(n12), rvol1)
+    kottke_avg_param(SSComplex3(param1), SSComplex3(param2), SFloat{3}(n12), rvol1)
 
 # Implement the averaging scheme between two local material parameter tensors developed in
 # the paper by Kottke, Farjadpour, Johnson entitled "Perturbation theory for anisotropic
@@ -47,11 +47,11 @@ function kottke_avg_param(param1::SComplex33, param2::SComplex33, n12::SFloat{3}
     return S * τ⁻¹_trans(τavg) * transpose(S)  # apply τ⁻¹ and transform back to global coordinates
 end
 
-# Equation (4) of the paper by Kottke et al.
-function τ_trans(ε)
+# Equation (4) of the paper by Kottke et al.  Need to verify for K = 1 and 2.
+function τ_trans(ε::SSComplex3)
     ε₁₁, ε₂₁, ε₃₁, ε₁₂, ε₂₂, ε₃₂, ε₁₃, ε₂₃, ε₃₃ = ε
 
-    return SComplex33(
+    return SSComplex3(
         -1/ε₁₁, ε₂₁/ε₁₁, ε₃₁/ε₁₁,
         ε₁₂/ε₁₁, ε₂₂ - ε₂₁*ε₁₂/ε₁₁, ε₃₂ - ε₃₁*ε₁₂/ε₁₁,
         ε₁₃/ε₁₁, ε₂₃ - ε₂₁*ε₁₃/ε₁₁, ε₃₃ - ε₃₁*ε₁₃/ε₁₁
@@ -66,10 +66,10 @@ function τ_trans(ε)
 end
 
 # Equation (23) of the paper by Kottke et al.
-function τ⁻¹_trans(τ)
+function τ⁻¹_trans(τ::SSComplex3)
     τ₁₁, τ₂₁, τ₃₁, τ₁₂, τ₂₂, τ₃₂, τ₁₃, τ₂₃, τ₃₃ = τ
 
-    return SComplex33(
+    return SSComplex3(
         -1/τ₁₁, -τ₂₁/τ₁₁, -τ₃₁/τ₁₁,
         -τ₁₂/τ₁₁, τ₂₂ - τ₂₁*τ₁₂/τ₁₁, τ₃₂ - τ₃₁*τ₁₂/τ₁₁,
         -τ₁₃/τ₁₁, τ₂₃ - τ₂₁*τ₁₃/τ₁₁, τ₃₃ - τ₃₁*τ₁₃/τ₁₁

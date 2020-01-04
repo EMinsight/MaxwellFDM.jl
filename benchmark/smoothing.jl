@@ -301,7 +301,7 @@ obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 
 # Add objects.
 ovec = Object{3}[]
-paramset = (SComplex33[], SComplex33[])
+paramset = (SSComplex3[], SSComplex3[])
 # add!(ovec, paramset, dom_vac)
 # add!(ovec, paramset, dom_vac, obj_diel)
 add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
