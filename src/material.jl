@@ -2,15 +2,21 @@ export Material
 export matparam, kottke_avg_param
 import Base:string
 
-tensorize(x::Number) = tensorize(SComplex{3}(x,x,x))
-tensorize(v::AbsVecNumber) = diagm(Val(0)=>SComplex{3}(v))
-tensorize(m::AbsMatNumber) = SComplex33(m)
+# Note that the output of tensorize is always a matrix: for K = 1, it is a 1×1 matrix.
+tensorize(x::Number, ::Val{K}) where {K} = tensorize(@SVector(fill(complex(x), K)), Val(K))  # SComplex{3}(x,x,x): vector
+tensorize(v::AbsVecNumber, ::Val{K}) where {K} = diagm(Val(0)=>SComplex{K}(v))  # complex(v) is allocating, so use SComplex{K}(v)
+tensorize(m::AbsMatNumber, ::Val{K}) where {K} = SMatrix{K,K,CFloat,K*K}(m)  # complex(m) is allocating, so use SMatrix{K,K,CFloat,K*K}(m)
 
-struct Material
+struct Material{Ke,Km,Le,Lm}  # e: electric, m: magnetic
     name::String
-    param::Tuple2{SComplex33}  # (material parameter interacting with E, material parameter interacting with H)
+    param::Tuple{SMatrix{Ke,Ke,CFloat,Le},SMatrix{Km,Km,CFloat,Lm}}  # (material parameter interacting with E, material parameter interacting with H)
+    Material{Ke,Km,Le,Lm}(name, param) where {Ke,Km,Le,Lm} =
+        new(name, (tensorize(param[1],Val(Ke)), tensorize(param[2],Val(Km))))  # suppress default outer constructor
 end
-Material(name::String; ε::MatParam=1, μ::MatParam=1) = Material(name, (tensorize(ε), tensorize(μ)))
+
+Material{Ke,Km}(name::String, param::Tuple2{MatParam}) where {Ke,Km} = Material{Ke,Km,Ke*Ke,Km*Km}(name, param)
+Material{Ke,Km}(name::String; ε::MatParam=1, μ::MatParam=1) where {Ke,Km} = Material{Ke,Km}(name, (ε,μ))  # ε, μ: keyword arguments
+# Consider implementing Material2 and Material3 for 2D and 3D solvers.
 
 string(m::Material) = m.name
 matparam(m::Material, ft::FieldType) = m.param[Int(ft)]
@@ -22,22 +28,10 @@ kottke_avg_param(param1::AbsMatNumber, param2::AbsMatNumber, n12::AbsVecReal, rv
 # the paper by Kottke, Farjadpour, Johnson entitled "Perturbation theory for anisotropic
 # dielectric interfaces, and application to subpixel smoothing of discretized numerical
 # methods", Physical Review E 77 (2008): 036611.
-function kottke_avg_param(param1::SComplex33, param2::SComplex33, n12::SFloat{3}, rvol1::Real)
-    n = normalize(n12)
-
-    # Pick a vector that is not along n.
-    if any(n .== 0)
-    	h = (n .== 0)
-    else
-    	h = SVector(1., 0., 0.)
-    end
-
-    # Create two vectors that are normal to n and normal to each other.
-    h = normalize(n×h)
-    v = normalize(n×h)
-
-    # Create a local Cartesian coordinate system.
-    S = [n h v]  # unitary
+function kottke_avg_param(param1::SSComplex{K}, param2::SSComplex{K}, n12::SFloat{K}, rvol1::Real) where {K}
+    Scomp = @SMatrix rand(K,K-1)  # directions complementary to n12; works even for K = 1
+    Stemp = [n12 Scomp]  # SMatrix{K,K}
+    S = qr(Stemp).Q  # nonallocating; 1st column is normalized n12
 
     τ1 = τ_trans(transpose(S) * param1 * S)  # express param1 in S coordinates, and apply τ transform
     τ2 = τ_trans(transpose(S) * param2 * S)  # express param2 in S coordinates, and apply τ transform
@@ -65,6 +59,33 @@ function τ_trans(ε::SSComplex3)
     # return t
 end
 
+function τ_trans(ε::SSComplex2)
+    ε₁₁, ε₂₁, ε₁₂, ε₂₂ = ε
+
+    return SSComplex2(
+        -1/ε₁₁, ε₂₁/ε₁₁,
+        ε₁₂/ε₁₁, ε₂₂ - ε₂₁*ε₁₂/ε₁₁
+    )
+end
+
+τ_trans(ε::SSComplex1) = -1 ./ ε
+
+# function τ_trans(ε::SSComplex{K}) where {K}
+#     τ_temp1 = @SMatrix [ε[i,j] for i = 2:K, j = 2:K]  # cannot use type parameter K here: error is generated
+#     τ_temp2 = [@SMatrix(zeros(CFloat,1,K-1)); τ_temp1]
+#     τ_temp = [@SVector(zeros(CFloat,K)) τ_temp2]
+#
+#     σcol_temp = @SVector [ε[i,1] for i = 2:K]
+#     σcol = [SVector{1,CFloat}(-1); σcol_temp]
+#
+#     σrow_temp = @SVector [ε[1,j] for j = 2:K]
+#     σrow = [SVector{1,CFloat}(-1); σrow_temp]
+#
+#     τ = τ_temp - (σcol * transpose(σrow)) ./ ε[1,1]
+#
+#     return τ
+# end
+
 # Equation (23) of the paper by Kottke et al.
 function τ⁻¹_trans(τ::SSComplex3)
     τ₁₁, τ₂₁, τ₃₁, τ₁₂, τ₂₂, τ₃₂, τ₁₃, τ₂₃, τ₃₃ = τ
@@ -83,3 +104,14 @@ function τ⁻¹_trans(τ::SSComplex3)
     # s = s - (t(:,1) * t(1,:)) ./ t11
     # return s
 end
+
+function τ⁻¹_trans(τ::SSComplex2)
+    τ₁₁, τ₂₁, τ₁₂, τ₂₂ = τ
+
+    return SSComplex3(
+        -1/τ₁₁, -τ₂₁/τ₁₁
+        -τ₁₂/τ₁₁, τ₂₂ - τ₂₁*τ₁₂/τ₁₁
+    )
+end
+
+τ⁻¹_trans(τ::SSComplex1) = 1 ./ τ
