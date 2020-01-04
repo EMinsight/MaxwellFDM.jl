@@ -14,7 +14,7 @@ export bounds, max∆l, matparam, paramind, objind, add!, periodize  #, surfpt_n
 #     surfnormal, surfpoint  # functions
 # import Base:size, getindex, contains, isless, union, intersect
 
-mutable struct Object{K,S<:Shape}  # use S<:Shape{K} after Julia issue #26321 is fixed
+mutable struct Object{K,S<:Shape{K}}
     shape::S
     mat::Material
     ∆lmax::SVector{K,Float}
