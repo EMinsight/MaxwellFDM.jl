@@ -283,10 +283,10 @@ g3 = Grid(lprim, isbloch)
 
 # Create materials.
 εvac = 1.0
-vac = Material("Vacuum", ε=εvac)
+vac = Material{3,3}("Vacuum", ε=εvac)
 
 εdiel = 12.0
-diel = Material("Dielectric", ε=εdiel)
+diel = Material{3,3}("Dielectric", ε=εdiel)
 
 # Create objects.
 dom_vac = Object(Box(g3.bounds), vac)
@@ -300,7 +300,7 @@ obj_zn_diel = Object(Sphere([0,0,-150], 75), diel)
 obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 
 # Add objects.
-ovec = Object{3}[]
+ovec = Object{3,3,3}[]
 paramset = (SSComplex3[], SSComplex3[])
 # add!(ovec, paramset, dom_vac)
 # add!(ovec, paramset, dom_vac, obj_diel)
@@ -308,12 +308,12 @@ add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, o
 
 N = g3.N
 ε3d = create_param_array(N)
-εobj3d = create_p_storage(Object{3}, N)
+εobj3d = create_p_storage(Object{3,3,3}, N)
 εind3d = create_p_storage(ParamInd, N)
 εoind3d = create_p_storage(ObjInd, N)
 
 μ3d = create_param_array(N)
-μobj3d = create_p_storage(Object{3}, N)
+μobj3d = create_p_storage(Object{3,3,3}, N)
 μind3d = create_p_storage(ParamInd, N)
 μoind3d = create_p_storage(ObjInd, N)
 
@@ -342,9 +342,9 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # material, whereas obj_cmp, pind_cmp, oind_cmp contain alter(gt)
 # material, so use ngt′ instead of ngt for them.
 ε3d_cmp = view(ε3d, ind_cmp..., nXYZ, nXYZ)
-μobj_cmp = view(μobj3d[nw], ind_cmp...)
-μind3d_cmp = view(μind3d[nw], ind_cmp...)
-μoind_cmp = view(μoind3d[nw], ind_cmp...)
+μobj_cmp = view(μobj3d, ind_cmp..., nw)
+μind3d_cmp = view(μind3d, ind_cmp..., nw)
+μoind_cmp = view(μoind3d, ind_cmp..., nw)
 
 # o = ovec[2]  # ovec[1]: Box, ovec[2]: Sphere
 # shape = o.shape
