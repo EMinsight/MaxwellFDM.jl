@@ -1,6 +1,7 @@
 using MaxwellFDM
 using BenchmarkTools
 using StaticArrays
+using JLD2
 
 xprim = [
 -400.0000
@@ -376,6 +377,7 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 
 boundft = SVector(EE,EE,EE)
 @time assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
+# ε3d_assigned = copy(ε3d)
 
 # gt_cmp′ = alter.(gt_cmp)
 # lcmp = MaxwellFDM.t_ind(g3.l, gt_cmp)
@@ -392,6 +394,8 @@ boundft = SVector(EE,EE,EE)
 
 ft = EE
 @time smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+# ε3d_smoothed = copy(ε3d)
+# @save "smoothing_result.jld" ε3d_assigned, ε3d_smoothed
 
 # # Construct arguments and call assign_param!.
 # kd = KDTree(ovec)
