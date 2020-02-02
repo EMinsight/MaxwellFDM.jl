@@ -395,7 +395,7 @@ boundft = SVector(EE,EE,EE)
 ft = EE
 @time smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 ε3d_smoothed = copy(ε3d)
-@save "benchmark/smoothing_result.jld" ε3d_assigned ε3d_smoothed
+@save "benchmark/smoothing_result.jld2" ε3d_assigned ε3d_smoothed
 
 # # Construct arguments and call assign_param!.
 # kd = KDTree(ovec)
