@@ -9,156 +9,101 @@
 # "extend" bounds for Shape by defining it as GeometryPrimitives.bounds(::Interval) = ....
 # Then, exporting bounds exports this whole collection of bounds, both for Shape and Interval.
 export OpenInterval, ClosedInterval, KDTree, Object
-export bounds, max∆l, matparam, paramind, objind, add!, periodize  #, surfpt_nearby, normal
+export shape, max∆l, matparam, add!, periodize  #, surfpt_nearby, normal
 # export lsf, bound_, L_, center_, dist2bound, bound_contains, ∆lmax, sphere, transform,
 #     surfnormal, surfpoint  # functions
 # import Base:size, getindex, contains, isless, union, intersect
 
-mutable struct Object{K,Ke,Km,S<:Shape{K},Le,Lm}  # K: dimension of space, (Ke,Km): dimension of electric and magnetic material parameters
-    shape::S
-    mat::Material{Ke,Km,Le,Lm}
+mutable struct Object{K,Ke,Km,S<:Shape{K},Ke²,Km²}  # K: dimension of space, (Ke,Km): dimension of electric and magnetic material parameters
+    shp::S
+    mat::Material{Ke,Km,Ke²,Km²}
     ∆lmax::SVector{K,Float}
-    oind::ObjInd  # object index; for comparison of sameness of objects quickly and more generally (e.g. when periodized; see add!)
-    pind::Tuple2{ParamInd}  # {electric material index, magnetic material index} (see add!)
-    Object{K,Ke,Km,S,Le,Lm}(shape, mat, ∆lmax) where {K,Ke,Km,S,Le,Lm} = new(shape, mat, ∆lmax)
+    Object{K,Ke,Km,S,Ke²,Km²}(shp, mat, ∆lmax) where {K,Ke,Km,S,Ke²,Km²} = new(shp, mat, ∆lmax)
 end
 
-Object(shape::S, mat::Material{Ke,Km}, ∆lmax::SVector{K}=@SVector(fill(Inf,K))) where {K,Ke,Km,S<:Shape{K}} =
-    Object{K,Ke,Km,S,Ke*Ke,Km*Km}(shape, mat, ∆lmax)
-Object(shape::Shape{K}, mat::Material, ∆lmax::AbsVec) where {K} = Object(shape, mat, SVector{K}(∆lmax))
-Object(shape::Shape{K}, mat::Material, ∆lmax::Real) where {K} = Object(shape, mat, SVector(ntuple(k->∆lmax, Val(K))))
+Object(shp::S, mat::Material{Ke,Km}, ∆lmax::SVector{K}=@SVector(fill(Inf,K))) where {K,Ke,Km,S<:Shape{K}} =
+    Object{K,Ke,Km,S,Ke*Ke,Km*Km}(shp, mat, ∆lmax)
+Object(shp::Shape{K}, mat::Material, ∆lmax::AbsVec) where {K} = Object(shp, mat, SVector{K}(∆lmax))
+Object(shp::Shape{K}, mat::Material, ∆lmax::Real) where {K} = Object(shp, mat, SVector(ntuple(k->∆lmax, Val(K))))
 
 # Add a new convenience constructor
 GeometryPrimitives.Box(b::Tuple2{AbsVec}, axes=Matrix{Float}(I,length(b[1]),length(b[1]))) = Box((b[1]+b[2])/2, abs.(b[2]-b[1]), axes)
 
-GeometryPrimitives.bounds(o::Object) = bounds(o.shape)
-Base.in(x::SVector{K}, o::Object{K}) where {K} = in(x, o.shape)
-Base.in(x::AbsVec, o::Object{K}) where {K} = in(SVector{K}(x), o)
-
 # Create the user interface such that maxwellsys.add(shape, material, ∆lmax) uses this function.
-# setmat!(o::Object, m::Material) = (o.mat = m; o)
-# setmax∆l!(o::Object{K}, ∆lmax::AbsVec) where {K} = (o.∆lmax = SVector{K}(∆lmax); o)
-# setmax∆l!(o::Object{K}, ∆lmax::Number) where {K} = setmax∆l!(o, SVector(ntuple(k->∆lmax, Val(K))))
+# setmat!(obj::Object, m::Material) = (obj.mat = m; obj)
+# setmax∆l!(obj::Object{K}, ∆lmax::AbsVec) where {K} = (obj.∆lmax = SVector{K}(∆lmax); obj)
+# setmax∆l!(obj::Object{K}, ∆lmax::Number) where {K} = setmax∆l!(obj, SVector(ntuple(k->∆lmax, Val(K))))
 
-max∆l(o::Object) = o.∆lmax
-matparam(o::Object, ft::FieldType) = matparam(o.mat, ft)
-paramind(o::Object, ft::FieldType) = o.pind[Int(ft)]
-objind(o::Object) = o.oind
+shape(obj::Object) = obj.shp
+matparam(obj::Object, ft::FieldType) = matparam(obj.mat, ft)
+max∆l(obj::Object) = obj.∆lmax
 
-# Define above functions for a vector of Object.  Define them with type parameters K, Ke, Km
-# in order to make sure ovec is an array of Object with the same dimension.
-
-# Even though Ke is not necessarily Km, the following function is still type-stable, because
-# the output type is not a vector of SMatrix whose type depends on Ke or Km: the output is
-# a regular array.
-function matparam(ovec::AbsVec{Object{K,Ke,Km}}, ft::FieldType) where {K,Ke,Km}
-    N = length(ovec)
-    Kp = ft==EE ? Ke : Km
-    paramvec = Array{CFloat,3}(undef, Kp, Kp, N)  # array representing vector of material parameter tensors
-
-    for n = 1:N
-        # It is debatable whether to index paramvec as [:,:,n] or [n,:,:].  paramvec is used
-        # in assignment.jl.  The former is faster in iterating over the off-diagonal entries
-        # inside assign_val!.  The latter is faster in iterating over a view of the (nw,nw)
-        # diagonal entries as @view(paramvec[:,nw,nw]) because then the resulting vector
-        # occupies a consecutive memory block.  I decide to use the former, because the
-        # iteration over the off-diagonal entries is the innermost iteration occurring
-        # inside assign_val!.  On the other hand, in setting the diagonal entries, once the
-        # (nw,nw) entry of the parameter is taken, it is passed as a scalar to assign_val!
-        # and iteration does not occur.
-        paramvec[:,:,n] .= matparam(ovec[n], ft)
-    end
-
-    return paramvec
-end
-
-function paramind(ovec::AbsVec{Object{K,Ke,Km}}, ft::FieldType) where {K,Ke,Km}
-    N = length(ovec)
-    pindvec = Vector{ParamInd}(undef, N)
-
-    for n = 1:N
-        pindvec[n] = paramind(ovec[n], ft)
-    end
-
-    return pindvec
-end
-
-function objind(ovec::AbsVec{Object{K,Ke,Km}}) where {K,Ke,Km}
-    N = length(ovec)
-    oindvec = Vector{ObjInd}(undef, N)
-
-    for n = 1:N
-        oindvec[n] = objind(ovec[n])
-    end
-
-    return oindvec
-end
-
-# Consider using resize! on ovec.
-function add!(ovec::AbsVec{Object{K,Ke,Km}}, paramset::Tuple2{AbsVec{SSComplex3}}, os::AbsVec{<:Object{K,Ke,Km}}) where {K,Ke,Km}
-    for o = os
-        add!(ovec, paramset, o)
-    end
-end
-
-# Consider using resize! on ovec.
-function add!(ovec::AbsVec{Object{K,Ke,Km}}, paramset::Tuple2{AbsVec{SSComplex3}}, os::Object{K,Ke,Km}...) where {K,Ke,Km}
-    for o = os
-        add!(ovec, paramset, o)
-    end
-end
-
-# Add an object to the given vector `ovec` of objects and its electric and magnetic material
-# parameters to the given sets `paramset` of material parameters.  In doing so, figure out
-# the unique index for the object and the unique indices for the material parameters, and
-# assign them to the object's fields `oind`  and `pind`.
+# Relationships between oind2obj, pind2matprm, oind2pind, oind2shp
 #
-# When I put an periodic array of an object, consider assigning the same object index to the
-# periodized objects.  That way, I can treat two of objects over a periodic boundary as the
-# same object.  (This is not implemented yet.)
+# - pind2matprm is a vector of material parameter tensors.  pind2matprm[n] is a 3×3 material
+# parameter tensor for the parameter index n.
 #
-# In other words, when assigning the same object index to distinct objects, we have to make
-# sure that the two objects have the same surface normal directions at the equivalent points
-# on the two objects, at least on the boundaries.  Therefore, for example if we put a cubic
-# across a periodic boundary such that it is bisected by the boundary, we should not put one
-# rectangular box that is tangential to one end of the domain and another rectangular box
-# that is tengential to the other end of the domain.  Instead, we should create two cubics
-# and place each of them centered on each boundary, such thay they stick out of the domain.
-# (We can put two rectangular boxes that stick out of the domain, too, because they have to
-# produce the same surface normals only at equivalent points on the boundaries.)
+# - oind2pind is a map from the object index to the parameter index.
 #
-# Assigining the same object index is specifically to treat an object across a periodic
-# boundary.  Therefore, we should not assign the same object index to the dintinct periodic
-# objects in the domain (e.g., holes in a photonic crystal slab).
-function add!(ovec::AbsVec{Object{K,Ke,Km}}, paramset::Tuple2{AbsVec{SSComplex3}}, o::Object{K,Ke,Km}) where {K,Ke,Km}
-    # Assign the object index to o.
-    # Currently, every object gets a new object index, but in the future different objects
-    # may get the same object index; see the comments above about periodized objects.
-    o.oind = isempty(ovec) ? 1 : objind(ovec[end])+1  # not just length(ovec)+1 to handle periodized objects in future
-    push!(ovec, o)  # append o (for potential use of ovec with KDTree, must use pushfirst! to prepend)
+# - oind2shp is a map from the object index to the shape.
 
-    # Assign the material parameter indices to o.
+# Consider using resize! on oind2obj.
+function add!(oind2shp::AbsVec{Shape{K,K²}}, oind2pind::Tuple2{AbsVec{ParamInd}},
+              pind2matprm::Tuple{AbsVec{SSComplex{Ke,Ke²}},AbsVec{SSComplex{Km,Km²}}},
+              objs::AbsVec{<:Object{K,Ke,Km,<:Shape{K,K²},Ke²,Km²}}) where {K,Ke,Km,K²,Ke²,Km²}
+    for obj = objs
+        add!(oind2obj, oind2pind, pind2matprm, obj)
+    end
+end
+
+# Consider using resize! on oind2obj.
+function add!(oind2shp::AbsVec{Shape{K,K²}}, oind2pind::Tuple2{AbsVec{ParamInd}},
+              pind2matprm::Tuple{AbsVec{SSComplex{Ke,Ke²}},AbsVec{SSComplex{Km,Km²}}},
+              objs::Object{K,Ke,Km,<:Shape{K,K²},Ke²,Km²}...) where {K,Ke,Km,K²,Ke²,Km²}
+    for obj = objs
+        add!(oind2shp, oind2pind, pind2matprm, obj)
+    end
+end
+
+# Populate `oind2shp`, `oind2pind`, `pind2matprm` with a given object.  See above for the
+# meaning of `oind2shp`, `oind2pind`, `pind2matprm`.  In doing so, figure out the unique
+# indices for the material parameters and use them as pind in `oind2pind` and `pind2matprm`.
+#
+# When I put an periodic array of objects, some object could be across a boundary.  In that
+# case, the rule is to put two different objects at the negative-end and positive-end
+# boundaries.  Make sure, though, the two objects have the same surface normal at the
+# boundary points, so that the surface normal calculation is not ambiguous there.
+#
+# Note that pind2matprm stores the same material parameter "value" only once.  Therefore,
+# if two objects are created with different Material instances with the same material
+# parameter tensor, then the two objects' materials are assigned with the same pind.
+function add!(oind2shp::AbsVec{Shape{K,K²}},  # initially empty vector
+              oind2pind::Tuple2{AbsVec{ParamInd}},  # tuple of initially empty vectors
+              pind2matprm::Tuple{AbsVec{SSComplex{Ke,Ke²}},AbsVec{SSComplex{Km,Km²}}},  # tuple of initially empty vectors
+              obj::Object{K,Ke,Km,<:Shape{K,K²},Ke²,Km²}) where {K,Ke,Km,K²,Ke²,Km²}
+    push!(oind2shp, shape(obj))  # append obj (for potential use of oind2obj with KDTree, must use pushfirst! to prepend)
+
+    # Assign the material parameter indices to obj.
     # If the material is aleady used in some object that was previously added, then use the
     # index already assigned to that material.
-    p, pset = matparam(o,EE), paramset[nE]
-    pind_e = findlast(x -> x==p, pset)  # number if p is already in pset
-    pind_e==nothing && (push!(pset, p); pind_e = length(pset))  # update pind_e if p is not in pset
+    for ft = EH
+        nft = Int(ft)
 
-    p, pset = matparam(o,HH), paramset[nH]
-    pind_h = findlast(x -> x==p, pset)  # number if p is already in psent
-    pind_h==nothing && (push!(pset, p); pind_h = length(pset))  # update pind_h if p is not in pset
-
-    o.pind = (pind_e, pind_h)
+        mp, on2pn, pn2mp = matparam(obj,ft), oind2pind[nft], pind2matprm[nft]
+        pind = findlast(x -> x==mp, pn2mp)  # number if mp is already in pn2mp
+        pind==nothing && (push!(pn2mp, mp); pind = length(pn2mp))  # update pind if mp is not in pn2mp
+        push!(on2pn, pind)
+    end
 
     return nothing
 end
 
-function GeometryPrimitives.periodize(o::Object{K}, A::AbsMat, ∆range::Shape{K}) where {K}
-    shp_array = periodize(o.shape, A, ∆range)
+function GeometryPrimitives.periodize(obj::Object{K}, A::AbsMat, ∆range::Shape{K}) where {K}
+    shp_array = periodize(obj.shp, A, ∆range)
     N = length(shp_array)
     obj_array = Vector{Object{K}}(N)
     for n = 1:N
-        obj_array[n] = Object(shp_array[n], o.mat, o.∆lmax)
+        obj_array[n] = Object(shp_array[n], obj.mat, obj.∆lmax)
     end
 
     return obj_array

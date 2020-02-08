@@ -14,6 +14,15 @@ StaggeredGridCalculus.alter(ins::FieldType) = ins==EE ? HH : EE
 # type ft are primal or dual grid planes in the Cartesian directions.
 ft2gt(ft::FieldType, boundft::FieldType) = PD[2 - (boundft==ft)]
 
+# Return grid types of the w-component of the field F.
+function gt_Fw(nw::Int,  # component index of field
+               ft::FieldType,  # type of field
+               boundft::SVector{K,FieldType}) where {K}  # type of field parallel to domain boundaries
+    gt₀ = ft2gt.(ft, boundft)  # grid type of corners of voxel whose edges are ft lines
+    gt = broadcast((a,w,g)->(a==w ? alter(g) : g), SVector(ntuple(identity, Val(K))), nw, gt₀)  # grid type of Fw; no change from gt₀ for w ∉ axes
+
+    return gt
+end
 
 # Boundary conditions
 @enum BC PERIODIC=1 CONDUCTING  # periodic boundary condition, perfect conductor boundary condition

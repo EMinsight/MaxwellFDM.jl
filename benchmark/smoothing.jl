@@ -1,6 +1,7 @@
 using MaxwellFDM
 using BenchmarkTools
 using StaticArrays
+using JLD2
 
 xprim = [
 -400.0000
@@ -300,21 +301,20 @@ obj_zn_diel = Object(Sphere([0,0,-150], 75), diel)
 obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 
 # Add objects.
-ovec = Object{3,3,3}[]
-paramset = (SSComplex3[], SSComplex3[])
-# add!(ovec, paramset, dom_vac)
-# add!(ovec, paramset, dom_vac, obj_diel)
-add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
+oind2shp = Shape{3,9}[]
+oind2εind = ParamInd[]
+oind2μind = ParamInd[]
+εind2ε = SSComplex3[]
+μind2μ = SSComplex3[]
+
+add!(oind2shp, (oind2εind,oind2μind), (εind2ε,μind2μ), dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
+
 
 N = g3.N
 ε3d = create_param_array(N)
-εobj3d = create_p_storage(Object{3,3,3}, N)
-εind3d = create_p_storage(ParamInd, N)
 εoind3d = create_p_storage(ObjInd, N)
 
 μ3d = create_param_array(N)
-μobj3d = create_p_storage(Object{3,3,3}, N)
-μind3d = create_p_storage(ParamInd, N)
 μoind3d = create_p_storage(ObjInd, N)
 
 τl = g3.ghosted.τl
@@ -342,11 +342,9 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # material, whereas obj_cmp, pind_cmp, oind_cmp contain alter(gt)
 # material, so use ngt′ instead of ngt for them.
 ε3d_cmp = view(ε3d, ind_cmp..., nXYZ, nXYZ)
-μobj_cmp = view(μobj3d, ind_cmp..., nw)
-μind3d_cmp = view(μind3d, ind_cmp..., nw)
 μoind_cmp = view(μoind3d, ind_cmp..., nw)
 
-# o = ovec[2]  # ovec[1]: Box, ovec[2]: Sphere
+# o = oind2obj[2]  # oind2obj[1]: Box, oind2obj[2]: Sphere
 # shape = o.shape
 #
 # gt′ = alter(gt)
@@ -357,7 +355,7 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # arrays = (pind_cmp, oind_cmp, obj_cmp)
 # vals = (pind′, oind, o)
 #
-# println("# of objects = $(length(ovec))")
+# println("# of objects = $(length(oind2obj))")
 # # @time assign_val_shape!((arrays..., @view(param_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
 # # @code_warntype assign_val_shape!((arrays..., param_cmp), (vals, param), shape, τlcmp)
 
@@ -371,11 +369,17 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # end
 
 
-# @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param_cmp, obj_cmp, pind_cmp, oind_cmp, ovec, τlcmp)
-# @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
+# @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param_cmp, obj_cmp, pind_cmp, oind_cmp, oind2obj, τlcmp)
+# @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, oind2obj, g3.ghosted.τl, g3.isbloch)
 
+@load "benchmark/smoothing_result.jld2" ε3d_assigned ε3d_smoothed
 boundft = SVector(EE,EE,EE)
-@time assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
+@time begin
+    assign_param!(ε3d, μoind3d, EE, boundft, oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, εoind3d, HH, boundft, oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+end
+@info "ε3d == ε3d_assigned? $(ε3d == ε3d_assigned)"
+
 
 # gt_cmp′ = alter.(gt_cmp)
 # lcmp = MaxwellFDM.t_ind(g3.l, gt_cmp)
@@ -390,11 +394,14 @@ boundft = SVector(EE,EE,EE)
 
 # @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj_cmp′, pind_cmp′, oind_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
 
-ft = EE
-@time smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+@time smooth_param!(ε3d, εoind3d, oind2shp, oind2εind, εind2ε, EE, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+# @info "ε3d ≈ ε3d_smoothed? $(ε3d ≈ ε3d_smoothed)"
+err_max, ci = findmax(abs.(ε3d .- ε3d_smoothed))
+@info "ε3d ≈ ε3d_smoothed? $(err_max / abs(ε3d_smoothed[ci]) < Base.rtoldefault(Float64))"
+
 
 # # Construct arguments and call assign_param!.
-# kd = KDTree(ovec)
+# kd = KDTree(oind2obj)
 # param3d = create_default_param3d(g3.N)
 # @time assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.isbloch)
 # @btime assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.isbloch)

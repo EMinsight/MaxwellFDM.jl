@@ -5,7 +5,7 @@ using Reexport
 @reexport using LinearAlgebra, SparseArrays, StaggeredGridCalculus, GeometryPrimitives
 using StaticArrays
 
-export SComplex, SSComplex3, ParamInd, ObjInd
+export SComplex, SSComplex1, SSComplex2, SSComplex3, ParamInd, ObjInd
 
 ## Type aliases
 # Below, use Int instead of Int64 for compatibility with 32-bit systems (e.g., x86 in appveyor.yml).
@@ -48,6 +48,7 @@ const AbsMatComplex = AbsMat{CFloat}
 const AbsMatReal = AbsMat{<:Real}
 const AbsMatNumber = AbsMat{<:Number}
 
+const AbsArrInteger = AbsArr{<:Integer}
 const AbsArrComplex = AbsArr{CFloat}
 const AbsArrNumber{N} = AbsArr{<:Number,N}
 

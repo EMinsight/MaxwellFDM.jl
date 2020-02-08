@@ -5,12 +5,12 @@ import Base:string
 # Note that the output of tensorize is always a matrix: for K = 1, it is a 1×1 matrix.
 tensorize(x::Number, ::Val{K}) where {K} = tensorize(@SVector(fill(complex(x), K)), Val(K))  # SComplex{3}(x,x,x): vector
 tensorize(v::AbsVecNumber, ::Val{K}) where {K} = diagm(Val(0)=>SComplex{K}(v))  # complex(v) is allocating, so use SComplex{K}(v)
-tensorize(m::AbsMatNumber, ::Val{K}) where {K} = SMatrix{K,K,CFloat,K*K}(m)  # complex(m) is allocating, so use SMatrix{K,K,CFloat,K*K}(m)
+tensorize(m::AbsMatNumber, ::Val{K}) where {K} = SSComplex{K,K*K}(m)  # complex(m) is allocating, so use SSComplex{K,K*K}(m)
 
-struct Material{Ke,Km,Le,Lm}  # e: electric, m: magnetic
+struct Material{Ke,Km,Ke²,Km²}  # e: electric, m: magnetic
     name::String
-    param::Tuple{SMatrix{Ke,Ke,CFloat,Le},SMatrix{Km,Km,CFloat,Lm}}  # (material parameter interacting with E, material parameter interacting with H)
-    Material{Ke,Km,Le,Lm}(name, param) where {Ke,Km,Le,Lm} =
+    param::Tuple{SSComplex{Ke,Ke²},SSComplex{Km,Km²}}  # (material parameter interacting with E, material parameter interacting with H)
+    Material{Ke,Km,Ke²,Km²}(name, param) where {Ke,Km,Ke²,Km²} =
         new(name, (tensorize(param[1],Val(Ke)), tensorize(param[2],Val(Km))))  # suppress default outer constructor
 end
 

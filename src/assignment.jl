@@ -1,10 +1,3 @@
-# Below, obj3d and oind3d are different: obj3d stores references to Object{3} instances,
-# whereas oind3d stores object indices.  The reason for this is to handle the case where
-# objects touching the negative-side boundary and objects touching the positive-side
-# boundary are joined to form a single object by being wrapped around by the periodic
-# boundary condition.  In that case, we assign the same object index to those distinct
-# objects.
-#
 # I could enhance the assignment performance by constructing oid3d (not oind3d), which
 # stores unique object IDs rather than the reference itself.  This array is different from
 # oind3d in that it distinguishes objects joined by periodic boundary condition.  Then, I
@@ -141,14 +134,21 @@ create_p_storage(::Type{T}, N::SInt, ncmp::Int=4) where {T} = (s = (N.+1).data; 
 # Unlike smoothing.jl/smooth_param! and param.jl/param3d2mat, assign_param! has to handle
 # both electric and magnetic material properties simultaneously; see the comments inside the
 # function body towards the end of the function.
-function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # (electric, magnetic) parameter arrays to set
-                       obj3d::Tuple2{AbsArr{<:Object{3,3,3},4}},  # (electric, magnetic) object arrays to set
-                       pind3d::Tuple2{AbsArr{ParamInd,4}},  # (electric, magnetic) material parameter index arrays to set
-                       oind3d::Tuple2{AbsArr{ObjInd,4}},  # (electric, magnetic) object index arrays to set
-                       boundft::SVector{3,FieldType},  # boundary field type
-                       objvec::AbsArr{<:Object{3,3,3}},  # object vector; later object overwrites earlier.
-                       τl::Tuple23{AbsVecReal},  # field component locations transformed by boundary conditions
-                       isbloch::SBool{3})  # boundary conditions
+#
+# Below, the primed quantities are for the complementary material (i.e., magnetic for
+# electric).  Compare this with the usage of the prime in smoothing.jl that indicates voxel
+# corner quantities instead of voxel center quantities.
+function assign_param!(paramKd::AbsArrComplex{K₊2},  # electric (magnetic) parameter array to set; K₊2 = K+2, where 2 is rank of material tensor
+                       oindKd′::AbsArr{ObjInd,K₊1},  # magnetic (electric) object index array to set; K₊1 = K+1, where 1 is dimensior for directions
+                       ft::FieldType,  # material type of param3d: electric or magnetic
+                       boundft::SVector{K,FieldType},  # boundary field type
+                       oind2shp::AbsVec{Shape{K,K²}},  # map from oind to shape; K² = K^2
+                       oind2pind::AbsVec{ParamInd},  #  map from oind to electric (magnetic) material parameter index
+                       pind2matprm::AbsVec{SSComplex{Kp,Kp²}},  # map from pind to electric (magnetic) material parameters; Kp² = Kp^2
+                       τl::Tuple2{NTuple{K,AbsVecReal}},  # field component locations transformed by boundary conditions
+                       isbloch::SBool{K}  # boundary conditions
+                      ) where {K,Kp,K²,Kp²,K₊1,K₊2}
+    @assert(K²==K^2 && Kp²==Kp^2 && K₊1==K+1 && K₊2==K+2)
     # `sub` is the subscripts for obj3d, pind3d, oind3d.
     #
     # Store circularly shifted subscripts in sub for Bloch boundary condition, such that
@@ -167,7 +167,7 @@ function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # (electric, magnetic
     # must be circshifted to left in order to be sorted.
     # - symmetry: ghost points copy the values of non-ghost points at the negative end, so τl is
     # already sorted.
-    M = length.(τl[nPR])  # N.+1
+    @inbounds M = length.(τl[nPR])  # N.+1
     sub = (map((m,b)->circshift(1:m,b), M, isbloch.data),  # Tuple3{VecInt}: primal grid
            map((m,b)->circshift(1:m,-b), M, isbloch.data))  # Tuple3{VecInt}: dual grid
 
@@ -198,65 +198,51 @@ function assign_param!(param3d::Tuple2{AbsArrComplex{5}},  # (electric, magnetic
             map((m,b)->circshift(1:m,!b), M, isbloch.data))  # Tuple3{VecInt}: dual grid
 
     ## Perform assignment.
-    for nft = nEH
-        ft = EH[nft]
-        nft′ = alter(nft)
-        ft′ = EH[nft′]
+    for nw = 1:Kp+1
+        # Set the grid types of the x-, y-, z-locations of Fw.
+        gt_cmp = gt_Fw(nw, ft, boundft)
 
-        ptensorvec = matparam(objvec, ft)  # Kp×Kp×length(objvec): used to set up param3d
-        pind′vec = paramind(objvec, ft′)  # used to set up pind3d
-        oindvec = objind(objvec)  # used to set up oind3d
+        # Choose the circularly shifted subscripts to use.
+        sub_cmp = t_ind(sub, gt_cmp)  # Tuple3{VecInt}
+        psub_cmp = t_ind(psub, gt_cmp)  # Tuple3{VecInt}
 
-        gt_cmp₀ = ft2gt.(ft, boundft)  # grid type of corners of voxel whose edges at ft lines
-        for nw = 1:4
-            # Set the grid types of the x-, y-, z-locations of Fw.
-            gt_cmp = broadcast((k,w,g)->(k==w ? alter(g) : g), nXYZ, nw, gt_cmp₀)  # grid type of Fw; no change for nw = 4
+        # Prepare the circularly shifted locations of the field components.
+        τlcmp = view.(t_ind(τl,gt_cmp), sub_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
 
-            # Choose the circularly shifted subscripts to use.
-            sub_cmp = t_ind(sub, gt_cmp)  # Tuple3{VecInt}
-            psub_cmp = t_ind(psub, gt_cmp)  # Tuple3{VecInt}
+        # Prepare the circularly shifted viewes of various arrays to match the sorted τl.
+        # Even though all arrays are for same locations (τlcmp), param_cmp contains ft
+        # material, whereas oind_cmp′, pind_cmp′, shp_cmp′ contain alter(ft) material.
+        #
+        # Explanation.  We set up oind3d′, pind3d′, shp3d′ (but not param3d excluded) such
+        # that they contain the voxel corner information to use while determining whether
+        # param3d at the voxel centers needs smoothing or not.  For example, to determine
+        # whether param3d defined at an Ew point needs smoothing or not, we take the voxel
+        # centered at the Ew point and examine pind at the eight voxel corners.  If all the
+        # pind's at the eight voxel corners are the same, we assume that the voxel is filled
+        # with a uniform material parameter identified by the pind.  This means even though
+        # these voxel corners are the H-field points, we still need to examine the electric
+        # material properties at these voxel corners.
+        #
+        # Conversely, the Ew points, at which we are going to set param3d, are the voxel
+        # corners of the voxel centered at the Hw points.  So, at the Ew points we want to
+        # set the magnetic material properties in obj3d, pind3d, oind3d.  This is why for
+        # the same τlcmp locations we set up the param3d for the ft-type but oind3d, pind3d,
+        # obj3d of alter(ft)-type (i.e., the entries of oind3d′, pind3d′, obj3d′).
 
-            # Prepare the circularly shifted locations of the field components.
-            τlcmp = view.(t_ind(τl,gt_cmp), sub_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
+        # Note that view() below is used to get a circularly shifted version of the
+        # array, not a portion of.
+        oind′_cmp = view(oindKd′, sub_cmp..., nw)  # circularly shifted nw-component of oind3d′
 
-            # Prepare the circularly shifted viewes of various arrays to match the sorted
-            # τl.  Even though all arrays are for same locations (τlcmp), param_cmp
-            # contains ft material, whereas obj_cmp, pind_cmp, oind_cmp contain
-            # alter(ft) material (so use nft′ instead of nft for them).
-            #
-            # Explanation.  We set up obj3d, pind3d, oind3d (param3d excluded) such that
-            # they contain the voxel corner information to use while determining whether
-            # param3d at the voxel centers needs smoothing or not.  For example, to
-            # determine whether param3d defined at an Ew point needs smoothing or not, we
-            # take the voxel centered at the Ew point and examine pind at the eight voxel
-            # corners.  If all the pind's at the eight voxel corners are the same, we assume
-            # that the voxel is filled with a uniform material parameter identified by the
-            # pind.  This means even thought these voxel corners are the H-field points, we
-            # still need to examine the electric material properties at these voxel corners.
-            #
-            # Conversely, the Ew points, at which we are going to set param3d, are the voxel
-            # corners of the voxel centered at the Hw points.  So, at the Ew points we
-            # would want to set the magnetic material properties in obj3d, pind3d, oind3d.
-            # This is why for the same τlcmp locations we set up the ft-entry of param3d but
-            # alter(ft)-entries of obj3d, pind3d, and oind3d.
-            #
-            # Note that view() below is used to get a circularly shifted version of the
-            # array, not a portion of.
-            obj_cmp = view(obj3d[nft′], sub_cmp..., nw)  # circularly shifted nw-component of obj3d[nft′]
-            pind_cmp = view(pind3d[nft′], sub_cmp..., nw)  # circularly shifted nw-component of pind3d[nft′]
-            oind_cmp = view(oind3d[nft′], sub_cmp..., nw)  # circularly shifted nw-component of oind3d[nft′]
-
-            # Set various arrays for the current component.
-            if nw == 4
-                # Set the off-diagonal entires of param3d.
-                param_cmp = view(param3d[nft], psub_cmp..., nXYZ, nXYZ)  # circularly shifted param3d[nft]; ndims = 5
-                assign_param_cmp!(param_cmp, pind_cmp, oind_cmp, obj_cmp, ptensorvec, pind′vec, oindvec, objvec, τlcmp)
-            else  # nw = 1, 2, 3
-                # Set the diagonal entries of param3d.
-                param_cmp = view(param3d[nft], psub_cmp..., nw, nw)  # circularly shifted (nw,nw)-component of param3d[nft]; ndims = 3
-                pscalarvec = @view(ptensorvec[nw,nw,:])
-                assign_param_cmp!(param_cmp, pind_cmp, oind_cmp, obj_cmp, pscalarvec, pind′vec, oindvec, objvec, τlcmp)
-            end
+        # Set various arrays for the current component.
+        if nw == Kp+1  # w = Ô
+            # Set the off-diagonal entires of param3d.
+            param_cmp = view(paramKd, psub_cmp..., 1:Kp, 1:Kp)  # circularly shifted param3d; ndims = 5
+            assign_param_cmp!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)
+        else  # w = X̂, Ŷ, Ẑ
+            # Set the diagonal entries of param3d.
+            param_cmp = view(paramKd, psub_cmp..., nw, nw)  # circularly shifted (nw,nw)-component of param3d; ndims = 3
+            pind2matprm_w = [mp[nw,nw] for mp = pind2matprm]
+            assign_param_cmp!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm_w, τlcmp)
         end
     end
 
@@ -271,108 +257,67 @@ end
 # param_cmp, obj_cmp, pind_cmp, oind_cmp, at the same locations (τlcmp).  For each
 # shape we iterate over grid points and test if each point is included in the shape.
 # Because there are so many grid points, the total time taken for these tests is somewhat
-# substantial, so we don't want to test the same point again.  Therefore, for a point that
-# is tested being included in the shape, we want to set up all the arrays that need to be
-# set up.  If the point is an Ew point, it is where the electric material properties ε_ww is
-# set up in param3d, but it is also where the magnetic material parameter index is set up in
-# pind3d.  This is why the ft′ entry of pind3d was chosen as pind_cmp in the enclosing
-# function, where as the ft entry of param3d was chosen as param_cmp there.  This also
-# explains why the ft′ component was chosen as pind′ whereas the ft component was chosen as
-# param in the present function.
+# substantial, so we don't want to test the inclusion of the same point again.  Therefore,
+# for a point that is confirmed included in the shape, we want to set up all the arrays that
+# can be set up.  If the point is an Ew point, it is where the electric material properties
+# ε_ww is set up in param3d, but it is also where the magnetic material parameter index is
+# set up in pind3d, because this Ew point is the corners of the voxel whose center is at an
+# Hw point, and we use pind at these voxel corners to determine whether the voxel centered
+# at the Hw point is filled with a single magnetic material.  This is why the ft′ entry of
+# pind3d was chosen as pind_cmp in the enclosing function, where as the ft entry of param3d
+# was chosen as param_cmp there.  This also explains why the ft′ component was chosen as
+# pind′ whereas the ft component was chosen as param in the present function.
 
-# For nw = 1, 2, 3.
-function assign_param_cmp!(param_cmp::AbsArrComplex{K},  # output material parameter array (array of scalars)
-                           pind_cmp::AbsArr{ParamInd,K},  # output material parameter index array
-                           oind_cmp::AbsArr{ObjInd,K},  # output object index array
-                           obj_cmp::AbsArr{<:Object{K,Ke,Km},K},  # output object array
-                           paramvec::AbsVecComplex,  # input material parameter vector (vector of scalars); length = length(objvec)
-                           pind′vec::AbsVec{ParamInd},  # input material parameter index vector; length = length(objvec)
-                           oindvec::AbsVec{ObjInd},  # input object index vector; length = length(objvec)
-                           objvec::AbsVec{<:Object{K,Ke,Km}},  # input object vector; later object overwrites earlier.
-                           τlcmp::NTuple{K,AbsVecReal}) where {K,Ke,Km}  # location of field components
-    for n = 1:length(objvec)  # last in objvec is last object added; see object.jl/add!
+# For w = X̂, Ŷ, Ẑ
+assign_param_cmp!(param_cmp::AbsArrComplex{K},  # output material parameter array (array of scalars)
+                  oind′_cmp::AbsArr{ObjInd,K},  # output object index array
+                  oind2shp::AbsVec{Shape{K,K²}},  # input map from oind to shape
+                  oind2pind::AbsVec{ParamInd},  # input map from oind to pind
+                  pind2matprm::AbsVecComplex,  #  input map from pind to material parameter
+                  τlcmp::NTuple{K,AbsVecReal}) where {K,K²} = # location of field components
+    assign_param_cmp_impl!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)
+
+# For w = Ô.
+# Below, note that the element type of pint2matprm, SSComplex{Kp,Lp}, is always a matrix
+# (i.e., rank-2 tensor), regardless of the value of Kp.  For example, if we are assigning μz
+# in a 2D TE problem, μz is a type of SSComplex{1,1}.  This is why M = K + 2, where 2 is the
+# rank of the material parameter tensor, regardless of the value of Kp.
+assign_param_cmp!(param_cmp::AbsArrComplex{K₊2},  # output material parameter array (array of tensors); M = K+2
+                  oind′_cmp::AbsArr{ObjInd,K},  # output object index array
+                  oind2shp::AbsVec{Shape{K,K²}},  # input map from oind to shape
+                  oind2pind::AbsVec{ParamInd},  # input map from oind to pind
+                  pind2matprm::AbsVec{SSComplex{Kp,Kp²}},  #  input map from pind to material parameter
+                  τlcmp::NTuple{K,AbsVecReal}) where {K,Kp,K²,Kp²,K₊2} = # location of field components
+    assign_param_cmp_impl!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)
+
+function assign_param_cmp_impl!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)
+    for oind = 1:length(oind2shp)  # last index of oind2shp is index of last object; see object.jl/add!
         # Prepare values to set.
-        param = paramvec[n]  # used to set up param_cmp
-        pind′ = pind′vec[n]  # used to set up pind_cmp
-        oind = oindvec[n]  # used to set up oind_cmp
-        o = objvec[n]  # used to set up obj_cmp
-
-        # Retrieve shape once here, so that it can be passed to the function barrier.
-        shape = o.shape
+        @inbounds shp = oind2shp[oind]
+        @inbounds pind = oind2pind[oind]
+        @inbounds param = pind2matprm[pind]
 
         # Set the values to the arrays.
         #
-        # Below, each of the four arrays pind_cmp, oind_cmp, obj_cmp, param_cmp is
-        # individually set by assign_val_shape!.  This means that for each point p and shape
-        # sh, the same test p ϵ sh is repeated four times.  This is inefficient.
-        # An alternative implementation is to create a function similar to assign_val_shape!
-        # that takes all these four arrays, test p ϵ sh once, and set all the arrays
-        # simultaneously.  This may seem more efficient, but this turns out to perform a lot
-        # of dynamic dispatches of assign_val!, because four different realizations of
-        # assign_val! depending on the output array type are called for every p ∈ sh in the
-        # for loop.
+        # Below, each of the two arrays oind′_cmp and param_cmp is individually set by
+        # assign_val_shape!.  This means that for each point p and shape sh, the same test
+        # p ϵ sh is repeated two times.  This is inefficient. An alternative implementation
+        # is to create a function similar to assign_val_shape! that takes all these two
+        # arrays, test p ϵ sh once, and set all the arrays simultaneously.  This may seem
+        # more efficient, but this turns out to perform a lot of dynamic dispatches of
+        # assign_val!, because two different realizations of assign_val! depending on the
+        # output array type are called for every p ∈ sh in the for loop.
         #
         # A huge number of dynamic dispatches can be avoided by setting up each array
         # individually as below.  Then, the output array type of assign_val! is determined
         # at the interface of assign_val_shape!, so the dynamic dispatch of assign_val!
         # occurs only once per assign_val_shape!.
-        assign_val_shape!(pind_cmp, pind′, shape, τlcmp)
-        assign_val_shape!(oind_cmp, oind, shape, τlcmp)
-        assign_val_shape!(obj_cmp, o, shape, τlcmp)
+        assign_val_shape!(oind′_cmp, ObjInd(oind), shp, τlcmp)
 
         # Assign parameters at Yee's field points where the v-component E and H affects
         # the w=v components of D and B.  This will use assign_val(..., scalar, ...) for
         # setting diagonal entries of the material parameter tensor.
-        assign_val_shape!(param_cmp, param, shape, τlcmp)
-    end
-
-    return nothing
-end
-
-# For nw = 4.
-function assign_param_cmp!(param_cmp::AbsArrComplex{L},  # output material parameter array (array of tensors); L = K+2
-                           pind_cmp::AbsArr{ParamInd,K},  # output material parameter index array
-                           oind_cmp::AbsArr{ObjInd,K},  # output object index array
-                           obj_cmp::AbsArr{<:Object{K,Ke,Km},K},  # output object array
-                           paramvec::AbsArrComplex{3},  # input material parameter vector (vector of tensors; paramvec[:,:,n] is tensor); length = length(objvec)
-                           pind′vec::AbsVec{ParamInd},  # input material parameter index vector; length = length(objvec)
-                           oindvec::AbsVec{ObjInd},  # input object index vector; length = length(objvec)
-                           objvec::AbsVec{<:Object{K,Ke,Km}},  # input object vector; later object overwrites earlier.
-                           τlcmp::NTuple{K,AbsVecReal}) where {K,Ke,Km,L}  # location of field components
-    for n = 1:length(objvec)  # last in objvec is last object added; see object.jl/add!
-        # Prepare values to set.
-        param = @view(paramvec[:,:,n])  # used to set up param_cmp
-        pind′ = pind′vec[n]  # used to set up pind_cmp
-        oind = oindvec[n]  # used to set up oind_cmp
-        o = objvec[n]  # used to set up obj_cmp
-
-        # Retrieve shape once here, so that it can be passed to the function barrier.
-        shape = o.shape
-
-        # Set the values to the arrays.
-        #
-        # Below, each of the four arrays pind_cmp, oind_cmp, obj_cmp, param_cmp is
-        # individually set by assign_val_shape!.  This means that for each point p and shape
-        # sh, the same test p ϵ sh is repeated four times.  This is inefficient.
-        # An alternative implementation is to create a function similar to assign_val_shape!
-        # that takes all these four arrays, test p ϵ sh once, and set all the arrays
-        # simultaneously.  This may seem more efficient, but this turns out to perform a lot
-        # of dynamic dispatches of assign_val!, because four different realizations of
-        # assign_val! depending on the output array type are called for every p ∈ sh in the
-        # for loop.
-        #
-        # A huge number of dynamic dispatches can be avoided by setting up each array
-        # individually as below.  Then, the output array type of assign_val! is determined
-        # at the interface of assign_val_shape!, so the dynamic dispatch of assign_val!
-        # occurs only once per assign_val_shape!.
-        assign_val_shape!(pind_cmp, pind′, shape, τlcmp)
-        assign_val_shape!(oind_cmp, oind, shape, τlcmp)
-        assign_val_shape!(obj_cmp, o, shape, τlcmp)
-
-        # Assign parameters at voxel corners where the v-component E and H affects the
-        # w≠v components of D and B.  This will use assign_val(..., tensor, ...) for
-        # setting off-diagonal entries of the material parameter tensor.
-        assign_val_shape!(param_cmp, param, shape, τlcmp)
+        assign_val_shape!(param_cmp, param, shp, τlcmp)
     end
 
     return nothing
@@ -434,33 +379,33 @@ end
 
 # Similar to assign_val!(..., scalar, ...), but set the off-diagonal entries of a given
 # tensor.
-function assign_val!(array::AbsArr{T,L}, tensor::AbsMat{T}, ci::CartesianIndex{K}) where {T,K,L}  # L = K+2
+function assign_val!(array::AbsArr{T,K₊2}, tensor::AbsMat{T}, ci::CartesianIndex{K}) where {T,K,K₊2}  # K₊2 = K+2
     Nr, Nc = size(tensor)
 
     # Set the entries below the main diagonal.
-    for nc = 1:Nc, nr = nc+1:Nr  # column- and row-indices
-        @inbounds array[ci,nr,nc] = tensor[nr,nc]
+    for c = 1:Nc, r = c+1:Nr  # column- and row-indices
+        @inbounds array[ci,r,c] = tensor[r,c]
     end
 
     # Set the entries above the main diagonal.
-    for nc = 2:Nc, nr = 1:nc-1  # column- and row-indices
-        @inbounds array[ci,nr,nc] = tensor[nr,nc]
+    for c = 2:Nc, r = 1:c-1  # column- and row-indices
+        @inbounds array[ci,r,c] = tensor[r,c]
     end
 
     return nothing
 end
 
-function assign_val!(array::AbsArr{T,L}, tensor::AbsMat{T}, CI::CartesianIndices{K}) where {T,K,L}  # L = K+2
+function assign_val!(array::AbsArr{T,K₊2}, tensor::AbsMat{T}, CI::CartesianIndices{K}) where {T,K,K₊2}  # K₊2 = K+2
     Nr, Nc = size(tensor)
 
     # Set the entries below the main diagonal.
-    for nc = 1:Nc, nr = nc+1:Nr  # column- and row-indices
-        @inbounds array[CI,nr,nc] .= tensor[nr,nc]
+    for c = 1:Nc, r = c+1:Nr  # column- and row-indices
+        @inbounds array[CI,r,c] .= tensor[r,c]
     end
 
     # Set the entries above the main diagonal.
-    for nc = 2:Nc, nr = 1:nc-1  # column- and row-indices
-        @inbounds array[CI,nr,nc] .= tensor[nr,nc]
+    for c = 2:Nc, r = 1:c-1  # column- and row-indices
+        @inbounds array[CI,r,c] .= tensor[r,c]
     end
 
     return nothing

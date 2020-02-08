@@ -43,12 +43,10 @@ mutable struct Maxwell
     Npml::Tuple2{AbsVecInteger}
     s∆l::Tuple2{Tuple3{Vector{CFloat}}}
 
-    # Domain
-    εdom::Real
-
     # Objects and materials
-    ovec::AbsVec{Object{3}}
-    paramset::Tuple2{AbsVec{SSComplex3}}
+    oind2shp::AbsVec{Shape{3,9}}
+    oind2pind::Tuple2{AbsVec{ParamInd}}
+    pind2matprm::Tuple2{AbsVec{SSComplex3}}
     param3d::Tuple2{AbsArrComplex{5}}
 
     # Sources
@@ -75,8 +73,9 @@ mutable struct Maxwell
         m.kbloch = @SVector zeros(3)
         m.∆l = @SVector ones(3)
 
-        m.ovec = Object{3}[]
-        m.paramset = (SSComplex3[], SSComplex3[])
+        m.oind2shp = Shape{3,9}[]
+        m.oind2pind = (ParamInd[], ParamInd[])
+        m.pind2matprm = (SSComplex3[], SSComplex3[])
 
         return m
     end
@@ -136,10 +135,10 @@ set_background!(m::Maxwell, matname::String, ε::MatParam) = add_obj!(m, matname
 add_obj!(m::Maxwell, matname::String, ε::MatParam, shapes::Shape...) = add_obj!(m, matname, ε, [shapes...])
 
 function add_obj!(m::Maxwell, matname::String, ε::MatParam, shapes::AbsVec{<:Shape})
-    mat = Material(matname, ε=ε)
+    mat = Material{3,3}(matname, ε=ε)
     for s = shapes  # shapes is tuple
         obj = Object(s, mat)
-        add!(m.ovec, m.paramset, obj)
+        add!(m.oind2shp, m.oind2pind, m.pind2matprm, obj)
     end
 
     return nothing
@@ -153,19 +152,16 @@ function get_param3d(m::Maxwell)
 
         # Initialize other fields that depend on the grid.
         ε3d = create_param_array(N)
-        εobj3d = create_p_storage(Object{3}, N)
-        εind3d = create_p_storage(ParamInd, N)
         εoind3d = create_p_storage(ObjInd, N)
 
         μ3d = create_param_array(N)
-        μobj3d = create_p_storage(Object{3}, N)
-        μind3d = create_p_storage(ParamInd, N)
         μoind3d = create_p_storage(ObjInd, N)
 
-        assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), m.boundft, m.ovec, g.ghosted.τl, g.isbloch)
+        assign_param!(ε3d, μoind3d, EE, m.boundft, m.oind2shp, m.oind2pind[nE], m.pind2matprm[nE], g.ghosted.τl, g.isbloch)
+        assign_param!(μ3d, εoind3d, HH, m.boundft, m.oind2shp, m.oind2pind[nH], m.pind2matprm[nH], g.ghosted.τl, g.isbloch)
 
-        smooth_param!(ε3d, εobj3d, εind3d, εoind3d, EE, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
-        smooth_param!(μ3d, μobj3d, μind3d, μoind3d, HH, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
+        smooth_param!(ε3d, εoind3d, m.oind2shp, m.oind2pind[nE], m.pind2matprm[nE], EE, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
+        smooth_param!(μ3d, μoind3d, m.oind2shp, m.oind2pind[nH], m.pind2matprm[nH], HH, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
 
         m.param3d = (ε3d, μ3d)
     end
