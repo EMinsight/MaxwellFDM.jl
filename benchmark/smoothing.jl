@@ -301,7 +301,7 @@ obj_zn_diel = Object(Sphere([0,0,-150], 75), diel)
 obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 
 # Add objects.
-oind2shp = Shape{3,9}[]
+oind2shp = Shape3[]
 oind2εind = ParamInd[]
 oind2μind = ParamInd[]
 εind2ε = SSComplex3[]
@@ -312,10 +312,18 @@ add!(oind2shp, (oind2εind,oind2μind), (εind2ε,μind2μ), dom_vac, obj_diel, 
 
 N = g3.N
 ε3d = create_param_array(N)
-εoind3d = create_p_storage(ObjInd, N)
+εxx_oind3d = create_oind_array(N)
+εyy_oind3d = create_oind_array(N)
+εzz_oind3d = create_oind_array(N)
+εoo_oind3d = create_oind_array(N)
+εoind3d = (εxx_oind3d, εyy_oind3d, εzz_oind3d, εoo_oind3d)
 
 μ3d = create_param_array(N)
-μoind3d = create_p_storage(ObjInd, N)
+μxx_oind3d = create_oind_array(N)
+μyy_oind3d = create_oind_array(N)
+μzz_oind3d = create_oind_array(N)
+μoo_oind3d = create_oind_array(N)
+μoind3d = (μxx_oind3d, μyy_oind3d, μzz_oind3d, μoo_oind3d)
 
 τl = g3.ghosted.τl
 
@@ -342,7 +350,7 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # material, whereas obj_cmp, pind_cmp, oind_cmp contain alter(gt)
 # material, so use ngt′ instead of ngt for them.
 ε3d_cmp = view(ε3d, ind_cmp..., nXYZ, nXYZ)
-μoind_cmp = view(μoind3d, ind_cmp..., nw)
+μoind_cmp = view(μoind3d[nw], ind_cmp...)
 
 # o = oind2obj[2]  # oind2obj[1]: Box, oind2obj[2]: Sphere
 # shape = o.shape
@@ -375,8 +383,8 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 @load "benchmark/smoothing_result.jld2" ε3d_assigned ε3d_smoothed
 boundft = SVector(EE,EE,EE)
 @time begin
-    assign_param!(ε3d, μoind3d, EE, boundft, oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
-    assign_param!(μ3d, εoind3d, HH, boundft, oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+    assign_param!(ε3d, μoind3d, ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, εoind3d, ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
 end
 @info "ε3d == ε3d_assigned? $(ε3d == ε3d_assigned)"
 
@@ -394,7 +402,7 @@ end
 
 # @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj_cmp′, pind_cmp′, oind_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
 
-@time smooth_param!(ε3d, εoind3d, oind2shp, oind2εind, εind2ε, EE, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+@time smooth_param!(ε3d, εoind3d, oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 # @info "ε3d ≈ ε3d_smoothed? $(ε3d ≈ ε3d_smoothed)"
 err_max, ci = findmax(abs.(ε3d .- ε3d_smoothed))
 @info "ε3d ≈ ε3d_smoothed? $(err_max / abs(ε3d_smoothed[ci]) < Base.rtoldefault(Float64))"

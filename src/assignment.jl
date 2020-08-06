@@ -14,13 +14,13 @@
 # pursue this extra optimization.  If I need to assign many objects, the situation may
 # change and I may need to implement this optimization.
 
-export create_param_array, create_p_storage, assign_param!, assign_val_shape!
+export create_param_array, create_oind_array, assign_param!, assign_val_shape!
 
-# About the order of indices of param3d
+# About the order of indices of paramKd
 #
-# param3d has 5 indices: the first three are positional indices (i,j,k) and the last two are
-# material parameter tensor component indices (v,w).  This mean param3d[i,j,k,:,:] is the
-# 3×3 material tensor.
+# paramKd has 5 indices for K = 3: the first three are positional indices (i,j,k) and the
+# last two are material parameter tensor component indices (v,w).  This mean paramKd[i,j,k,:,:]
+# is the 3×3 material tensor.
 #
 # This is different from the conventional indexing scheme used for material parametetrs.
 # For example, we usually write the xy-component of ε at a location (i,j,k) as ε_xy[i,j,k],
@@ -29,78 +29,68 @@ export create_param_array, create_p_storage, assign_param!, assign_val_shape!
 # not E[i,j,k]_x.
 #
 # However, when assigning the material parameters in the code in this file, we often assign
-# the same value to a block of param3d.  This block is chosen differently for different
+# the same value to a block of paramKd.  This block is chosen differently for different
 # material tensor components, because different tensor components are evaluated at different
 # locations in Yee's grid.  Therefore, in this assignment, we first fix the material tensor
 # components v and w, determine the range of (i,j,k) to which the same material parameter
 # value to assign, and perform the assignment.
 #
-# Now, if we index param3d as param3d[v,w,i,j,k], v and w are the fastest-varing indices.
+# Now, if we index paramKd as paramKd[v,w,i,j,k], v and w are the fastest-varing indices.
 # Therefore, fixing them and assigning for a contiguous range of (i,j,k) does not actually
-# assign in a contiguous memory block.  On the other hand, if we index param3d as
-# param3d[i,j,k,v,w], for fixed v and w a contiguous range of (i,j,k) actually assigns in
+# assign in a contiguous memory block.  On the other hand, if we index paramKd as
+# paramKd[i,j,k,v,w], for fixed v and w a contiguous range of (i,j,k) actually assigns in
 # a more contiguous memory block.  (The entries with adjacent i for the same j,k,v,w are
 # actually adjacent in the memory space.)  Therefore, the latter indexing scheme results in
 # faster performance.  In my experiment of assigning 8 objects in 3D, the latter turns out
 # to be about 30% faster.
 #
-# For this reason, I use the less conventional indexing scheme of param3d[i,j,k,v,w].
+# For this reason, I use the less conventional indexing scheme of paramKd[i,j,k,v,w].
 
 
-# About the material tensors stored as param3d
+# About the material tensors stored as paramKd
 #
-# param3d[ft][i,j,k,:,:] is a 3×3 tensor.  Suppose we are dealing with electric materials.
-# Then this is the ε tensor.  It is important to note that not all the entries of this
-# tensor are measured at the same physical locations.
+# paramKd[i,j,k,:,:] is a 3×3 tensor.  Suppose we are dealing with electric materials. Then
+# this is the ε tensor.  It is important to note that not all the entries of this tensor are
+# measured at the same physical locations.
 #
 # For example, if Ex, Ey, Ez are all tangential to primal grid planes (like in the standard
-# Yee's grid construction), hten εxx, εyy, εzz are defined at (i+1/2,j,k), (i,j+1/2,k),
-# (i,j,k+1/2), respectively.  Also, six εvw's with v ≠ w are defined at (i,j,k).
+# Yee's grid construction), then εxx, εyy, εzz are defined at (i+½,j,k), (i,j+½,k), (i,j,k+½),
+# respectively.  Also, six εvw's with v ≠ w are defined at (i,j,k).
 
 
-# Creates param3d to be of size N.+1 in the (i,j,k)-dimensions.  It is created with size N+1
-# to match the sizes of other matrices created by create_p_storage and hence to simplify the
-# algorithm, but only the first N portion is used.
+# Create paramKd to be of size N.+1 in the (i,j,k)-dimensions.  In order to simplify the
+# assignment algorithm, paramKd is created with size N+1 to match the sizes of the arrays
+# created by create_oind_arrays.
 #
-# For length(N) = 2, the output param_array is indexd as param_array[i,j,v,w], where (i,j)
-# is the grid cell location, and v and w are the row and column indices of the ncmp×ncmp tensorial
+# For length(N) = 2, the output paramKd is indexd as paramKd[i,j,v,w], where (i,j) is the
+# grid cell location, and v and w are the row and column indices of the ncmp×ncmp tensorial
 # material parameters (like the ε tensor and μ tensor).
 create_param_array(N::SInt, ncmp::Int=3) = (s = (N.+1).data; zeros(CFloat, s..., ncmp, ncmp))  # (i,j,...) element is ncmp×ncmp tensor
 
-# Below, zeros cannot be used instead of Array{T}, because zero for the type T may not be
-# well-defined (e.g., T = Object{3})
-#
-# The output p_array is indexed as n3d[i,j,k,w].  For example, if w = X̂ and we are dealing
-# with electric materials, then n3d[i,j,k,w] indicates some properties related to Ex[i,j,k].
-# Below, we have n3d = obj3d, pind3d, oind3d, and n3d[i,j,k,X̂] is used to store the electric
-# material properties evaluated at the Hx[i,j,k] (not Ex[i,j,k]) point.  These electric
-# material properties that are seemingly evaluated at wrong locations are still related to
-# Ex[i,j,k], because they are used to determine how to smooth the electric properties at the
-# Ex[i,j,k] point in smoothing.jl.
-create_p_storage(::Type{T}, N::SInt, ncmp::Int=4) where {T} = (s = (N.+1).data; Array{T}(undef, s..., ncmp))  # (i,j,...) element is ncmp-vector
+#  Create an array to store object indices.
+create_oind_array(N::SInt) = zeros(ObjInd, (N.+1).data)
 
-
-# Notes on ghost point transformation by boundary conditions:
+# Notes on ghost point transformation by boundary conditions
 #
-# - Do not transform objects according to boundary conditions.  Periodization, for example,
-# must be done by explicitly putting the translated object.  (In other words, the solver
-# periodizes the whatever composition inside the domain, but composing the space inside the
-# domain is the user's responsibility.)
+# - First of all, do not transform objects according to boundary conditions.  Periodization,
+# for example, must be done by explicitly putting the translated object.  (In other words,
+# the solver periodizes the whatever composition inside the domain, but composing the space
+# inside the domain is the user's responsibility.)
 #
-# - Instead, transform ghost points back to the corresponding points inside the domain, and
-# see which object is there.  Assign that object to the ghost points.
+# - Transform ghost points back to the corresponding points inside the domain, and see which
+# object is there.  Assign that object to the ghost points.
 #
 # - Ghost points are usually copied from different non-ghost points by translation (for
-# periodic BC) or reflection (for symmetry BC), but NOT if their transformed points are
-# themselves (e.g., primal ghost points on PPC, and dual ghost points on PDC).  For the
-# latter case, the fields of interest on the ghost points are still inferrable by other
-# means than spatial transformation (i.e., the fields are zero at primal ghost points on PPC
-# and dual ghost points on PDC).  Therefore, at the equation solving step we don't need to
-# keep the degrees of freedom for those ghost points.  Still, to smooth material parameterts
-# at non-ghost points around ghost boundaries, we need objects assigned to ghost points
-# (because ghost points are the corners of the voxels centered at those non-ghost points).
-# These ghost points are not copied from other non-ghost points by spatial transformation,
-# so we need to assign objects to these ghost points.
+# the periodic BC) or reflection (for the symmetry BC), but NOT if their transformed points
+# are themselves (e.g., primal ghost points on the symmetry BC).  For the latter case, the
+# fields of interest on the ghost points are still inferrable by other means than spatial
+# transformation (i.e., the fields are zero at primal ghost points on the symmetry BC).
+# Therefore, at the equation solving step we don't need to keep the degrees of freedom for
+# those ghost points.  Still, to smooth material parameterts at non-ghost points around
+# ghost boundaries, we need objects assigned to ghost points (because ghost points are the
+# corners of the voxels centered at those non-ghost points).  These ghost points are not
+# copied from other non-ghost points by spatial transformation, so we need to assign objects
+# to these ghost points.
 #
 # - When the ghost points are the copies of non-ghost points, both the fields and objects at
 # the ghost points must be copied for consistency, not only one of them.  For example, if a
@@ -116,39 +106,82 @@ create_p_storage(::Type{T}, N::SInt, ncmp::Int=4) where {T} = (s = (N.+1).data; 
 # points whose properties are inferrable from other points.  This is not always the case.
 # See the above "Notes on ghost point transformation by boundary conditions".
 #
-# If the ghost points are not exactly on symmetry BC, we can recover the ghost point arrays
-# from somewhere else.  The algorithm below prepares grid point indices such that we can
+# If the ghost points are not exactly on the symmetry BC, we can recover the ghost point
+# arrays from somewhere else.  The algorithm below prepares grid point indices such that we can
 # assign objects the same way regardless of the kinds of boundary conditions.
 
-# Notes on the reasons for many arrays to set up
+# Notes on setting object indices instead of Objects themselves
 #
-# Why do we need to set up so many arrays: param3d, obj3d, pind3d, oind3d?  In principle, it
-# is sufficient to set up only param3d and obj3d, because in the smoothing algorithm we need
-# to know pind and oind only inside a single voxel at a moment, and these two 2×2×2 arrays
-# can be easily constructed from the obj3d array.
-# However, retrieving pind and oind from obj3d point-by-point like this is very slow due to
-# dynamic dispatch.  To reduce the amount of dynamic dispatch, oind3d and pind3d must be set
-# up object-by-object rather than point-by-point.  This means that it is inevitable to
-# construct pind3d and oind3d arrays.
+# Why do we set up an array oindKd′ of object indices rather than an array of Objects
+# themselves?  By setting up an array of object indices, we have to pass the maps from
+# object indices to shapes (oind2shp), to parameter indices (oind2pind), and also a map from
+# parameter indices to material parameters (pind2matprm) in order to get the shape and
+# material parameter at each grid point.  If we set up an array of Objects, we would not
+# need to pass all these maps, because an Object already contains the shape and material
+# parameter.  Still, there are a few reasons to pass an array of object indices instead of
+# an array of objects:
+#
+# - Dispatching the shape and material paramter from an Object turns out to be slow, because
+# Objects have different concrete types depending on the type of the Shape it contains.
+# This makes the multiple dispatch to kick in, which is slow.
+#
+# - Setting the argumenty types Base types (e.g., AbstractArray) rather custom types (e.g.,
+# Object in the present context) increases the reusability of the code.  For example, there
+# are cases where we want to pass a submatrix of the 3×3 material parameter tensor (rather
+# than the material parameter tensor itself), because we want to treat the transverse and
+# longitudinal components of the material parameter tensor separately (e.g., in the
+# waveguide mode solver).  By taking the elementary types, this can be achieved without
+# changing the assign_param! function, because we can create a vector of 2×2 submatrices of
+# the material parameter tensors outside assign_param! and pass it.  If assign_param! took
+# an array of Objects, handling such cases would be difficult because we created an Object
+# with a 3×3 material parameter tensor in this case.
 
-# Unlike smoothing.jl/smooth_param! and param.jl/param3d2mat, assign_param! has to handle
-# both electric and magnetic material properties simultaneously; see the comments inside the
-# function body towards the end of the function.
+# Unlike smoothing.jl/smooth_param! and param.jl/param3d2mat, the paramKd and oindKd′ passed
+# to assign_param! are usually (but not always; see benchmark/smoothing2d.jl) for different
+# field types (e.g., paramKd for E-field and oindKd′ for the H-field).
 #
-# Below, the primed quantities are for the complementary material (i.e., magnetic for
-# electric).  Compare this with the usage of the prime in smoothing.jl that indicates voxel
-# corner quantities instead of voxel center quantities.
-function assign_param!(paramKd::AbsArrComplex{K₊2},  # electric (magnetic) parameter array to set; K₊2 = K+2, where 2 is rank of material tensor
-                       oindKd′::AbsArr{ObjInd,K₊1},  # magnetic (electric) object index array to set; K₊1 = K+1, where 1 is dimensior for directions
-                       ft::FieldType,  # material type of param3d: electric or magnetic
-                       boundft::SVector{K,FieldType},  # boundary field type
+# Explanation.  We set up oindKd′ such that it contains the voxel corner information to use
+# in smoothing for determining whether paramKd at the voxel centers needs smoothing or not.
+# For example, to determine whether paramKd for K = 3 defined at an Ew point needs smoothing
+# or not, we take the voxel centered at the Ew point and examine the material parameter
+# indices (pind) at the eight voxel corners.  If all the pind's at the eight voxel corners
+# are the same, we assume that the voxel is filled with a uniform material parameter
+# identified by the pind.  This means even though these voxel corners are the H-field points,
+# we still need to examine the electric material properties at these voxel corners.
+#
+# Conversely, the Ew points, at which we are going to set paramKd, are the voxel corners of
+# the voxel centered at the Hw points.  So, at the Ew points we want to set oindKd′ to use
+# for smoothing the magnetic material parameterts.  This is why we need to pass paramKd and
+# oindKd′ for different field types.  (Note that we assign paramKd and oindKd′ at the same
+# locations, because we set them up point-by-point.)
+
+# About Kp₊₁⏐₁
+#
+# The number of entries in the tuple oindKd′ is Kp₊₁⏐₁, which is Kp+1 or 1.  Note that Kp+1
+# cannot be 1 because Kp ≥ 1.  Therefore, by checking Kp₊₁⏐₁ = 1 or not, we can check if it
+# is 1 or Kp+1.
+#
+# Kp₊₁⏐₁ is neither K or Kp.  It is the parameter to control the assignment behavior.  If
+# the different components of the material parameter tensor need to be evaluated at
+# different locations within a single Yee cell, the number of locations is Kp+1 in all cases
+# I can think of, where the Kp locations are where the Kp diagonal entries are evaluated,
+# and the additional 1 location is where all the off-diagonal entries are evaluated.  This
+# covers many standard cases, such as ε and μ of the standard 3D problems, and also ε of the
+# 2D TE and μ of the 2D TM problems.
+
+# Below, primed variables indicate that the variables may not be of the same material type
+# as the non-primed variables.  Compare this with the usage of the prime in smoothing.jl
+# that indicates voxel corner quantities instead of voxel center quantities.
+function assign_param!(paramKd::AbsArrComplex{K₊₂},  # electric (magnetic) parameter array to set; K₊₂ = K+2, where 2 is rank of material tensor
+                       oindKd′::NTuple{Kp₊₁⏐₁,AbsArr{ObjInd,K}},  # object index arrays to set at electric (magnetic) parameter locations; Kp₊₁⏐₁ = Kp+1 or 1
+                       gt₀::SVector{K,GridType},  # grid type of voxel corners; generated by ft2gt.(ft, boundft)
                        oind2shp::AbsVec{Shape{K,K²}},  # map from oind to shape; K² = K^2
                        oind2pind::AbsVec{ParamInd},  #  map from oind to electric (magnetic) material parameter index
                        pind2matprm::AbsVec{SSComplex{Kp,Kp²}},  # map from pind to electric (magnetic) material parameters; Kp² = Kp^2
                        τl::Tuple2{NTuple{K,AbsVecReal}},  # field component locations transformed by boundary conditions
                        isbloch::SBool{K}  # boundary conditions
-                      ) where {K,Kp,K²,Kp²,K₊1,K₊2}
-    @assert(K²==K^2 && Kp²==Kp^2 && K₊1==K+1 && K₊2==K+2)
+                      ) where {K,Kp,K²,Kp²,K₊₂,Kp₊₁⏐₁}
+    @assert(K²==K^2 && Kp²==Kp^2 && K₊₂==K+2 && (Kp₊₁⏐₁==Kp+1 || Kp₊₁⏐₁==1))
     # `sub` is the subscripts for obj3d, pind3d, oind3d.
     #
     # Store circularly shifted subscripts in sub for Bloch boundary condition, such that
@@ -168,39 +201,55 @@ function assign_param!(paramKd::AbsArrComplex{K₊2},  # electric (magnetic) par
     # - symmetry: ghost points copy the values of non-ghost points at the negative end, so τl is
     # already sorted.
     @inbounds M = length.(τl[nPR])  # N.+1
-    sub = (map((m,b)->circshift(1:m,b), M, isbloch.data),  # Tuple3{VecInt}: primal grid
-           map((m,b)->circshift(1:m,-b), M, isbloch.data))  # Tuple3{VecInt}: dual grid
+    sub = (map((m,b)->circshift(1:m,b), M, isbloch.data),  # NTuple{K,VecInt}: primal grid
+           map((m,b)->circshift(1:m,-b), M, isbloch.data))  # NTuple{K,VecInt}: dual grid
 
-    # `psub` is the subscripts for param3d.
+    # `psub` is the subscripts for paramKd.
     #
-    # The subscripts for param3d are a bit different from the subscripts for other arrays.
-    # param3d always have ghost cells at the positive end, regardless of the grid type.  (To
-    # be more precise, only the first N portion of param3d is used to construct the Maxwell
+    # The subscripts for paramKd are a bit different from the subscripts for other arrays.
+    # paramKd always have ghost cells at the positive end, regardless of the grid type.  (To
+    # be more precise, only the first N portion of paramKd is used to construct the Maxwell
     # operator, and this used portion exclude the ghost points.)  Therefore, if the above
     # sub has ghost points' subscripts at the positive end, the psub below does not have to
     # be circshifted.  On the other hand, if the above sub has ghost points's subscripts at
     # the negative end, the psub below must be circshifted by +1 to push the ghost points to
     # the negative end.
     #
-    # Bottom line: prepare subscripts such that circshifted param3d and circshifted τl have
+    # Bottom line: prepare subscripts such that circshifted paramKd and circshifted τl have
     # ghost points at the same indices.  Note that before circshift,
-    # - param3d has ghost cells at the positive end,
+    # - paramKd has ghost cells at the positive end,
     # - the primal grid has ghost points at the positive end, and
     # - the dual grid has ghost points at the negative end.
-    # This means that before circshift, primal param3d and the primal τl have ghost points
-    # at the same indices, whereas dual param3d and the dual τl don't.  Therefore, primal
-    # param3d must be circshifted to right if the primal τl is circshifted to right.  (This
-    # is to send param3d's ghost points existing at the positive end to the negative end).
-    # Similarly, dual param3d must be circshifted to right if the dual τl is NOT circshifted
-    # to left.  (This is also to send param3d's ghost points existing at the positive end to
+    # This means that before circshift, primal paramKd and the primal τl have ghost points
+    # at the same indices, whereas dual paramKd and the dual τl don't.  Therefore, primal
+    # paramKd must be circshifted to right if the primal τl is circshifted to right.  (This
+    # is to send paramKd's ghost points existing at the positive end to the negative end).
+    # Similarly, dual paramKd must be circshifted to right if the dual τl is NOT circshifted
+    # to left.  (This is also to send paramKd's ghost points existing at the positive end to
     # the negative end, where the ghost points of the non-circshifted dual τl exist).
     psub = (map((m,b)->circshift(1:m,b), M, isbloch.data),  # Tuple3{VecInt}: primal grid
             map((m,b)->circshift(1:m,!b), M, isbloch.data))  # Tuple3{VecInt}: dual grid
 
-    ## Perform assignment.
-    for nw = 1:Kp+1
+    ## Perform assignment for Kp₊₁⏐₁ == 1.
+    if Kp₊₁⏐₁ == 1
+        sub_cmp = t_ind(sub, gt₀)  # Tuple3{VecInt}
+        psub_cmp = t_ind(psub, gt₀)  # Tuple3{VecInt}
+        τlcmp = view.(t_ind(τl,gt₀), sub_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
+
+        oind′_cmp = view(oindKd′[1], sub_cmp...)  # circularly shifted oindKd′; note oindKd′ has only one entry
+
+        # Set oindKd′ and on- and off-diagonal entires of paramKd.
+        param_cmp = view(paramKd, psub_cmp..., 1:Kp, 1:Kp)  # circularly shifted paramKd; ndims = K+2
+        assign_param_cmp!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)  # this does nothing for Kp = 1
+
+        return nothing
+    end
+
+    ## Perform assignment for Kp₊₁⏐₁ == Kp+1.
+    @assert(Kp₊₁⏐₁ == Kp+1)
+    for nw = Kp+1:-1:1  # nw = Kp+1 is handled first to allow remaining nw's to partially overwrite
         # Set the grid types of the x-, y-, z-locations of Fw.
-        gt_cmp = gt_Fw(nw, ft, boundft)
+        gt_cmp = gt_w(nw, gt₀)
 
         # Choose the circularly shifted subscripts to use.
         sub_cmp = t_ind(sub, gt_cmp)  # Tuple3{VecInt}
@@ -209,38 +258,17 @@ function assign_param!(paramKd::AbsArrComplex{K₊2},  # electric (magnetic) par
         # Prepare the circularly shifted locations of the field components.
         τlcmp = view.(t_ind(τl,gt_cmp), sub_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
 
-        # Prepare the circularly shifted viewes of various arrays to match the sorted τl.
-        # Even though all arrays are for same locations (τlcmp), param_cmp contains ft
-        # material, whereas oind_cmp′, pind_cmp′, shp_cmp′ contain alter(ft) material.
-        #
-        # Explanation.  We set up oind3d′, pind3d′, shp3d′ (but not param3d excluded) such
-        # that they contain the voxel corner information to use while determining whether
-        # param3d at the voxel centers needs smoothing or not.  For example, to determine
-        # whether param3d defined at an Ew point needs smoothing or not, we take the voxel
-        # centered at the Ew point and examine pind at the eight voxel corners.  If all the
-        # pind's at the eight voxel corners are the same, we assume that the voxel is filled
-        # with a uniform material parameter identified by the pind.  This means even though
-        # these voxel corners are the H-field points, we still need to examine the electric
-        # material properties at these voxel corners.
-        #
-        # Conversely, the Ew points, at which we are going to set param3d, are the voxel
-        # corners of the voxel centered at the Hw points.  So, at the Ew points we want to
-        # set the magnetic material properties in obj3d, pind3d, oind3d.  This is why for
-        # the same τlcmp locations we set up the param3d for the ft-type but oind3d, pind3d,
-        # obj3d of alter(ft)-type (i.e., the entries of oind3d′, pind3d′, obj3d′).
-
         # Note that view() below is used to get a circularly shifted version of the
         # array, not a portion of.
-        oind′_cmp = view(oindKd′, sub_cmp..., nw)  # circularly shifted nw-component of oind3d′
+        oind′_cmp = view(oindKd′[nw], sub_cmp...)  # circularly shifted nw-component of oindKd′
 
-        # Set various arrays for the current component.
         if nw == Kp+1  # w = Ô
-            # Set the off-diagonal entires of param3d.
-            param_cmp = view(paramKd, psub_cmp..., 1:Kp, 1:Kp)  # circularly shifted param3d; ndims = 5
-            assign_param_cmp!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)
-        else  # w = X̂, Ŷ, Ẑ
-            # Set the diagonal entries of param3d.
-            param_cmp = view(paramKd, psub_cmp..., nw, nw)  # circularly shifted (nw,nw)-component of param3d; ndims = 3
+            # Set oindKd′ and the on- and off-diagonal entires of paramKd.
+            param_cmp = view(paramKd, psub_cmp..., 1:Kp, 1:Kp)  # circularly shifted paramKd; ndims = K+2
+            assign_param_cmp!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)  # this does nothing for Kp = 1
+        else  # w = X̂, Ŷ, Ẑ for K = 3
+            # Overwrite the diagonal entries of paramKd.
+            param_cmp = view(paramKd, psub_cmp..., nw, nw)  # circularly shifted (nw,nw)-component of paramKd; ndims = 3
             pind2matprm_w = [mp[nw,nw] for mp = pind2matprm]
             assign_param_cmp!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm_w, τlcmp)
         end
@@ -254,20 +282,18 @@ end
 # of specific element types).
 #
 # The goal of this function is to set all the arrays' entries, where the arrays are
-# param_cmp, obj_cmp, pind_cmp, oind_cmp, at the same locations (τlcmp).  For each
-# shape we iterate over grid points and test if each point is included in the shape.
-# Because there are so many grid points, the total time taken for these tests is somewhat
-# substantial, so we don't want to test the inclusion of the same point again.  Therefore,
-# for a point that is confirmed included in the shape, we want to set up all the arrays that
-# can be set up.  If the point is an Ew point, it is where the electric material properties
-# ε_ww is set up in param3d, but it is also where the magnetic material parameter index is
-# set up in pind3d, because this Ew point is the corners of the voxel whose center is at an
-# Hw point, and we use pind at these voxel corners to determine whether the voxel centered
-# at the Hw point is filled with a single magnetic material.  This is why the ft′ entry of
-# pind3d was chosen as pind_cmp in the enclosing function, where as the ft entry of param3d
-# was chosen as param_cmp there.  This also explains why the ft′ component was chosen as
-# pind′ whereas the ft component was chosen as param in the present function.
-
+# param_cmp and oind′_cmp at the same locations (τlcmp).  For each shape we iterate over
+# grid points and test if each point is included in the shape.  Because there are so many
+# grid points, the total time taken for these tests is somewhat substantial, so we don't
+# want to test the inclusion of the same point again.  Therefore, for a point that is
+# confirmed included in the shape, we want to set up all the arrays that can be set up.
+# If the point is an Ew point, it is where the electric material properties ε_ww is set up
+# in paramKd, but it is also where the object index for smoothing magnetic material
+# parameters is set up in oindKd′, because this Ew point is the corners of the voxel whose
+# center is at an Hw point, and we use the material parameter index at these voxel corners
+# to determine whether the voxel centered at the Hw point is filled with a single magnetic
+# material.
+#
 # For w = X̂, Ŷ, Ẑ
 assign_param_cmp!(param_cmp::AbsArrComplex{K},  # output material parameter array (array of scalars)
                   oind′_cmp::AbsArr{ObjInd,K},  # output object index array
@@ -282,12 +308,12 @@ assign_param_cmp!(param_cmp::AbsArrComplex{K},  # output material parameter arra
 # (i.e., rank-2 tensor), regardless of the value of Kp.  For example, if we are assigning μz
 # in a 2D TE problem, μz is a type of SSComplex{1,1}.  This is why M = K + 2, where 2 is the
 # rank of the material parameter tensor, regardless of the value of Kp.
-assign_param_cmp!(param_cmp::AbsArrComplex{K₊2},  # output material parameter array (array of tensors); M = K+2
+assign_param_cmp!(param_cmp::AbsArrComplex{K₊₂},  # output material parameter array (array of tensors); M = K+2
                   oind′_cmp::AbsArr{ObjInd,K},  # output object index array
                   oind2shp::AbsVec{Shape{K,K²}},  # input map from oind to shape
                   oind2pind::AbsVec{ParamInd},  # input map from oind to pind
                   pind2matprm::AbsVec{SSComplex{Kp,Kp²}},  #  input map from pind to material parameter
-                  τlcmp::NTuple{K,AbsVecReal}) where {K,Kp,K²,Kp²,K₊2} = # location of field components
+                  τlcmp::NTuple{K,AbsVecReal}) where {K,Kp,K²,Kp²,K₊₂} = # location of field components
     assign_param_cmp_impl!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)
 
 function assign_param_cmp_impl!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)
@@ -329,14 +355,14 @@ end
 assign_val_shape!(array::AbsArr{T,K}, val::T, shape::Shape{K}, τlcmp::NTuple{K,AbsVecReal}) where {T,K} =
     assign_val_shape_impl!(array, val, shape, τlcmp)
 
-assign_val_shape!(array::AbsArr{T,L}, val::AbsMat{T}, shape::Shape{K}, τlcmp::NTuple{K,AbsVecReal}) where {T,K,L} =
+assign_val_shape!(array::AbsArr{T,K₊₂}, val::SMatrix{Kp,Kp,T}, shape::Shape{K}, τlcmp::NTuple{K,AbsVecReal}) where {T,K,Kp,K₊₂} =
     assign_val_shape_impl!(array, val, shape, τlcmp)
 
 # Given a shape, assign value at the points within the shape.
 function assign_val_shape_impl!(array::AbsArr{T},
-                                val::Union{T,AbsMat{T}},
+                                val::Union{T,SMatrix{Kp,Kp,T}},
                                 shape::Shape{K},
-                                τlcmp::NTuple{K,AbsVecReal}) where {T,K}
+                                τlcmp::NTuple{K,AbsVecReal}) where {T,K,Kp}
     # Set the location indices of object boundaries.
     @assert all(issorted.(τlcmp))
     bn, bp = bounds(shape)  # (SVector{K}, SVector{K})
@@ -377,35 +403,19 @@ function assign_val!(array::AbsArr{T,K}, scalar::T, CI::CartesianIndices{K}) whe
     return nothing
 end
 
-# Similar to assign_val!(..., scalar, ...), but set the off-diagonal entries of a given
+# Similar to assign_val!(..., scalar, ...), but set the on- and off-diagonal entries of a given
 # tensor.
-function assign_val!(array::AbsArr{T,K₊2}, tensor::AbsMat{T}, ci::CartesianIndex{K}) where {T,K,K₊2}  # K₊2 = K+2
-    Nr, Nc = size(tensor)
-
-    # Set the entries below the main diagonal.
-    for c = 1:Nc, r = c+1:Nr  # column- and row-indices
-        @inbounds array[ci,r,c] = tensor[r,c]
-    end
-
-    # Set the entries above the main diagonal.
-    for c = 2:Nc, r = 1:c-1  # column- and row-indices
+function assign_val!(array::AbsArr{T,K₊₂}, tensor::SMatrix{Kp,Kp,T}, ci::CartesianIndex{K}) where {T,K,Kp,K₊₂}  # K₊₂ = K+2
+    for c = 1:Kp, r = 1:Kp  # column- and row-indices
         @inbounds array[ci,r,c] = tensor[r,c]
     end
 
     return nothing
 end
 
-function assign_val!(array::AbsArr{T,K₊2}, tensor::AbsMat{T}, CI::CartesianIndices{K}) where {T,K,K₊2}  # K₊2 = K+2
-    Nr, Nc = size(tensor)
-
-    # Set the entries below the main diagonal.
-    for c = 1:Nc, r = c+1:Nr  # column- and row-indices
-        @inbounds array[CI,r,c] .= tensor[r,c]
-    end
-
-    # Set the entries above the main diagonal.
-    for c = 2:Nc, r = 1:c-1  # column- and row-indices
-        @inbounds array[CI,r,c] .= tensor[r,c]
+function assign_val!(array::AbsArr{T,K₊₂}, tensor::SMatrix{Kp,Kp,T}, CI::CartesianIndices{K}) where {T,K,Kp,K₊₂}  # K₊₂ = K+2
+    for c = 1:Kp, r = 1:Kp, ci = CI  # column- and row-indices and location index
+        @inbounds array[ci,r,c] = tensor[r,c]
     end
 
     return nothing

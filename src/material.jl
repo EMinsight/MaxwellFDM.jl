@@ -22,7 +22,7 @@ string(m::Material) = m.name
 matparam(m::Material, ft::FieldType) = m.param[Int(ft)]
 
 kottke_avg_param(param1::AbsMatNumber, param2::AbsMatNumber, n12::AbsVecReal, rvol1::Real) =
-    kottke_avg_param(SSComplex3(param1), SSComplex3(param2), SFloat{3}(n12), rvol1)
+    (K = length(n12); kottke_avg_param(SSComplex{K,K^2}(param1), SSComplex{K,K^2}(param2), SFloat{K}(n12), rvol1))
 
 # Implement the averaging scheme between two local material parameter tensors developed in
 # the paper by Kottke, Farjadpour, Johnson entitled "Perturbation theory for anisotropic
@@ -40,6 +40,19 @@ function kottke_avg_param(param1::SSComplex{K}, param2::SSComplex{K}, n12::SFloa
 
     return S * τ⁻¹_trans(τavg) * transpose(S)  # apply τ⁻¹ and transform back to global coordinates
 end
+
+# Kottke's averaging scheme reduced for the field dimension is orthogonal to the shape
+# dimension (such as Hz in the TE mode).  In that case, the field is always parallel to the
+# shape boundaries, so the averaging scheme reduces to simple arithmetic averaging.  For
+# example for the case with Shape{2} and Kp = 1 (like Hz in the TE mode), the material
+# parameter is an 1×1 tensor (= scalar) and therefore the situation is the same as averaging
+# isotropic ε between E-field voxels, which is arithmetic averaging.  The only other cases
+# are the case with Shape{1} and Kp = 2 (like Ex and Ey in the slaps in the z-direction) and
+# the case with Shape{1} and Kp = 1  (like Ex in the slapes in the z-direction).  We can
+# easily prove that in these cases again the averaging reduces to simple arithmetic
+# averaging between material parameter tensors.  See Agenda > MaxwellFDM > Feb/22/2020.
+kottke_avg_param(param1::AbsMatNumber, param2::AbsMatNumber, rvol1::Real) =
+    param1 .* rvol1 + param2 .* (1-rvol1)
 
 # Equation (4) of the paper by Kottke et al.  Need to verify for K = 1 and 2.
 function τ_trans(ε::SSComplex3)
@@ -114,4 +127,4 @@ function τ⁻¹_trans(τ::SSComplex2)
     )
 end
 
-τ⁻¹_trans(τ::SSComplex1) = 1 ./ τ
+τ⁻¹_trans(τ::SSComplex1) = -1 ./ τ

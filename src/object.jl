@@ -9,7 +9,7 @@
 # "extend" bounds for Shape by defining it as GeometryPrimitives.bounds(::Interval) = ....
 # Then, exporting bounds exports this whole collection of bounds, both for Shape and Interval.
 export OpenInterval, ClosedInterval, KDTree, Object
-export shape, max∆l, matparam, add!, periodize  #, surfpt_nearby, normal
+export shape, matparam, max∆l, pint2matprmview, add!, periodize  #, surfpt_nearby, normal
 # export lsf, bound_, L_, center_, dist2bound, bound_contains, ∆lmax, sphere, transform,
 #     surfnormal, surfpoint  # functions
 # import Base:size, getindex, contains, isless, union, intersect
@@ -38,7 +38,7 @@ shape(obj::Object) = obj.shp
 matparam(obj::Object, ft::FieldType) = matparam(obj.mat, ft)
 max∆l(obj::Object) = obj.∆lmax
 
-# Relationships between oind2obj, pind2matprm, oind2pind, oind2shp
+# Relationships between pind2matprm, oind2pind, oind2shp
 #
 # - pind2matprm is a vector of material parameter tensors.  pind2matprm[n] is a 3×3 material
 # parameter tensor for the parameter index n.
@@ -46,6 +46,10 @@ max∆l(obj::Object) = obj.∆lmax
 # - oind2pind is a map from the object index to the parameter index.
 #
 # - oind2shp is a map from the object index to the shape.
+
+# Returns a vector of submatrix views of material parameter tensors.
+pint2matprmview(pind2matprm::AbsVec{<:SSComplex{Ke,Ke²}}, inds::AbsVecInteger) where {Ke,Ke²} =
+    [view(mp,inds,inds) for mp = pind2matprm]
 
 # Consider using resize! on oind2obj.
 function add!(oind2shp::AbsVec{Shape{K,K²}}, oind2pind::Tuple2{AbsVec{ParamInd}},
