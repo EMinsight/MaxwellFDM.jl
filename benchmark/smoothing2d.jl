@@ -330,10 +330,10 @@ end
 
 @time begin
     # Smooth the diagonal entries of ε2d.
-    smooth_param!(ε2d, (εxx_oind2d,εyy_oind2d), oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g2.l, g2.ghosted.l, g2.σ, g2.ghosted.∆τ)
+    smooth_param!(ε2d, (εxx_oind2d,εyy_oind2d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g2.l, g2.ghosted.l, g2.σ, g2.ghosted.∆τ)
 
     # Smooth the off-diagonal entries of ε3d.
-    smooth_param!(ε2d, εoo_oind2d, oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g2.l, g2.ghosted.l, g2.σ, g2.ghosted.∆τ)
+    smooth_param!(ε2d, εoo_oind2d, oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g2.l, g2.ghosted.l, g2.σ, g2.ghosted.∆τ)
 end
 
 

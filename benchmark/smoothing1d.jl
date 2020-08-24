@@ -323,7 +323,7 @@ end
 # plot(zprim, μoind1d)
 
 
-@time smooth_param!(ε1d, εoind1d, oind2shp, oind2εind, εind2ε, true, ft2gt.(EE,boundft), g1.l, g1.ghosted.l, g1.σ, g1.ghosted.∆τ)
+@time smooth_param!(ε1d, εoind1d, oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g1.l, g1.ghosted.l, g1.σ, g1.ghosted.∆τ, true)
 
 
 # # Construct arguments and call assign_param!.
