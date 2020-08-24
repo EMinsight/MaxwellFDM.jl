@@ -81,7 +81,7 @@ function τ_trans(ε::SSComplex2)
     )
 end
 
-τ_trans(ε::SSComplex1) = -1 ./ ε
+τ_trans(ε::SSComplex1) = -1 ./ ε  # SSComplex1
 
 # function τ_trans(ε::SSComplex{K}) where {K}
 #     τ_temp1 = @SMatrix [ε[i,j] for i = 2:K, j = 2:K]  # cannot use type parameter K here: error is generated
@@ -127,4 +127,4 @@ function τ⁻¹_trans(τ::SSComplex2)
     )
 end
 
-τ⁻¹_trans(τ::SSComplex1) = -1 ./ τ
+τ⁻¹_trans(τ::SSComplex1) = -1 ./ τ  # SSComplex1
