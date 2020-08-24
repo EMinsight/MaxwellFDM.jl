@@ -121,8 +121,8 @@ end
 function τ⁻¹_trans(τ::SSComplex2)
     τ₁₁, τ₂₁, τ₁₂, τ₂₂ = τ
 
-    return SSComplex3(
-        -1/τ₁₁, -τ₂₁/τ₁₁
+    return SSComplex2(
+        -1/τ₁₁, -τ₂₁/τ₁₁,
         -τ₁₂/τ₁₁, τ₂₂ - τ₂₁*τ₁₂/τ₁₁
     )
 end
