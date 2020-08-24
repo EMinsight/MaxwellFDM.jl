@@ -63,7 +63,7 @@ nout_vxl(::Val{1}) = (SVector(1.), SVector(-1.))
 # quantities.  Compare this with the usage of the prime in assignment.el that indicates
 # complementary material (i.e., magnetic for electric).
 function smooth_param!(paramKd::AbsArrComplex{K₊₂},  # parameter array to smooth at voxel centers
-                       oindKd′::NTuple{Kp₊₀₁,AbsArr{ObjInd,K}},  # object index array at voxel corners; does not change
+                       oindKd′::NTuple{Kp⏐₁,AbsArr{ObjInd,K}},  # object index array at voxel corners; does not change
                        oind2shp::AbsVec{Shape{K,K²}},  # input map from oind to shape
                        oind2pind::AbsVec{ParamInd},  # input map from oind to pind
                        pind2matprm::AbsVec{SSComplex{Kp,Kp²}},  # map from pind to electric (magnetic) material parameters; Kp² = Kp^2
@@ -73,13 +73,13 @@ function smooth_param!(paramKd::AbsArrComplex{K₊₂},  # parameter array to sm
                        l′::Tuple2{NTuple{K,AbsVecReal}},  # location of voxel corners without transformation by boundary conditions; include ghost points (length(l′[PRIM][k]) = N[k]+1)
                        σ::Tuple2{NTuple{K,AbsVecBool}},  # false if on symmetry boundary; exclude ghost points (length(σ[PRIM][k]) = N[k])
                        ∆τ′::Tuple2{NTuple{K,AbsVecReal}}  # amount of shift by Bloch boundary conditions; include ghost points (length(∆τ′[PRIM][k]) = N[k]+1)
-                      ) where {K,Kp,K²,Kp²,K₊₂,Kp₊₀₁}
-    @assert(K²==K^2 && Kp²==Kp^2 && K₊₂==K+2 && (Kp₊₀₁==Kp || Kp₊₀₁==Kp+1))
+                      ) where {K,Kp,K²,Kp²,K₊₂,Kp⏐₁}
+    @assert(K²==K^2 && Kp²==Kp^2 && K₊₂==K+2 && (Kp⏐₁==Kp || Kp⏐₁==1))
 
     ci_1 = CartesianIndex(ntuple(x->1, Val(K)))
-    for nw = 1:Kp₊₀₁
+    for nw = 1:Kp⏐₁
         # Set the grid types of the x-, y-, z-locations of Fw.
-        gt_cmp = gt_w(nw, gt₀)
+        gt_cmp = Kp⏐₁==1 ? gt₀ : gt_w(nw, gt₀)
 
         # Set the grid types of the voxel corners surroundnig Fw.
         gt_cmp′ = alter.(gt_cmp)
@@ -121,8 +121,26 @@ function smooth_param!(paramKd::AbsArrComplex{K₊₂},  # parameter array to sm
                                            hmean_param(ci_vxl′, oind_cmp′, oind2pind, pind2matprm)::SSComplex{Kp,Kp²}
                     end  # if Nprm_vxl == 2
 
-                    if nw == Kp+1  # w = Ô
-                        # Set the off-diagonal entires of paramKd.
+                    # Below, we have four combinations depending on the values of Kp⏐₁ and Kp:
+                    # Kp⏐₁ is either ==Kp or ==1, and Kp is either ≥2 or ==1.
+                    #
+                    # The case of Kp⏐₁ == Kp covers Kp≥2 and Kp==1.  When Kp==1, the case
+                    # corresponds to Kp⏐₁==1 and Kp==1.  Therefore, the "if" case Kp⏐₁ == Kp
+                    # covers the two combinations:
+                    # - Kp⏐₁==Kp and Kp≥2,
+                    # - Kp⏐₁==1 and Kp==1.
+                    #
+                    # Therefore, the "else" case should cover the remaining two combinations:
+                    # - Kp⏐₁==Kp && Kp==1,
+                    # - Kp⏐₁==1 && Kp≥2.
+                    # However, the first combination is equivalent to Kp⏐₁==1 && Kp==1, which
+                    # was already covered in the "if" case.  Therefore, the "else" case
+                    # deals with only the case of Kp⏐₁==1 && Kp≥2.
+                    if Kp⏐₁ == Kp  # Kp⏐₁==Kp && Kp≥2, or Kp⏐₁==1 && Kp==1
+                        # Overwrite the (nw,nw)-diagonal entry of paramKd.
+                        @inbounds paramKd[ci_cmp,nw,nw] = prm_vxl[nw,nw]
+                    else  # Kp⏐₁==1 && Kp≥2
+                        # Overwrite the off-diagonal entires of paramKd.
                         # Below the main diagonal.
                         for c = 1:Kp, r = c+1:Kp  # column- and row-indices
                             @inbounds paramKd[ci_cmp,r,c] = prm_vxl[r,c]
@@ -132,10 +150,7 @@ function smooth_param!(paramKd::AbsArrComplex{K₊₂},  # parameter array to sm
                         for c = 2:Kp, r = 1:c-1  # column- and row-indices
                             @inbounds paramKd[ci_cmp,r,c] = prm_vxl[r,c]
                         end
-                    else  # w = X̂, Ŷ, Ẑ
-                        # Set the diagonal entries of paramKd.
-                        @inbounds paramKd[ci_cmp,nw,nw] = prm_vxl[nw,nw]
-                    end  # if nw == Kp+1
+                    end  # if Kp⏐₁ == 1
                 end  # if Nprm_vxl ≥ 2
                 # If Nprm_vxl = 1, the voxel is filled with the same material, and there is
                 # no need for subpixel smoothing.
