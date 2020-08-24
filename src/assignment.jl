@@ -49,18 +49,17 @@ export create_param_array, create_oind_array, assign_param!, assign_val_shape!
 
 # About the material tensors stored as paramKd
 #
-# paramKd[i,j,k,:,:] is a 3×3 tensor.  Suppose we are dealing with electric materials. Then
-# this is the ε tensor.  It is important to note that not all the entries of this tensor are
-# measured at the same physical locations.
+# paramKd[i,j,k,:,:] is a 3×3 tensor for ncmp = 3.  Suppose we are dealing with electric
+# materials. Then this is the ε tensor.  It is important to note that not all the entries of
+# this tensor are measured at the same physical locations.
 #
 # For example, if Ex, Ey, Ez are all tangential to primal grid planes (like in the standard
 # Yee's grid construction), then εxx, εyy, εzz are defined at (i+½,j,k), (i,j+½,k), (i,j,k+½),
 # respectively.  Also, six εvw's with v ≠ w are defined at (i,j,k).
-
-
-# Create paramKd to be of size N.+1 in the (i,j,k)-dimensions.  In order to simplify the
-# assignment algorithm, paramKd is created with size N+1 to match the sizes of the arrays
-# created by create_oind_arrays.
+#
+# The size of paramKd in location dimensions (i.e., the length in the (i,j,k)-directions) is
+# N.+1.  In order to simplify the assignment algorithm, paramKd is created with size N.+1 to
+# match the sizes of the arrays created by create_oind_arrays.
 #
 # For length(N) = 2, the output paramKd is indexd as paramKd[i,j,v,w], where (i,j) is the
 # grid cell location, and v and w are the row and column indices of the ncmp×ncmp tensorial
