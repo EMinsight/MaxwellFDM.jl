@@ -1,27 +1,27 @@
-export param3d2mat
+export param_arr2mat
 
 
-param3d2mat(param3d::AbsArrComplex{5},
-            ft::FieldType,  # type (electric or magnetic) of material parameter
-            boundft::AbsVec{FieldType},  # boundary field type
-            N::AbsVecInteger,  # size of grid
-            ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
-            ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-            isbloch::AbsVecBool,  # boundary conditions in x, y, z
-            e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
-            reorder::Bool=true) =  # true for more tightly banded matrix
-    (K = length(N); param3d2mat(param3d, ft, SVector{K}(boundft), SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
+param_arr2mat(paramKd::AbsArrComplex{5},
+              ft::FieldType,  # type (electric or magnetic) of material parameter
+              boundft::AbsVec{FieldType},  # boundary field type
+              N::AbsVecInteger,  # size of grid
+              ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
+              ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
+              isbloch::AbsVecBool,  # boundary conditions in x, y, z
+              e⁻ⁱᵏᴸ::AbsVecNumber=ones(length(N));  # Bloch phase factor in x, y, z
+              reorder::Bool=true) =  # true for more tightly banded matrix
+    (K = length(N); param_arr2mat(paramKd, ft, SVector{K}(boundft), SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder))
 
 
-function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
-                     ft::FieldType,  # type (electric or magnetic) of material parameter
-                     boundft::SVector{3,FieldType},  # boundary field type
-                     N::SInt{3},  # size of grid
-                     ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
-                     ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
-                     isbloch::SBool{3},  # boundary conditions in x, y, z
-                     e⁻ⁱᵏᴸ::SNumber{3};  # Bloch phase factor in x, y, z
-                     reorder::Bool=true)  # true for more tightly banded matrix
+function param_arr2mat(paramKd::AbsArrComplex{5},  # materia parameter array
+                       ft::FieldType,  # type (electric or magnetic) of material parameter
+                       boundft::SVector{3,FieldType},  # boundary field type
+                       N::SInt{3},  # size of grid
+                       ∆l::Tuple3{AbsVecNumber},  # line segments to multiply with; vectors of length N
+                       ∆l′::Tuple3{AbsVecNumber},  # line segments to divide by; vectors of length N
+                       isbloch::SBool{3},  # boundary conditions in x, y, z
+                       e⁻ⁱᵏᴸ::SNumber{3};  # Bloch phase factor in x, y, z
+                       reorder::Bool=true)  # true for more tightly banded matrix
     M = prod(N)
 
     # Following Oskooi et al.'s 2009 Optics Letters paper, off-diagonal entries of material
@@ -65,7 +65,7 @@ function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
 
 
     kdiag = 0
-    p3dmat = create_param_arraymat(param3d, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
+    p3dmat = create_param_matrix(paramKd, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
     for kdiag = (1,-1)  # (superdiagonal, subdiagonal) components of ε tensor
         # For the input averaging, ∆l and ∆l′ are supplied to create min in order to create
         # a line integral averaging operator.  This is because the inverse of the length
@@ -80,7 +80,7 @@ function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
         # = 0), block-superdiagonal (kdiag = +1), or block-subdiagonal (kdiag = -1) material
         # parameter matrices.  See my bullet point entitled [Update (May/13/2018)] in
         # RN - Subpixel Smoothing.
-        p3dmatₖ = create_param_arraymat(param3d, kdiag, N, reorder=reorder)
+        p3dmatₖ = create_param_matrix(paramKd, kdiag, N, reorder=reorder)
         p3dmat += Mout * p3dmatₖ * Min
     end
 
@@ -88,11 +88,11 @@ function param3d2mat(param3d::AbsArrComplex{5},  # materia parameter array
 end
 
 
-function create_param_arraymat(param3d::AbsArrComplex{5},
-                           kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
-                           N::SInt{3};  # size of grid
-                           reorder::Bool=true)  # true for more tightly banded matrix
-    # Note that param3d's i, j, k indices run from 1 to N+1 rather than to N, so we should
+function create_param_matrix(paramKd::AbsArrComplex{5},
+                             kdiag::Integer,  # 0|+1|-1 for diagonal|superdiagonal|subdiagonal of material parameter
+                             N::SInt{3};  # size of grid
+                             reorder::Bool=true)  # true for more tightly banded matrix
+    # Note that paramKd's i, j, k indices run from 1 to N+1 rather than to N, so we should
     # not iterate those indices from 1 to end (= N+1).
     M = prod(N)
     I = VecInt(undef, 3M)
@@ -109,7 +109,7 @@ function create_param_arraymat(param3d::AbsArrComplex{5},
 
             I[n] = istr * ind + ioff
             J[n] = jstr * ind + joff
-            V[n] = param3d[i,j,k,nv,nw]
+            V[n] = paramKd[i,j,k,nv,nw]
         end
     end
     # for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
@@ -122,7 +122,7 @@ function create_param_arraymat(param3d::AbsArrComplex{5},
     #
     #         I[n] = istr * ind + ioff
     #         J[n] = jstr * ind + joff
-    #         V[n] = param3d[i,j,k,nv,nw]
+    #         V[n] = paramKd[i,j,k,nv,nw]
     #     end
     # end
 

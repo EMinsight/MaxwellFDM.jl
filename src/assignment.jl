@@ -135,9 +135,9 @@ create_oind_array(N::SInt) = zeros(ObjInd, (N.+1).data)
 # an array of Objects, handling such cases would be difficult because we created an Object
 # with a 3×3 material parameter tensor in this case.
 
-# Unlike smoothing.jl/smooth_param! and param.jl/param3d2mat, the paramKd and oindKd′ passed
-# to assign_param! are usually (but not always; see benchmark/smoothing2d.jl) for different
-# field types (e.g., paramKd for E-field and oindKd′ for the H-field).
+# Unlike smoothing.jl/smooth_param! and param.jl/param_arr2mat, the paramKd and oindKd′
+# passed to assign_param! are usually (but not always; see benchmark/smoothing2d.jl) for
+# different field types (e.g., paramKd for E-field and oindKd′ for the H-field).
 #
 # Explanation.  We set up oindKd′ such that it contains the voxel corner information to use
 # in smoothing for determining whether paramKd at the voxel centers needs smoothing or not.
