@@ -39,26 +39,18 @@ nout_vxl(::Val{1}) = (SVector(1.), SVector(-1.))
 # Below, obj, pind, oind refers to an Object{3} instance, parameter index (integer value) that
 # distinguishes different material parameters, and oind that distinguishes different objects.
 #
-# - Assign obj, pind, oind to arrays object-by-object (see assignment.jl).
+# - Assign oind, pind, shape to arrays object-by-object (see assignment.jl).
+#     - Currently, we assign only oind (in oindKd′), and pind and shape are retrieved from oind by oind2shp and oind2pind.
 #     - For the locations of grid points to assign the objects to, use τlcmp (lcmp created considering BC).
-# - Using pind and oind, determine voxels to perform subpixel smoothing.
-# - Inside each of the voxels, figure out the foreground object with which subpixel smoothing is performed.
+# - Using oind and pind, determine voxels to perform subpixel smoothing.
+# - Inside each voxel, figure out the foreground object with which subpixel smoothing is performed.
 #     - Iterating voxel corners, find the object that is put latest.  That object is the foreground object.
 #     - Complication occurs when the voxel corner assigned with the foreground object is outside the domain boundary.
 #         - In that case, to calculate nout and rvol properly, we have to move the voxel center.  (This is effectively the same as moving the foreground object.)
-#             - If the corner is outside the periodic boundary, translate the voxel center before surfpt_nearby (using ∆fg).
-#             - If the corner is outside the symmetry boundary, zero the nout componnent normal to the boundary (using σvxl).
+#             - If the corner is outside the periodic boundary, translate the voxel center before calling surfpt_nearby (using ∆fg).
+#             - If the corner is outside the symmetry boundary, zero the nout component normal to the boundary (using σvxl).
 #             - ∆fg and σvxl can be obtained simply by looking at the indices and BC.
 
-# Unlike assign_param!, smooth_param! processes either the electric or magnetic material
-# parameter at a time, not both at once; see the comments for assign_param!.  Therefore, the
-# arguments param3d, oind3d, pind3d, shp3d are a tuple of two arrays (electric and magnetic),
-# but one array (either electric or magnetic).  Because the caller pass either electric or
-# magnetic arguments, it will be ideal to not pass a FieldType and make the function
-# agnostic of FieldType.  This is possible my passing gt_cmp₀ directly from outside instead
-# of constructing inside using ft and boundft.  This is a decision.  Maybe, by passing gt_cmp₀
-# the function is easier to use for 2D.
-#
 # Below, the primed quantities are for voxel corner quantities rather than voxel center
 # quantities.  Compare this with the usage of the prime in assignment.el that indicates
 # complementary material (i.e., magnetic for electric).
