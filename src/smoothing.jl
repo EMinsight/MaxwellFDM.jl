@@ -62,6 +62,9 @@ nout_vxl(::Val{1}) = (SVector(1.), SVector(-1.))
 # Below, the primed quantities are for voxel corner quantities rather than voxel center
 # quantities.  Compare this with the usage of the prime in assignment.el that indicates
 # complementary material (i.e., magnetic for electric).
+smooth_param!(paramKd, oindKd′::AbsArr{ObjInd}, oind2shp, oind2pind, pind2matprm, isfield˔shp, gt₀, l, l′, σ, ∆τ′) =
+    smooth_param!(paramKd, tuple(oindKd′), oind2shp, oind2pind, pind2matprm, isfield˔shp, gt₀, l, l′, σ, ∆τ′)
+
 function smooth_param!(paramKd::AbsArrComplex{K₊₂},  # parameter array to smooth at voxel centers
                        oindKd′::NTuple{Kp⏐₁,AbsArr{ObjInd,K}},  # object index array at voxel corners; does not change
                        oind2shp::AbsVec{Shape{K,K²}},  # input map from oind to shape
