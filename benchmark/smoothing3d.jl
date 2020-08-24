@@ -316,14 +316,12 @@ N = g3.N
 εyy_oind3d = create_oind_array(N)
 εzz_oind3d = create_oind_array(N)
 εoo_oind3d = create_oind_array(N)
-εoind3d = (εxx_oind3d, εyy_oind3d, εzz_oind3d, εoo_oind3d)
 
 μ3d = create_param_array(N)
 μxx_oind3d = create_oind_array(N)
 μyy_oind3d = create_oind_array(N)
 μzz_oind3d = create_oind_array(N)
 μoo_oind3d = create_oind_array(N)
-μoind3d = (μxx_oind3d, μyy_oind3d, μzz_oind3d, μoo_oind3d)
 
 τl = g3.ghosted.τl
 
@@ -350,7 +348,7 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # material, whereas obj_cmp, pind_cmp, oind_cmp contain alter(gt)
 # material, so use ngt′ instead of ngt for them.
 ε3d_cmp = view(ε3d, ind_cmp..., nXYZ, nXYZ)
-μoind_cmp = view(μoind3d[nw], ind_cmp...)
+μoind_cmp = view((μxx_oind3d,μyy_oind3d,μzz_oind3d)[nw], ind_cmp...)
 
 # o = oind2obj[2]  # oind2obj[1]: Box, oind2obj[2]: Sphere
 # shape = o.shape
@@ -383,8 +381,14 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 @load "benchmark/smoothing_result.jld2" ε3d_assigned ε3d_smoothed
 boundft = SVector(EE,EE,EE)
 @time begin
-    assign_param!(ε3d, μoind3d, ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
-    assign_param!(μ3d, εoind3d, ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+      # Dealing with the diagonal entries first and then the off-diagonal entries is more
+      # error-prone because at some point the code was written such that dealing with the off-
+      # diagonal entries deals with the entires entries and the diagonal entries are
+      # overwritten later.  The more error-prone code is tested.
+    assign_param!(ε3d, (μxx_oind3d,μyy_oind3d,μzz_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(ε3d, μoo_oind3d, ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, εoo_oind3d, ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
 end
 @info "ε3d == ε3d_assigned? $(ε3d == ε3d_assigned)"
 
@@ -402,7 +406,14 @@ end
 
 # @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj_cmp′, pind_cmp′, oind_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
 
-@time smooth_param!(ε3d, εoind3d, oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+@time begin
+    # Dealing with the diagonal entries first and then the off-diagonal entries is more
+    # error-prone because at some point the code was written such that dealing with the off-
+    # diagonal entries deals with the entires entries and the diagonal entries are
+    # overwritten later.  The more error-prone code is tested.
+    smooth_param!(ε3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(ε3d, εoo_oind3d, oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+end
 # @info "ε3d ≈ ε3d_smoothed? $(ε3d ≈ ε3d_smoothed)"
 err_max, ci = findmax(abs.(ε3d .- ε3d_smoothed))
 @info "ε3d ≈ ε3d_smoothed? $(err_max / abs(ε3d_smoothed[ci]) < Base.rtoldefault(Float64))"

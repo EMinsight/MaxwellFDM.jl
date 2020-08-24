@@ -318,12 +318,23 @@ N = g2.N
 
 boundft = SVector(EE,EE)
 @time begin
-    assign_param!(ε2d, (εyy_oind2d,εxx_oind2d,μzz_oind2d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g2.ghosted.τl, g2.isbloch)
-    assign_param!(μ2d, (εoo_oind2d,), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g2.ghosted.τl, g2.isbloch)
+    # Set the diagonal entries of ε2d.
+    assign_param!(ε2d, (εyy_oind2d,εxx_oind2d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g2.ghosted.τl, g2.isbloch)
+
+    # Set the off-diagonal entries of ε2d.
+    assign_param!(ε2d, μzz_oind2d, ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g2.ghosted.τl, g2.isbloch)
+
+    # Set μ2d (array of scalars).
+    assign_param!(μ2d, εoo_oind2d, ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g2.ghosted.τl, g2.isbloch)
 end
 
+@time begin
+    # Smooth the diagonal entries of ε2d.
+    smooth_param!(ε2d, (εxx_oind2d,εyy_oind2d), oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g2.l, g2.ghosted.l, g2.σ, g2.ghosted.∆τ)
 
-# @time smooth_param!(ε2d, εoind2d, oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g2.l, g2.ghosted.l, g2.σ, g2.ghosted.∆τ)
+    # Smooth the off-diagonal entries of ε3d.
+    smooth_param!(ε2d, εoo_oind2d, oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g2.l, g2.ghosted.l, g2.σ, g2.ghosted.∆τ)
+end
 
 
 # # Construct arguments and call assign_param!.
