@@ -283,10 +283,10 @@ g1 = Grid(lprim, isbloch)
 
 # Create materials.
 εvac = 1.0
-vac = Material{2,2}("Vacuum", ε=εvac)  # Ke = 2, Km = 2; consider transverse components of ε and μ
+vac = Material{1,1}("Vacuum", ε=εvac)  # Ke = 1, Km = 1; consider single transverse component of ε and μ
 
 εdiel = 12.0
-diel = Material{2,2}("Dielectric", ε=εdiel)  # Ke = 2, Km = 2: consider transverse components of ε and μ
+diel = Material{1,1}("Dielectric", ε=εdiel)  # Ke = 1, Km = 1: consider single transverse component of ε and μ
 
 # Create objects.
 dom_vac = Object(Box(g1.bounds), vac)
@@ -298,32 +298,32 @@ obj_zp_diel = Object(Box([150], [75]), diel)
 oind2shp = Shape1[]
 oind2εind = ParamInd[]
 oind2μind = ParamInd[]
-εind2ε = SSComplex2[]
-μind2μ = SSComplex2[]
+εind2ε = SSComplex1[]
+μind2μ = SSComplex1[]
 
 add!(oind2shp, (oind2εind,oind2μind), (εind2ε,μind2μ), dom_vac, obj_diel, obj_zn_diel, obj_zp_diel)
 
 
 N = g1.N
-ε1d = create_param_array(N,2)
-ε_oind1d = create_oind_array(N)
+ε1d = create_param_array(N,1)
+εoind1d = create_oind_array(N)
 
-μ1d = create_param_array(N,2)
-μ_oind1d = create_oind_array(N)
+μ1d = create_param_array(N,1)
+μoind1d = create_oind_array(N)
 
 boundft = SVector(EE)
 @time begin
-    assign_param!(ε1d, (μ_oind1d,), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g1.ghosted.τl, g1.isbloch)
-    assign_param!(μ1d, (ε_oind1d,), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g1.ghosted.τl, g1.isbloch)
+    assign_param!(ε1d, μoind1d, ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g1.ghosted.τl, g1.isbloch)
+    assign_param!(μ1d, εoind1d, ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g1.ghosted.τl, g1.isbloch)
 end
 
-figure(1); clf();
+# figure(1); clf();
 # plot(zprim, real.(ε1d[:,1,1]))
-plot(zprim, ε_oind1d)
-# plot(zprim, μ_oind1d)
+# plot(zprim, εoind1d)
+# plot(zprim, μoind1d)
 
 
-# @time smooth_param!(ε1d, εoind1d, oind2shp, oind2εind, εind2ε, false, ft2gt.(EE,boundft), g1.l, g1.ghosted.l, g1.σ, g1.ghosted.∆τ)
+@time smooth_param!(ε1d, εoind1d, oind2shp, oind2εind, εind2ε, true, ft2gt.(EE,boundft), g1.l, g1.ghosted.l, g1.σ, g1.ghosted.∆τ)
 
 
 # # Construct arguments and call assign_param!.
