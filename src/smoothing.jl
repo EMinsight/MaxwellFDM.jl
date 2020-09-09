@@ -68,7 +68,7 @@ function smooth_param!(paramKd::AbsArrComplex{K₊₂},  # parameter array to sm
                        σ::Tuple2{NTuple{K,AbsVecBool}},  # false if on symmetry boundary; exclude ghost points (length(σ[PRIM][k]) = N[k])
                        ∆τ′::Tuple2{NTuple{K,AbsVecReal}},  # amount of shift by Bloch boundary conditions; include ghost points (length(∆τ′[PRIM][k]) = N[k]+1)
                        isfield˔shp::Bool=false  # true if spaces where field and shapes are defined are orthogonal complement of each other; false if they are the same
-                      ) where {K,Kp,K²,Kp²,K₊₂,Kp⏐₁}
+                       ) where {K,Kp,K²,Kp²,K₊₂,Kp⏐₁}
     @assert(K²==K^2 && Kp²==Kp^2 && K₊₂==K+2 && (Kp⏐₁==Kp || Kp⏐₁==1))
 
     ci_1 = CartesianIndex(ntuple(x->1, Val(K)))
@@ -162,7 +162,7 @@ function is_vxl_uniform!(oind_vxl′::MArray{TP,Int,K,Zᴷ},  # scratch vector t
                          oind_cmp′::AbsArr{ObjInd,K},  # object index array; does not change
                          oind2shp::AbsVec{Shape{K,K²}},  # input map from oind to shape
                          oind2pind::AbsVec{ParamInd}  # input map from oind to pind
-                        ) where {K,K²,TP,Zᴷ}
+                         ) where {K,K²,TP,Zᴷ}
     # Retrieve the elements assigned to voxel corners from 3D arrays.
     #
     # Unlike the rest of the code that is performed only where subpixel smoothing is
@@ -222,7 +222,7 @@ function smooth_param_vxl(ci_vxl′::Tuple2{CartesianIndex{K}},
                           σcmp::NTuple{K,AbsVecBool},  # false if on symmetry boundary
                           ∆τcmp′::NTuple{K,AbsVecReal},  # amount of shift into domain by Bloch boundary conditions
                           isfield˔shp::Bool=false  # true if spaces where material parameters and shapes are defined are orthogonal complement of each other; false if they are the same
-                         ) where {K,Kp,K²,Kp²,TP,Zᴷ}
+                          ) where {K,Kp,K²,Kp²,TP,Zᴷ}
         # First, attempt to apply Kottke's subpixel smoothing algorithm.
         nout = @SVector zeros(K)
         rvol = 0.0
@@ -361,7 +361,7 @@ function amean_param(ci_vxl′::Tuple2{CartesianIndex{K}},
                      oind_cmp′::AbsArr{ObjInd,K},  # object index array; does not change
                      oind2pind::AbsVec{ParamInd},  # input map from oind to pind
                      pind2matprm::AbsVec{SSComplex{Kp,Kp²}}  # map from pind to electric (magnetic) material parameters; Kp² = Kp^2
-                    ) where {K,Kp,Kp²}
+                     ) where {K,Kp,Kp²}
     p = SSComplex{Kp,Kp²}(ntuple(x->0, Val(Kp²)))
     for ci = ci_vxl′[1]:ci_vxl′[2]
         @inbounds pc = pind2matprm[oind2pind[oind_cmp′[ci]]]
@@ -374,7 +374,7 @@ function hmean_param(ci_vxl′::Tuple2{CartesianIndex{K}},
                      oind_cmp′::AbsArr{ObjInd,K},  # object index array; does not change
                      oind2pind::AbsVec{ParamInd},  # input map from oind to pind
                      pind2matprm::AbsVec{SSComplex{Kp,Kp²}}  # map from pind to electric (magnetic) material parameters; Kp² = Kp^2
-                    ) where {K,Kp,Kp²}
+                     ) where {K,Kp,Kp²}
     p = SSComplex{Kp,Kp²}(ntuple(x->0, Val(Kp²)))
     for ci = ci_vxl′[1]:ci_vxl′[2]
         @inbounds pc = pind2matprm[oind2pind[oind_cmp′[ci]]]

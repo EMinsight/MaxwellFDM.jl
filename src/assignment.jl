@@ -185,7 +185,7 @@ function assign_param!(paramKd::AbsArrComplex{K₊₂},  # electric (magnetic) p
                        pind2matprm::AbsVec{SSComplex{Kp,Kp²}},  # map from pind to electric (magnetic) material parameters; Kp² = Kp^2
                        τl::Tuple2{NTuple{K,AbsVecReal}},  # field component locations transformed by boundary conditions
                        isbloch::SBool{K}  # boundary conditions
-                      ) where {K,Kp,K²,Kp²,K₊₂,Kp⏐₁}
+                       ) where {K,Kp,K²,Kp²,K₊₂,Kp⏐₁}
     @assert(K²==K^2 && Kp²==Kp^2 && K₊₂==K+2 && (Kp⏐₁==Kp || Kp⏐₁==1))
     # `sub` is the subscripts for obj3d, pind3d, oind3d.
     #
