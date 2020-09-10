@@ -41,14 +41,13 @@ function kottke_avg_param(param1::SSComplex{K}, param2::SSComplex{K}, n12::SFloa
     return S * τ⁻¹_trans(τavg) * transpose(S)  # apply τ⁻¹ and transform back to global coordinates
 end
 
-# Kottke's averaging scheme reduced for the field dimension is orthogonal to the shape
+# Kottke's averaging scheme reduced for the field dimension orthogonal to the shape
 # dimension (such as Hz in the TE mode).  In that case, the field is always parallel to the
 # shape boundaries, so the averaging scheme reduces to simple arithmetic averaging.  For
-# example for the case with Shape{2} and Kp = 1 (like Hz in the TE mode), the material
+# example for the case with Shape{2} and Kf = 1 (like Hz in the TE mode), the material
 # parameter is an 1×1 tensor (= scalar) and therefore the situation is the same as averaging
-# isotropic ε between E-field voxels, which is arithmetic averaging.  The only other cases
-# are the case with Shape{1} and Kp = 2 (like Ex and Ey in the slaps in the z-direction) and
-# the case with Shape{1} and Kp = 1  (like Ex in the slapes in the z-direction).  We can
+# isotropic ε between E-field voxels, which is arithmetic averaging.  The only other case is
+# the case with Shape{1} and Kf = 1  (like Ex in the slapes in the z-direction).  We can
 # easily prove that in these cases again the averaging reduces to simple arithmetic
 # averaging between material parameter tensors.  See Agenda > MaxwellFDM > Feb/22/2020.
 kottke_avg_param(param1::AbsMatNumber, param2::AbsMatNumber, rvol1::Real) =
