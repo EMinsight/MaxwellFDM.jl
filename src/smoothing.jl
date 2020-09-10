@@ -69,7 +69,8 @@ function smooth_param!(paramKd::AbsArrComplex{K₊₂},  # parameter array to sm
                        ∆τ′::Tuple2{NTuple{K,AbsVecReal}},  # amount of shift by Bloch boundary conditions; include ghost points (length(∆τ′[PRIM][k]) = N[k]+1)
                        isfield˔shp::Bool=false  # true if spaces where field and shapes are defined are orthogonal complement of each other; false if they are the same
                        ) where {K,Kf,K²,Kf²,K₊₂,Kf⏐₁}
-    @assert(K²==K^2 && Kf²==Kf^2 && K₊₂==K+2 && (Kf⏐₁==Kf || Kf⏐₁==1))
+    @assert K²==K^2 && Kf²==Kf^2 && K₊₂==K+2 && (Kf⏐₁==Kf || Kf⏐₁==1)
+    @assert size(paramKd,K+1)==size(paramKd,K+2)==Kf
 
     ci_1 = CartesianIndex(ntuple(x->1, Val(K)))
     for nw = 1:Kf⏐₁

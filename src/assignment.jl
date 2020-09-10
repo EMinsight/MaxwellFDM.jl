@@ -187,7 +187,8 @@ function assign_param!(paramKd::AbsArrComplex{K₊₂},  # electric (magnetic) p
                        τl::Tuple2{NTuple{K,AbsVecReal}},  # field component locations transformed by boundary conditions
                        isbloch::SBool{K}  # boundary conditions
                        ) where {K,Kf,K²,Kf²,K₊₂,Kf⏐₁}
-    @assert(K²==K^2 && Kf²==Kf^2 && K₊₂==K+2 && (Kf⏐₁==Kf || Kf⏐₁==1))
+    @assert K²==K^2 && Kf²==Kf^2 && K₊₂==K+2 && (Kf⏐₁==Kf || Kf⏐₁==1)
+    @assert size(paramKd,K+1)==size(paramKd,K+2)==Kf
     # `sub` is the subscripts for obj3d, pind3d, oind3d.
     #
     # Store circularly shifted subscripts in sub for Bloch boundary condition, such that
