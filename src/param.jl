@@ -6,8 +6,8 @@ param_arr2mat(paramKd::AbsArrComplex,  # material parameter array
               N::AbsVecInteger,  # size of grid
               ∆l::NTuple{K,AbsVecNumber},  # line segments to multiply with; vectors of length N
               ∆l′::NTuple{K,AbsVecNumber},  # line segments to divide by; vectors of length N
-              isbloch::AbsVecBool,  # boundary conditions in x, y, z
-              e⁻ⁱᵏᴸ::AbsVecNumber=ones(K);  # Bloch phase factor in x, y, z
+              isbloch::AbsVecBool,  # for K = 3, boundary conditions in x, y, z
+              e⁻ⁱᵏᴸ::AbsVecNumber=ones(K);  # for K = 3, Bloch phase factor in x, y, z
               reorder::Bool=true  # true for more tightly banded matrix
               ) where {K} =
     param_arr2mat(paramKd, SVector{K}(gt₀), SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder)
@@ -21,8 +21,8 @@ function param_arr2mat(paramKd::AbsArrComplex{K₊₂},  # material parameter ar
                        N::SInt{K},  # size of grid
                        ∆l::NTuple{K,AbsVecNumber},  # line segments to multiply with; vectors of length N
                        ∆l′::NTuple{K,AbsVecNumber},  # line segments to divide by; vectors of length N
-                       isbloch::SBool{K},  # boundary conditions in x, y, z
-                       e⁻ⁱᵏᴸ::SNumber{K};  # Bloch phase factor in x, y, z
+                       isbloch::SBool{K},  # for K = 3, boundary conditions in x, y, z
+                       e⁻ⁱᵏᴸ::SNumber{K};  # for K = 3, Bloch phase factor in x, y, z
                        reorder::Bool=true  # true for more tightly banded matrix
                        ) where {K,K₊₂}
     Kf = size(paramKd, K+1)  # field dimension
@@ -56,8 +56,8 @@ function param_arr2mat(paramKd::AbsArrComplex{K₊₂},  # material parameter ar
     # This means if the w-boundaries are E-field boundaries,
     # - the input E(H)w-field needs to be backward(forward)-averaged in the w-direction, and
     # - the output E(H)w-field needs to be forward(backward)-averaged in the w-direction.
-    isfwd_in = gt₀.==DUAL  # SBool{3}; true if input fields need to be forward-averaged
-    isfwd_out = gt₀.==PRIM  # SBool{3}; true if output fields need to be backward-averaged
+    isfwd_in = gt₀.==DUAL  # SBool{K}; true if input fields need to be forward-averaged
+    isfwd_out = gt₀.==PRIM  # SBool{K}; true if output fields need to be backward-averaged
 
     # For the output averaging, ∆l and ∆l′ are not supplied to create_mean in order to
     # create a simple arithmetic averaging operator.  This is because the area factor matrix
