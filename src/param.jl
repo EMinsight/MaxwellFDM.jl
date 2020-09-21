@@ -110,7 +110,9 @@ end
 # ⎣O X O⎦
 #
 # So, kdiag is the index counted from the main diagonal (kdiag = 0) along the superdiagonal
-# direction.  See RN - Subpixel Smoothing > [Update (May/13/2018)].
+# direction.  See RN - Subpixel Smoothing > [Update (May/13/2018)].  Note that if the X is
+# the vw-block, then it is constructed with the vw-component of the material parameter (e.g.,
+# for ε, if X is the xy-block, then it is constructed with εxy).
 function create_param_matrix(paramKd::AbsArrComplex{K₊₂},  # size of last two dimensions: Kf-by-Kf
                              kdiag::Integer,  # 0 ≤ kdiag ≤ Kf-1; index of diagonal of material parameter tensor to set (kdiag = 0: main diagonal)
                              N::SInt{K};  # size of grid
