@@ -207,7 +207,7 @@ function assign_param!(paramKd::AbsArrComplex{K₊₂},  # electric (magnetic) p
     # must be circshifted to left in order to be sorted.
     # - symmetry: ghost points copy the values of non-ghost points at the negative end, so τl is
     # already sorted.
-    @inbounds M = length.(τl[nPR])  # N.+1
+    @inbounds M = length.(τl[nPR])  # NTuple{K,Int}: N.+1
     sub = (map((m,b)->circshift(1:m,b), M, isbloch.data),  # NTuple{K,VecInt}: primal grid
            map((m,b)->circshift(1:m,-b), M, isbloch.data))  # NTuple{K,VecInt}: dual grid
 
@@ -234,8 +234,8 @@ function assign_param!(paramKd::AbsArrComplex{K₊₂},  # electric (magnetic) p
     # Similarly, dual paramKd must be circshifted to right if the dual τl is NOT circshifted
     # to left.  (This is also to send paramKd's ghost points existing at the positive end to
     # the negative end, where the ghost points of the non-circshifted dual τl exist).
-    psub = (map((m,b)->circshift(1:m,b), M, isbloch.data),  # Tuple3{VecInt}: primal grid
-            map((m,b)->circshift(1:m,!b), M, isbloch.data))  # Tuple3{VecInt}: dual grid
+    psub = (map((m,b)->circshift(1:m,b), M, isbloch.data),  # NTuple{K,VecInt}: primal grid
+            map((m,b)->circshift(1:m,!b), M, isbloch.data))  # NTuple{K,VecInt}: dual grid
 
     # Perform assignment.
     for nw = 1:Kf⏐₁  # if Kf⏐₁ == Kf for Kf = 3, w = X̂, Ŷ, Ẑ
@@ -243,11 +243,11 @@ function assign_param!(paramKd::AbsArrComplex{K₊₂},  # electric (magnetic) p
         gt_cmp = Kf⏐₁==1 ? gt₀ : gt_w(nw, gt₀)
 
         # Choose the circularly shifted subscripts to use.
-        sub_cmp = t_ind(sub, gt_cmp)  # Tuple3{VecInt}
-        psub_cmp = t_ind(psub, gt_cmp)  # Tuple3{VecInt}
+        sub_cmp = t_ind(sub, gt_cmp)  # NTuple{K,VecInt}
+        psub_cmp = t_ind(psub, gt_cmp)  # NTuple{K,VecInt}
 
         # Prepare the circularly shifted locations of the field components.
-        τlcmp = view.(t_ind(τl,gt_cmp), sub_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
+        τlcmp = view.(t_ind(τl,gt_cmp), sub_cmp)  # NTuple{K,VecFloat}: locations of Fw = Uw or Vw
 
         # Note that view() below is used to get a circularly shifted version of the
         # array, not a portion of.
