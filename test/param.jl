@@ -44,7 +44,7 @@
     ft = EE
     smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mε = param_arr2mat(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, reorder=false)
+    Mε = param_arr2mat(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, order_cmpfirst=false)
 
     @test issymmetric(Mε)
 
@@ -95,7 +95,7 @@ end  # @testset "param_arr2mat"
     ft = EE
     smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mε = param_arr2mat(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, reorder=false)
+    Mε = param_arr2mat(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, order_cmpfirst=false)
 
     # Ml
     ∆lprim = g3.∆l[nPR]

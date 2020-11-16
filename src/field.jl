@@ -20,6 +20,7 @@ export create_field3d, field3d2vec
 create_field3d(N::SInt{3}) = zeros(CFloat, N.data..., 3)  # 3 = numel(Axis)
 
 # Below, permutedims(f3d, ...) create a new array, whereas reshape(f3d, :) doesn't.
-# Therefore, if implemented naively, this function creates a new array for reorder = true
-# whereas it doesn't for reorder = false.  Make sure to create a new array always.
-field3d2vec(f3d::AbsArrNumber{4}; reorder::Bool=true) = reorder ? reshape(permutedims(f3d, (4,nXYZ.data...)), :) : reshape(f3d,:)
+# Therefore, if implemented naively, this function creates a new array for order_cmpfirst =
+# true whereas it doesn't for order_cmpfirst = false.
+field3d2vec(f3d::AbsArrNumber{4}; order_cmpfirst::Bool=true) =
+    order_cmpfirst ? reshape(permutedims(f3d, (4,1,2,3)), :) : reshape(f3d,:)

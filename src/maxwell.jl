@@ -198,7 +198,7 @@ function get_εmatrix(m::Maxwell)
         ∆l′ = t_ind(s∆l, alter.(gh))
 
         ε3d = m.param3d[nE]
-        m.Mε = param_arr2mat(ε3d, EE, m.boundft, g.N, ∆l, ∆l′, g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Mε = param_arr2mat(ε3d, EE, m.boundft, g.N, ∆l, ∆l′, g.isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=true)
     end
 
     return m.Mε
@@ -211,7 +211,7 @@ function get_curle(m::Maxwell)
         gh = ft2gt.(HH, m.boundft)  # HH, not EE, because ∆l for Ce is defined at H-field locations
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Ce = create_curl(m.boundft.==EE, g.N, t_ind(s∆l,gh), g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Ce = create_curl(m.boundft.==EE, g.N, t_ind(s∆l,gh), g.isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=true)
     end
 
     return m.Ce
@@ -224,7 +224,7 @@ function get_curlm(m::Maxwell)
         ge = ft2gt.(EE, m.boundft)  # EE, not HH, because ∆l for Cm is defined at E-field locations
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Cm = create_curl(m.boundft.==HH, g.N, t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Cm = create_curl(m.boundft.==HH, g.N, t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=true)
     end
 
     return m.Cm
@@ -286,7 +286,7 @@ function get_Mc(m::Maxwell)
         # - We supply ∆l and ∆l′ because we want to use weighted arithmetic averaging for
         # this backward averaging.
         # - kdiag = 0 for putting Ex, Ey, Ez to voxel corners.
-        m.Mc = create_mean(m.boundft.==HH, g.N, t_ind(s∆l,gh), t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, kdiag=0, reorder=true)
+        m.Mc = create_mean(m.boundft.==HH, g.N, t_ind(s∆l,gh), t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, kdiag=0, order_cmpfirst=true)
     end
 
     return m.Mc
@@ -306,7 +306,7 @@ function get_Ml(m::Maxwell)
         # - We do not supply ∆l and ∆l′ because we want to use unweighted arithmetic
         # averaging for this forward averaging.
         # - kdiag = +1 for putting Ex, Ey, Ez to Ez, Ex, Ey locations.
-        m.Ml = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=1, reorder=true)
+        m.Ml = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=1, order_cmpfirst=true)
     end
 
     return m.Ml
@@ -326,7 +326,7 @@ function get_Mr(m::Maxwell)
         # - We do not supply ∆l and ∆l′ because we want to use unweighted arithmetic
         # averaging for this forward averaging.
         # - kdiag = -1 for putting Ex, Ey, Ez to Ey, Ez, Ex locations.
-        m.Mr = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=-1, reorder=true)
+        m.Mr = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=-1, order_cmpfirst=true)
     end
 
     return m.Mr
@@ -369,8 +369,8 @@ function get_bvector(m::Maxwell)
         require_je3d!(m)
         require_jm3d!(m)
 
-        je = field3d2vec(m.je3d, reorder=true)
-        jm = field3d2vec(m.jm3d, reorder=true)
+        je = field3d2vec(m.je3d, order_cmpfirst=true)
+        jm = field3d2vec(m.jm3d, order_cmpfirst=true)
 
         ω = in_ω₀(get_osc(m))
         Cm = get_curlm(m)

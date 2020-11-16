@@ -8,9 +8,9 @@ param_arr2mat(paramKd::AbsArrComplex,  # material parameter array
               ∆l′::NTuple{K,AbsVecNumber},  # line segments to divide by; vectors of length N
               isbloch::AbsVecBool,  # for K = 3, boundary conditions in x, y, z
               e⁻ⁱᵏᴸ::AbsVecNumber=ones(K);  # for K = 3, Bloch phase factor in x, y, z
-              reorder::Bool=true  # true for more tightly banded matrix
+              order_cmpfirst::Bool=true  # true to use Cartesian-component-major ordering for more tightly banded matrix
               ) where {K} =
-    param_arr2mat(paramKd, SVector{K}(gt₀), SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), reorder=reorder)
+    param_arr2mat(paramKd, SVector{K}(gt₀), SVector{K}(N), ∆l, ∆l′, SVector{K}(isbloch), SVector{K}(e⁻ⁱᵏᴸ), order_cmpfirst=order_cmpfirst)
 
 # Below, N can be retrieved from the size of paramKd or ∆l, but I pass it to make the size
 # more explicit.  This also makes the argument list similar to create_mean()'s, which
@@ -23,7 +23,7 @@ function param_arr2mat(paramKd::AbsArrComplex{K₊₂},  # material parameter ar
                        ∆l′::NTuple{K,AbsVecNumber},  # line segments to divide by; vectors of length N
                        isbloch::SBool{K},  # for K = 3, boundary conditions in x, y, z
                        e⁻ⁱᵏᴸ::SNumber{K};  # for K = 3, Bloch phase factor in x, y, z
-                       reorder::Bool=true  # true for more tightly banded matrix
+                       order_cmpfirst::Bool=true  # true to use Cartesian-component-major ordering for more tightly banded matrix
                        ) where {K,K₊₂}
     Kf = size(paramKd, K+1)  # field dimension
     @assert size(paramKd,K+2)==Kf
@@ -64,10 +64,10 @@ function param_arr2mat(paramKd::AbsArrComplex{K₊₂},  # material parameter ar
     # multiplied for symmetry to the left of the material parameter matrix multiplies the
     # same area factor to the two fields being averaged.  (See my notes on Jul/18/2018 in
     # MaxwellFDM in Agenda.)
-    Mout = create_mean(isfwd_out, N, isbloch, e⁻ⁱᵏᴸ, reorder=reorder)
+    Mout = create_mean(isfwd_out, N, isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=order_cmpfirst)
 
     kdiag = 0
-    param_mat = create_param_matrix(paramKd, kdiag, N, reorder=reorder)  # diagonal components of ε tensor
+    param_mat = create_param_matrix(paramKd, kdiag, N, order_cmpfirst=order_cmpfirst)  # diagonal components of ε tensor
     for kdiag = 1:Kf-1  # index of diagonal of ε tensor
         # For the input averaging, ∆l and ∆l′ are supplied to create min in order to create
         # a line integral averaging operator.  This is because the inverse of the length
@@ -76,12 +76,12 @@ function param_arr2mat(paramKd::AbsArrComplex{K₊₂},  # material parameter ar
         # segments.  The ∆l factors multiplied inside create_minfo cancel the effect of this
         # multiplication with the nonuniform line segments.  (See my notes on Jul/18/2018 in
         # MaxwellFDM in Agenda.)
-        Min = create_mean(isfwd_in, N, ∆l, ∆l′, isbloch, e⁻ⁱᵏᴸ, reorder=reorder)
+        Min = create_mean(isfwd_in, N, ∆l, ∆l′, isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=order_cmpfirst)
 
         # Below, Min and Mout are block-diagonal, but param_matₖ is block-off-diagonal
         # (1 ≤ kdiag ≤ Kf-1).  See my bullet point entitled [Update (May/13/2018)] in RN -
         # Subpixel Smoothing.
-        param_matₖ = create_param_matrix(paramKd, kdiag, N, reorder=reorder)
+        param_matₖ = create_param_matrix(paramKd, kdiag, N, order_cmpfirst=order_cmpfirst)
         param_mat += Mout * param_matₖ * Min
     end
 
@@ -116,7 +116,7 @@ end
 function create_param_matrix(paramKd::AbsArrComplex{K₊₂},  # size of last two dimensions: Kf-by-Kf
                              kdiag::Integer,  # 0 ≤ kdiag ≤ Kf-1; index of diagonal of material parameter tensor to set (kdiag = 0: main diagonal)
                              N::SInt{K};  # size of grid
-                             reorder::Bool=true  # true for more tightly banded matrix
+                             order_cmpfirst::Bool=true  # true to use Cartesian-component-major ordering for more tightly banded matrix
                              ) where {K,K₊₂}
     Kf = size(paramKd, K+1)  # field dimension
     @assert size(paramKd,K+2)==Kf
