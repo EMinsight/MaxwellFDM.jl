@@ -129,17 +129,20 @@ function create_param_matrix(paramKd::AbsArrComplex{K₊₂},  # size of last tw
     J = VecInt(undef, KfM)
     V = VecComplex(undef, KfM)
     n = 0
+
+    CI = CartesianIndices(N.data)
+    LI = LinearIndices(N.data)
     for nv = 1:Kf  # row index of material parameter tensor
-        istr, ioff = reorder ? (Kf, nv-Kf) : (1, M*(nv-1))  # (row stride, row offset)
+        istr, ioff = order_cmpfirst ? (Kf, nv-Kf) : (1, M*(nv-1))  # (row stride, row offset)
         nw = mod1(nv+kdiag, Kf)  # column index of material parameter tensor
-        jstr, joff = reorder ? (Kf, nw-Kf) : (1, M*(nw-1))  # (column stride, column offset)
-        for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
+        jstr, joff = order_cmpfirst ? (Kf, nw-Kf) : (1, M*(nw-1))  # (column stride, column offset)
+        for ci = CI
             n += 1
-            ind = LinearIndices(N.data)[i,j,k]  # linear index of Yee's cell
+            ind = LI[ci]  # linear index of Yee's cell
 
             I[n] = istr * ind + ioff
             J[n] = jstr * ind + joff
-            V[n] = paramKd[i,j,k,nv,nw]
+            V[n] = paramKd[ci,nv,nw]
         end
     end
 
