@@ -270,12 +270,12 @@ function assign_param!(paramKd::AbsArrComplex{K₊₂},  # electric (magnetic) p
         # deals with only the case of Kf⏐₁==1 && Kf≥2.
         if Kf⏐₁ == Kf  # Kf⏐₁==Kf && Kf≥2, or Kf⏐₁==1 && Kf==1
             # Overwrite the (nw,nw)-diagonal entry of paramKd.
-            param_cmp = view(paramKd, psub_cmp..., nw, nw)  # circularly shifted (nw,nw)-component of paramKd; ndims = 3
+            param_cmp = view(paramKd, psub_cmp..., nw, nw)  # circularly shifted (nw,nw)-component of paramKd; ndims(param_cmp) = 3
             pind2matprm_w = [mp[nw,nw] for mp = pind2matprm]
             assign_param_cmp!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm_w, τlcmp)
         else  # Kf⏐₁==1 && Kf≥2
             # Overwrite the off-diagonal entires of paramKd.
-            param_cmp = view(paramKd, psub_cmp..., 1:Kf, 1:Kf)  # circularly shifted paramKd; ndims = K+2
+            param_cmp = view(paramKd, psub_cmp..., 1:Kf, 1:Kf)  # circularly shifted paramKd; ndims(param_cmp) = K+2
             assign_param_cmp!(param_cmp, oind′_cmp, oind2shp, oind2pind, pind2matprm, τlcmp)  # this does nothing for Kf = 1
         end
     end
