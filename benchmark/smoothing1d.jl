@@ -313,8 +313,8 @@ N = g1.N
 
 boundft = SVector(EE)
 @time begin
-    assign_param!(ε1d, μoind1d, ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g1.ghosted.τl, g1.isbloch)
-    assign_param!(μ1d, εoind1d, ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g1.ghosted.τl, g1.isbloch)
+    assign_param!(ε1d, tuple(μoind1d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g1.ghosted.τl, g1.isbloch)
+    assign_param!(μ1d, tuple(εoind1d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g1.ghosted.τl, g1.isbloch)
 end
 
 # figure(1); clf();
@@ -323,7 +323,7 @@ end
 # plot(zprim, μoind1d)
 
 
-@time smooth_param!(ε1d, εoind1d, oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g1.l, g1.ghosted.l, g1.σ, g1.ghosted.∆τ, true)
+@time smooth_param!(ε1d, tuple(εoind1d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g1.l, g1.ghosted.l, g1.σ, g1.ghosted.∆τ)
 
 
 # # Construct arguments and call assign_param!.

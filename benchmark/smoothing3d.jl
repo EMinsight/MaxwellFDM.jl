@@ -386,9 +386,9 @@ boundft = SVector(EE,EE,EE)
       # diagonal entries deals with the entires entries and the diagonal entries are
       # overwritten later.  The more error-prone code is tested.
     assign_param!(ε3d, (μxx_oind3d,μyy_oind3d,μzz_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
-    assign_param!(ε3d, μoo_oind3d, ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(ε3d, tuple(μoo_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
     assign_param!(μ3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
-    assign_param!(μ3d, εoo_oind3d, ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, tuple(εoo_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
 end
 @info "ε3d == ε3d_assigned? $(ε3d == ε3d_assigned)"
 
@@ -412,7 +412,7 @@ end
     # diagonal entries deals with the entires entries and the diagonal entries are
     # overwritten later.  The more error-prone code is tested.
     smooth_param!(ε3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
-    smooth_param!(ε3d, εoo_oind3d, oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(ε3d, tuple(εoo_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 end
 # @info "ε3d ≈ ε3d_smoothed? $(ε3d ≈ ε3d_smoothed)"
 err_max, ci = findmax(abs.(ε3d .- ε3d_smoothed))
