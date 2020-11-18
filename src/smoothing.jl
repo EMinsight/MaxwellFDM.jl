@@ -334,7 +334,7 @@ function smooth_param_vxl(ci_vxl′::Tuple2{CartesianIndex{K}},
         # Find
         # - nout (outward normal of the foreground object), and
         # - rvol (volume fraction of the foreground object inside the voxel).
-        ci_cmp = ci_vxl′[1]
+        ci_cmp = ci_vxl′[1]  # CartesianIndex{K}
         σvxl = t_ind(σcmp, ci_cmp)
         if !with2objs  # two material parameters but more than two objects in voxel
             # In this case, the interface between two materials is not defined by the
@@ -360,26 +360,9 @@ function smooth_param_vxl(ci_vxl′::Tuple2{CartesianIndex{K}},
             prm_vxl = ft==EE ? amean_param(obj_cmp′, ci_vxl′, ft)::SSComplex{Kf,Kf²} :
                                hmean_param(obj_cmp′, ci_vxl′, ft)::SSComplex{Kf,Kf²}
         else
-            # The following block is to support the transformed anisotropic materials behind
-            # the symmetry boundaries.  S * param * S is the material parameter behind the
-            # symmetry boundary.  The code is trying to produce an averaged material
-            # parameter between the original material and the symmetry material.
-            #
-            # The simple arithmetic averaging taken between the original and symmetry
-            # materials below is not a very accurate treatment.  However, it produces the
-            # correct D-field from the E-field on the symmetry boundary (where only the
-            # normal E-field exists).
-            #
-            # Having zeros at the right location in the material parameter tensor is
-            # critical for achieving a symmetric matrix after field averaging!  See my notes
-            # entitled [Beginning of the part added on Aug/14/2018] in RN - Subpixel Smoothing.nb.
-            S = diagm(Val(0) => .!σvxl - σvxl)  # .!σvxl - σvxl = [1,-1,-1] for σvxl = [false,true,true] (x-normal symmetry boundary)
-            prm_fg = 0.5 * (prm_fg + S * prm_fg * S)
-            prm_bg = 0.5 * (prm_bg + S * prm_bg * S)
-
             # Perform Kottke's subpixel smoothing (defined in material.jl).
             prm_vxl = isfield˔shp ? kottke_avg_param(prm_fg, prm_bg, rvol) :  # field is always parallel to shape boundaries
-                                     kottke_avg_param(prm_fg, prm_bg, nout, rvol)
+                                    kottke_avg_param(prm_fg, prm_bg, nout, rvol)
         end
 
     return prm_vxl
