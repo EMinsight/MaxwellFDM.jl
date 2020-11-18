@@ -131,7 +131,7 @@ end  # @testset "distweights"
     ft = EE
     boundft = SVector(EE,EE,EE)
 
-    j3d = create_field3d(g3.N)
+    j3d = create_field_array(g3.N)
     add!(j3d, ft, boundft, g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
 
     @test maximum(abs, j3d) == 1.0  # J = K / ∆z
@@ -142,7 +142,7 @@ end  # @testset "distweights"
     lprim = (-10:0.5:10, -10:0.5:10, -10:0.5:10)
     g3_fine = Grid(lprim, isbloch)
 
-    j3d_fine = create_field3d(g3_fine.N)
+    j3d_fine = create_field_array(g3_fine.N)
     add!(j3d_fine, ft, boundft, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
     ∆a_fine = 0.5^2  # area element
 
@@ -159,7 +159,7 @@ end  # @testset "distweights"
     ∆yprim = g3_nu.∆l[nPR][nY]
     ∆zprim = g3_nu.∆l[nPR][nZ]
 
-    j3d_nu = create_field3d(g3_nu.N)
+    j3d_nu = create_field_array(g3_nu.N)
     add!(j3d_nu, ft, boundft, g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
 
     @test sum(j3d[1,:,:,nX]) * ∆a ≈ sum(j3d_nu[1,:,:,nX] .* (∆yprim * transpose(∆zprim)))  # total current through x-normal cross section is independent of grid resolution
@@ -180,7 +180,7 @@ end  # @testset "PlaneSrc"
     ft = EE
     boundft = SVector(EE,EE,EE)
 
-    j3d = create_field3d(g3.N)
+    j3d = create_field_array(g3.N)
     add!(j3d, ft, boundft, g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
 
     @test sum(j3d[:,:,:,nX] .!= 0) == sum(j3d[:,:,:,nY] .!= 0) == sum(j3d[:,:,:,nZ] .!= 0) == 8
@@ -192,7 +192,7 @@ end  # @testset "PlaneSrc"
     lprim = (-10:0.5:10, -10:0.5:10, -10:0.5:10)
     g3_fine = Grid(lprim, isbloch)
 
-    j3d_fine = create_field3d(g3_fine.N)
+    j3d_fine = create_field_array(g3_fine.N)
     add!(j3d_fine, ft, boundft, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
     ∆v_fine = 0.5^3  # volume element (dipole-normal area element * dipole length)
 
@@ -213,7 +213,7 @@ end  # @testset "PlaneSrc"
     ∆yprim = g3_nu.∆l[nPR][nY]
     ∆zdual = g3_nu.∆l[nDL][nZ]
 
-    j3d_nu = create_field3d(g3_nu.N)
+    j3d_nu = create_field_array(g3_nu.N)
     add!(j3d_nu, ft, boundft, g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
 
     Nx, Ny, Nz = g3_nu.N.data

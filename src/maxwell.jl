@@ -336,14 +336,14 @@ end
 function require_je3d!(m::Maxwell)
     if ~isdefined(m, :je3d)
         g = get_grid(m)
-        m.je3d = create_field3d(g.N)
+        m.je3d = create_field_array(g.N)
     end
 end
 
 function require_jm3d!(m::Maxwell)
     if ~isdefined(m, :jm3d)
         g = get_grid(m)
-        m.jm3d = create_field3d(g.N)
+        m.jm3d = create_field_array(g.N)
     end
 end
 
@@ -369,8 +369,8 @@ function get_bvector(m::Maxwell)
         require_je3d!(m)
         require_jm3d!(m)
 
-        je = field3d2vec(m.je3d, order_cmpfirst=true)
-        jm = field3d2vec(m.jm3d, order_cmpfirst=true)
+        je = field_arr2vec(m.je3d, order_cmpfirst=true)
+        jm = field_arr2vec(m.jm3d, order_cmpfirst=true)
 
         ω = in_ω₀(get_osc(m))
         Cm = get_curlm(m)
