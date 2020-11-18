@@ -72,9 +72,24 @@ create_oind_array(N::SInt) = zeros(ObjInd, (N.+1).data)
 # Notes on ghost point transformation by boundary conditions
 #
 # - First of all, do not transform objects according to boundary conditions.  Periodization,
-# for example, must be done by explicitly putting the translated object.  (In other words,
+# for example, must be done by explicitly putting the translated object.  In other words,
 # the solver periodizes the whatever composition inside the domain, but composing the space
-# inside the domain is the user's responsibility.)
+# inside the domain is the user's responsibility.  (The user also must make sure that the
+# direction normal to the object surface is correctly calculated at the points on periodic
+# boundaries.  This is achieved by making the object to extrude the periodic boundary
+# sufficiently deep with the shape appearing on the opposite periodic boundary.  If the
+# object extrudes the periodic boundary too shallow, with the extruded part is cut with a
+# plane parallel to the domain boundary, then some boundary points within the object could
+# be closer to the cut surface than the actual object surface, such that the boundary normal
+# could be wrongly chosen as the direction normal.  It is safe, and also easy, to make the
+# object to extrude a periodic boundary by the entire shape appearing on the opposite
+# boundary, because then the boundary points cannot feel the effect of the termination of
+# the object by periodic boundaries at all when calculating the direction normal at the
+# object surface.  This means that when mimicking a 2D problem by a 3D problem with one cell
+# in the z-direction, putting prism-shaped objects with prism height of ∆z is not sufficient;
+# it is safer to make the prism height 3∆z, as on the +z-boundary the object appearing on
+# the opposite boundary has a thickness of ∆z, and on the -z-boundary the object appearing
+# on the opposite boundary has also a thickness of ∆z.  See example/usage_uni.jl.)
 #
 # - Transform ghost points back to the corresponding points inside the domain, and see which
 # object is there.  Assign that object to the ghost points.
