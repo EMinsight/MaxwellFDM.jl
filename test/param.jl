@@ -1,7 +1,7 @@
 @testset "param" begin
 
 # Need to test symmetry of param3dmat for different boundary conditions.
-@testset "symmetry of param_arr2mat, uniform grid" begin
+@testset "symmetry of create_paramop, uniform grid" begin
     # Create a grid.
     isbloch = [true, true, true]
     # isbloch = [true, false, false]
@@ -44,15 +44,15 @@
     ft = EE
     smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mε = param_arr2mat(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, order_cmpfirst=false)
+    Mε = create_paramop(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, order_cmpfirst=false)
 
     @test issymmetric(Mε)
 
     # Code I used to reveal the matrix structure while debugging:
     # (i,j) = (nX,nY); full(real.(Mε3))[27(i-1)+1:27i, 27(j-1)+1:27j]
-end  # @testset "param_arr2mat"
+end  # @testset "create_paramop"
 
-@testset "symmetry of param_arr2mat, nonuniform grid" begin
+@testset "symmetry of create_paramop, nonuniform grid" begin
     # Create a grid.
     isbloch = [true, true, true]
     # isbloch = [true, false, false]
@@ -95,7 +95,7 @@ end  # @testset "param_arr2mat"
     ft = EE
     smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mε = param_arr2mat(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, order_cmpfirst=false)
+    Mε = create_paramop(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, order_cmpfirst=false)
 
     # Ml
     ∆lprim = g3.∆l[nPR]
@@ -129,7 +129,7 @@ end  # @testset "param_arr2mat"
 
     # Code I used to reveal the matrix structure while debugging:
     # (i,j) = (nX,nY); full(real.(Mε3))[27(i-1)+1:27i, 27(j-1)+1:27j]
-end  # @testset "param_arr2mat"
+end  # @testset "create_paramop"
 
 # Need to test if PML still works after the field-averaging operator applied to the material
 # parameters, because effectively it makes the material inhomogeneous along the direction

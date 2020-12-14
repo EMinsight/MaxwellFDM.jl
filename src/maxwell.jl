@@ -198,7 +198,7 @@ function get_εmatrix(m::Maxwell)
         ∆l′ = t_ind(s∆l, alter.(gh))
 
         ε3d = m.param3d[nE]
-        m.Mε = param_arr2mat(ε3d, EE, m.boundft, g.N, ∆l, ∆l′, g.isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=true)
+        m.Mε = create_paramop(ε3d, EE, m.boundft, g.N, ∆l, ∆l′, g.isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=true)
     end
 
     return m.Mε
