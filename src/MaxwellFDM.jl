@@ -4,6 +4,8 @@ module MaxwellFDM
 using Reexport
 @reexport using LinearAlgebra, SparseArrays, StaggeredGridCalculus, GeometryPrimitives
 using StaticArrays
+using Base.Threads: @threads  # used in param.jl
+
 
 export SComplex, SSComplex1, SSComplex2, SSComplex3, ParamInd, ObjInd
 
