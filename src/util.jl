@@ -22,21 +22,21 @@
 # From a tuple of two SVectors 1 and 2, each with K entries, construct an SVector (with K
 # entries) whose kth entry is the kth entry of either SVector 1 or SVector 2.
 # E.g., t_ind((SVector(0.1,0.2,0.3), SVector(1.0,2.0,3.0)), 1, 2, 1) = SVector(0.1, 2.0, 0.3)
-@inline t_ind(t::Tuple2{SVector{3}}, i₁₂::T, j₁₂::T, k₁₂::T) where {T<:Union{GridType,Sign,Integer}} = t_ind(t, (i₁₂,j₁₂,k₁₂))
-@inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::CartesianIndex{K}) where {K} = t_ind(t, ind₁₂.I)
-@inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::NTuple{K,T}) where {K,T<:Union{GridType,Sign,Integer}} = t_ind(t, SVector(ind₁₂))
-@inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::SVector{K,T}) where {K,T<:Union{GridType,Sign,Integer}} =  # ind₁₂[k] = 1 or 2
+@inline t_ind(t::Tuple2{SVector{3}}, i₁₂::T, j₁₂::T, k₁₂::T) where {T<:Union{GridType,Sign}} = t_ind(t, SVector(i₁₂,j₁₂,k₁₂))
+# @inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::CartesianIndex{K}) where {K} = t_ind(t, ind₁₂.I)
+@inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::NTuple{K,T}) where {K,T<:Union{GridType,Sign}} = t_ind(t, SVector(ind₁₂))
+@inline t_ind(t::Tuple2{SVector{K}}, ind₁₂::SVector{K,T}) where {K,T<:Union{GridType,Sign}} =  # ind₁₂[k] = 1 or 2
     map((t₁,t₂,i) -> Int(i)==1 ? t₁ : t₂, t[1], t[2], ind₁₂)  # SVector{K}
 
 # From a tuple of K vectors, construct a vector with K entries whose kth entry is
 # taken from the kth vector.  Which entry to take from the kth vector is specified
 # by indices.
 # E.g., t_ind(([0.1,0.2,0.3,0.4], [1.0,2.0,3.0,4.0], [10.0,20.0,30.0,40.0]), 3, 1, 4) = SVector(0.3, 1.0, 40.0)
-@inline t_ind(t::Tuple3{AbsVec}, i::Int, j::Int, k::Int) = t_ind(t, (i,j,k))
-@inline t_ind(t::Tuple2{AbsVec}, i::Int, j::Int) = t_ind(t, (i,j))
+@inline t_ind(t::Tuple3{AbsVec}, i::Int, j::Int, k::Int) = t_ind(t, SVector(i,j,k))
+@inline t_ind(t::Tuple2{AbsVec}, i::Int, j::Int) = t_ind(t, SVector(i,j))
 @inline t_ind(t::NTuple{K,AbsVec}, ind::CartesianIndex{K}) where {K} = t_ind(t, ind.I)
 @inline t_ind(t::NTuple{K,AbsVec}, ind::NTuple{K,Int}) where {K} = t_ind(t, SVector(ind))
-@inline t_ind(t::NTuple{K,AbsVec}, ind::SVector{K,Int}) where {K} = map((tₖ,iₖ) -> tₖ[iₖ], SVector(t), ind)
+@inline t_ind(t::NTuple{K,AbsVec}, ind::SVector{K,Int}) where {K} = map((tₖ,iₖ) -> tₖ[iₖ], SVector(t), ind)  # SVector{K}
 
 # See http://stackoverflow.com/questions/2786899/fastest-sort-of-fixed-length-6-int-array.
 # Generate the swap macros at http://pages.ripco.net/~jgamble/nw.html.

@@ -10,10 +10,10 @@
 # is assigned to ghost points.
 #
 # Depending on the boundary condition, we have to handle such a case differently.  Suppose
-# we are assiging a point source corresponding to the primal field parallel to (but not on)
-# the boundary.  We assign a portion of the source current at the nonghost point adjacent to
-# the ghost point.  The question is how to handle the portion of the source current to be
-# assigned to the ghost point.
+# we are assiging a point source of the primal field type in the direction parallel to (but
+# slightly away from) the boundary.  We assign a portion of the source current at the
+# nonghost point adjacent to the ghost point.  The question is how to handle the portion of
+# the source current to be assigned to the ghost point.
 #
 # - For Bloch, we have to assign a point source at the nonghost point corresponding to the
 # ghost point.  Note that this should be additive to any existing current density at the
@@ -27,7 +27,7 @@
 # and their contributions do not overlap.  However, in the situation considered here, they
 # are actually in neighboring cell intervals that share a point on the symmetry boundary.
 #
-# If a point source is on a cell interval between two grid points A and B, the method to
+# If a point source is in a cell interval between two grid points A and B, the method to
 # assign current densities to A and B is the "sliding" method.  In this method, imagine the
 # point source location changes gradually from A to B.  When it is exactly at A, current
 # density is assigned only to A, and the magnitude J_A of the current density is determined
@@ -45,8 +45,8 @@
 #
 # The situation of the symmetry boundary condition discussed earlier, where the two point
 # sources with opposite directions are placed at the mirror symmetry locations around the
-# symmetry boundary, can be thought of as assigning the current densities for each
-# individual point source using the above described recipe.  Note that as the two point
+# symmetry boundary, can be thought of as assigning the current densities for the two
+# individual point sources using the above described recipe.  Note that as the two point
 # sources approach to the symmetry boundary, the portions of the two point sources' currents
 # assigned at the shared point on the boundary exactly cancel each other.  Therefore, we
 # always assign zero current density on the ghost point, which is at the symmetry boundary.
@@ -63,14 +63,14 @@
 # boundary.  For Bloch, we proceed similarly.  For the symmetry boundary, now the image
 # source put behind the boundary is in the same direction as the original source in the
 # domain.  Also, when the source is sufficiently close to the boundary, the actual and
-# image sources are in a single dual grid cell interval, whose end points are dual grid
-# points, which are referred to as A and B as before for convenience below, instead of the
-# two adjacent cell intervals.  Suppose A is within the domain and B is outside the domain.
-# We don't have to assign a portion of the total current of the real point source to B
-# ourselves, which is behind the symmetry boundary: this is something automatically done by
-# imposing symmetry.  However, if the image point source existing behind the symmetry
-# boundary assigns some portion of its total current to A, which is within the domain, that
-# must be assigned ourselves.
+# image sources are in a single dual grid cell interval, whose  the middle point is the
+# boundary point and the end points are dual grid points, which are referred to as A and B
+# as before for convenience below, instead of the two adjacent cell intervals.  Suppose A is
+# within the domain and B is outside the domain.  We don't have to assign a portion of the
+# total current of the real point source to B ourselves, which is behind the symmetry
+# boundary: this is something automatically done by imposing symmetry.  However, if the
+# image point source existing behind the symmetry boundary assigns some portion of its total
+# current to A, which is within the domain, that must be assigned ourselves.
 #
 # Because the two point sources are at mirror-symmetric locations, the reduction in the
 # amount of the current assigned to A by the point source moving away from A towards the
@@ -86,20 +86,51 @@
 export Source
 export add!
 
-abstract type Source end
+abstract type Source{K,Kf} end  # K: shape dimension; Kf: field dimension
 
-add!(j3d::AbsArrNumber{4}, ft::FieldType, boundft::AbsVec{FieldType}, bounds::Tuple2{<:AbsVecReal},
-     l::Tuple23{<:AbsVecReal}, ∆l::Tuple23{<:AbsVecReal}, isbloch::AbsVecBool, srcs::Source...) =
-    add!(j3d, ft, SVector{3}(boundft), SFloat{3}.(bounds), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVector{3}(isbloch), srcs...)
+add!(jKd::AbsArrNumber, gt₀::AbsVec{GridType}, bounds::Tuple2{AbsVecReal},
+     l::Tuple2{NTuple{K,AbsVecReal}}, ∆l::Tuple2{NTuple{K,AbsVecReal}},
+     isbloch::AbsVecBool, srcs::Source...) where {K} =
+    add!(jKd, SVector{K}(gt₀), (float.(l[nPR]),float.(l[nDL])), (float.(∆l[nPR]), float.(∆l[nDL])), SVector{K}(isbloch), srcs...)
 
-function add!(j3d::AbsArrNumber{4},  # 4D array of Je (electric current density) or Jm (magnetic current density)
-              ft::FieldType,  # type of source (electric or magnetic)
-              boundft::SVector{3,FieldType},  # boundary field type
-              bounds::Tuple2{SFloat{3}},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
-              l::Tuple23{<:AbsVecFloat},  # l[PRIM][k] = primal vertex locations in k-direction
-              ∆l::Tuple23{<:AbsVecFloat},  # ∆l[PRIM][k] = (∆l at primal vertices in w) == diff(l[DUAL][k] including ghost point)
-              isbloch::SBool{3},  # Bloch boundary conditions
-              srcs::Source...)  # sources; sources put later overwrite sources put earlier
+# About the determination of gt_cmp
+# In the concrete implementation of add!() for each concrete Source type, gt_cmp, which is
+# the grid type of the J field component to set up (typically indicated by the nw-component)
+# is determined by
+#
+#     gt_cmp = src.isfield˔shp ? gt₀ : gt_w(nw, gt₀)
+#
+# gt_cmp is used to obtain the locations of the field by
+#
+#     lcmp = t_ind(l, gt_cmp)
+#
+# So, why do we choose gt₀ when the field subspace is orthogonal to the shape subspace?
+#
+# gt₀ represents the grid type of the corners of Yee's voxel whose edges are composed of the
+# field lines.  The w-component of the field is located a half grid point away from these
+# voxel corners along the w-direction.  This picture describes how to determine gt_cmp when
+# the field subspace is equal to the shape subspace.
+#
+# However, when the field subspace is orthogonal to the shape subspace, the half grid point
+# shift to apply to the w-component occurs in the direction normal to the shape subspace.
+# Along that direction, the grid lines are not defined, because l is defined in the shape
+# subspace.  Therefore, the half grid point shift does not have any effect in determining
+# the locations of the w-component, and we can use gt₀ as the grid type in determining the
+# field locations.
+#
+# For example, In the TE equation, the field subspace for the H-field is the z-direction and
+# the shape subspace is the xy-plane.  When the boundary field types are the E-field type
+# for both the x- and y-directions, gt₀ for the H-field (Hz) is [DUAL,DUAL].  We can use
+# [DUAL,DUAL] in determining the xy-locations of the H-field, as the half grid point shift
+# along the z-direction for the H-field does not affect the locations of the H-field.
+function add!(jKd::AbsArrNumber{K₊₁},  # (K+1)-dimensional array of Je (electric) or Jm (magnetic); first K dimensions specify location; last 1 dimension specify field component
+              gt₀::SVector{K,GridType},  # grid type of voxel corners; generated by ft2gt.(ft, boundft)
+              bounds::Tuple2{SFloat{K}},  # bounds[NEG][k] = boundary of domain at negative end in k-direction
+              l::Tuple2{NTuple{K,VecFloat}},  # l[PRIM][k] = primal vertex locations in k-direction
+              ∆l::Tuple2{NTuple{K,VecFloat}},  # ∆l[PRIM][k] = (∆l at primal vertices in w) == diff(l[DUAL][k] including ghost point)
+              isbloch::SBool{K},  # Bloch boundary conditions
+              src::Source{K,Kf}...  # sources
+              ) where {K,K₊₁,Kf}
     for src = srcs
         add!(j3d, ft, boundft, bounds, l, ∆l, isbloch, src)
     end
@@ -125,32 +156,41 @@ distweights(c::Real, gt::GridType, bounds::AbsVecReal, l::AbsVecReal, ∆l::AbsV
 # In a given Cartesian direction, if the source is located between two grid points,
 # calculate the weights to distribute over the two points.  The output is in the form of
 # ([ind₁, ind₂], [wt₁, wt₂]), where wtₖ is the weight assigned to the grid point at indₖ.
+# Note that the physical dimension of the weight is 1/(length).
 #
 # If the source is placed exactly at one grid point, weight distribution is unnecessary and
-# the output is in the form of ([ind], [wt]).  Note that this output type remains the same
+# the output satisfies ind₂ = ind₁ and wt₂ = 0.  Note that the output type remains the same
 # as before, which is a useful feature for achieving type stability of the function calling
 # this function.
 #
 # This function works for both longitudinal and transversal discretization with respect to
 # polarization.  Luckily, the consideration of the boundary conditions discussed at the
 # beginning of this file works for both cases.  For example, suppose we are distributing
-# electric current source along the x-grid.  For Bloch, it is obvious that both
-# polarizations are treated equally.  For the symmetry boundary, we can handle both
-# polarization with the same code by determining whether the boundary condition is
-# "congruent" with the polarization or not (see the definition of `withcongbc` in the
-# function definition):
-# - For Jy and Jz, the passed grid locations are the E-field grid points, so the congruent
-# boundary is defined as the symmetry boundary with E-field as the boundary field.
-# - For Jx, the passed grid locations are the H-field grid point, so the congruent boundary
-# is defined as the symmetry boundary with H-field as the boundary field.
+# along the x-grid an electric current source.  For Bloch, it is obvious that both
+# polarizations are treated equally.  For the symmetry boundary condition, we can handle
+# both polarization with the same code by determining whether the boundary condition is
+# "zeroing" the source on the boundary or not.  Specifically, the zeroing boundary condition
+# is defined as follows (see the definition of `zeroing_bc` in the function definition as
+# well):
+# - if the boundary condition is zeroing the source, the source put beyond the boundary is
+# antisymmetric to the source put within the boundary, so the two sources are superposed
+# destructively on the boundary (note the two sources are in adjacent cells), and
+# - if the boundary condition is not zeroing the source, the source put beyond the boundary
+# is symmetric to the source put within the boundary, so the two sources are superposed
+# constructively on the boundary (note the two sources are in the same cell).
 #
-# For both cases,
-# - if the boundary is congruent, the source put beyond the boundary is antisymmetric to the
-# source put within the boundary, so the two sources are superposed destructively at the
-# boundary (note the two sources are in adjacent cells), and
-# - if the boundary is incongruent, the source put beyond the boundary is symmetric to the
-# source put within the boundary, so the two sources are superposed constructively at the
-# boundary (note the two sources are in the same cell).
+# Therefore,
+# - For Jy and Jz (parallel to the x-boundary), the zeroing boundary condition is the
+# symmetric E-field boundary condition.  Because the x-location of Jy and Jz is the E-field
+# grid location, we know that a symmetric boundary is the E-field boundary if the x-location
+# of Jy and Jz are primal.
+# - For Jx (normal to the x-boundary), the zeroing boundary condition is the symmetric
+# H-field boundary condition.  Because the x-location of Jx is the H-field grid location, we
+# know again that a symmetric boundary is the H-field boundary if the x-location of Jx is
+# primal.
+#
+# Note that regardless of the polarization of the source, the boundary condition is zeroing
+# if the location type is primal.
 #
 # In the implementation, assume that the source "value" to distribute is something that does
 # not change with discretization (e.g., Id of a point source and K of a plane source).  The
@@ -190,25 +230,25 @@ function distweights(c::Float,  # location of point (c means center)
     N > 1 || isbloch || throw(ArgumentError("length(l) = $N must be > 1 for symmetry boundary (= non-Bloch)."))
 
     # Test if c is in the range where the result is not affected by the boundary.
-    # - For PRIM,
+    # - For l[1:end] being the primal grid locations except for the ghost point,
     #       - for Bloch, l[1] ≤ c < l[end], and
-    #       - for symmetry, l[2] ≤ c < l[end].
-    # - For DUAL,
+    #       - for symmetry, l[2] ≤ c < l[end].  (Note the minimum boundary beng l[2], not l[1].)
+    # - For l[1:end] being the dual grid locations except for the ghost point,
     #       - for Bloch, l[1] ≤ c < l[end], and
     #       - for symmetry, l[1] ≤ c < l[end].
-    # Therefore, only the case with the primal field and symmetry boundary is different from
-    # other cases.  I will call this a case with a boundary condition "congruent" with the
-    # field type, because it is the boundary that is effective for the field type of
-    # interest.
-    cong_bc = gt==PRIM && !isbloch
-    indn = cong_bc ? 2 : 1
+    # Therefore, only the case with the primal field type and symmetry boundary condition is
+    # different from other cases.  I will call this a case with a boundary condition
+    # "congruent" with the field type, because it is the boundary that is effective for the
+    # field type of interest.
+    zeroing_bc = gt==PRIM && !isbloch
+    indn = zeroing_bc ? 2 : 1
     indp = N
 
     # Below, note that c < l[indp] is used rather than c ≤ l[indp].  If c = l[indp], then
     # ind₁ = findlast(x->x≤0, l.-c) is indp, and ind₂ = ind₁ + 1 is not well-defined when
     # indp = N.  The use of c < l[indp] avoids such a case.
-    bc_noeff = l[indn] ≤ c < l[indp]  # boundary condition does not affect result
-    if bc_noeff
+    bc_!eff = l[indn] ≤ c < l[indp]  # boundary condition does not affect result
+    if bc_!eff
         ind₁ = findlast(x->x≤0, l.-c)  # because l is sorted and c ≥ l[1], l[1]-c ≤ 0 and thus ind₁ ≠ nothing
         ind₂ = ind₁ + 1
         ∆c1 = c - l[ind₁]
@@ -235,18 +275,18 @@ function distweights(c::Float,  # location of point (c means center)
     r = ∆c1 / ∆lc
 
     # Below, scale wt₁ and wt₂ with 1-r and r, respectively,
-    # - if c is in the region where the result is not affected by the boundary (bc_noeff), or
+    # - if c is in the region where the result is not affected by the boundary (bc_!eff), or
     # - even if c is in the region where the result is affected by the boundary,
     #       - if the boundary is Bloch, or
-    #       - if the boundary is symmetry it is congruent with field type (cong_bc = true).
+    #       - if the boundary is symmetry it is congruent with field type (zeroing_bc = true).
     wt₁ = 1.0 / ∆l[ind₁]
-    (bc_noeff || isbloch || cong_bc) && (wt₁ *= 1.0-r)
+    (bc_!eff || isbloch || zeroing_bc) && (wt₁ *= 1.0-r)
 
     # Return only one weight factor
     # - if c is exactly at a grid point, or
     # - even if c is not exactly at a grid point, if it is in the region where the result is
     # affected by the boundary but the boundary is non-Bloch (= symmetry).
-    if c==l[ind₁] || (!bc_noeff && !isbloch)
+    if c==l[ind₁] || (!bc_!eff && !isbloch)
         # We want to return only one weight factor in this case, but in order to keep the
         # output SVector type the same (SVector{2} rather than SVector{1}), introduce a
         # dummy second weight factor.
@@ -256,7 +296,7 @@ function distweights(c::Float,  # location of point (c means center)
         # Return two weight factors.  Make sure all the cases handled by this else block
         # have ind₂ defined already.
         wt₂ = 1.0 / ∆l[ind₂]
-        (bc_noeff || isbloch) && (wt₂ *= r)
+        (bc_!eff || isbloch) && (wt₂ *= r)
     end
 
     ind = SVector(ind₁, ind₂)
@@ -280,7 +320,7 @@ end
 # primitive source types, such as a point source, line source, and a plane source.  The
 # source assignment function will accept a vector of sources, assign these sources similarly
 # as assign_param! in assignment.jl (i.e., iterate over a vector of shapes and assign points
-# included in each shape).  A main different is that I have to find voxels that overlap with
+# included in each shape).  A main difference is that I have to find voxels that overlap with
 # the shape, instead of points in the shape.  Once such voxels are found, I need to assign
 # source current density to the edges of the voxels.  (I have to think about subvoxel
 # smoothing in a voxel that is partially included in the shape.)
