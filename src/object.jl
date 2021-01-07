@@ -8,207 +8,127 @@
 # bounds, then only this is exported.  So, when defining bounds for Interval, we have to
 # "extend" bounds for Shape by defining it as GeometryPrimitives.bounds(::Interval) = ....
 # Then, exporting bounds exports this whole collection of bounds, both for Shape and Interval.
-export OpenInterval, ClosedInterval, KDTree, Object, Object3
-export bounds, max∆l, matparam, paramind, objind, add!, periodize  #, surfpt_nearby, normal
+export OpenInterval, ClosedInterval, KDTree, Object
+export shape, matparam, max∆l, pint2matprmview, add!, periodize  #, surfpt_nearby, normal
 # export lsf, bound_, L_, center_, dist2bound, bound_contains, ∆lmax, sphere, transform,
 #     surfnormal, surfpoint  # functions
 # import Base:size, getindex, contains, isless, union, intersect
 
-mutable struct Object{K,S<:Shape}  # use S<:Shape{K} after Julia issue #26321 is fixed
-    shape::S
-    mat::Material
+mutable struct Object{K,Ke,Km,S<:Shape{K},Ke²,Km²}  # K: dimension of space, (Ke,Km): dimension of electric and magnetic material parameters
+    shp::S
+    mat::Material{Ke,Km,Ke²,Km²}
     ∆lmax::SVector{K,Float}
-    oind::ObjInd  # object index; for comparison of sameness of objects quickly and more generally (e.g. when periodized; see add!)
-    pind::Tuple2{ParamInd}  # {electric material index, magnetic material index} (see add!)
-    Object{K,S}(shape, mat, ∆lmax) where {K,S<:Shape{K}} = new(shape, mat, ∆lmax)
+    Object{K,Ke,Km,S,Ke²,Km²}(shp, mat, ∆lmax) where {K,Ke,Km,S,Ke²,Km²} = new(shp, mat, ∆lmax)
 end
 
-Object(shape::S, mat::Material, ∆lmax::SVector{K}=SVector(ntuple(k->Inf, Val(K)))) where {K,S<:Shape{K}} = Object{K,S}(shape, mat, ∆lmax)
-Object(shape::Shape{K}, mat::Material, ∆lmax::AbsVec) where {K} = Object(shape, mat, SVector{K}(∆lmax))
-Object(shape::Shape{K}, mat::Material, ∆lmax::Real) where {K} = Object(shape, mat, SVector(ntuple(k->∆lmax, Val(K))))
-
-# Define Object with ∆lmax, Shape, and a material.
-const Object3 = Object{3}
+Object(shp::S, mat::Material{Ke,Km}, ∆lmax::SVector{K}=@SVector(fill(Inf,K))) where {K,Ke,Km,S<:Shape{K}} =
+    Object{K,Ke,Km,S,Ke*Ke,Km*Km}(shp, mat, ∆lmax)
+Object(shp::Shape{K}, mat::Material, ∆lmax::AbsVec) where {K} = Object(shp, mat, SVector{K}(∆lmax))
+Object(shp::Shape{K}, mat::Material, ∆lmax::Real) where {K} = Object(shp, mat, SVector(ntuple(k->∆lmax, Val(K))))
 
 # Add a new convenience constructor
 GeometryPrimitives.Box(b::Tuple2{AbsVec}, axes=Matrix{Float}(I,length(b[1]),length(b[1]))) = Box((b[1]+b[2])/2, abs.(b[2]-b[1]), axes)
 
-GeometryPrimitives.bounds(o::Object) = bounds(o.shape)
-Base.in(x::SVector{K}, o::Object{K}) where {K} = in(x, o.shape)
-Base.in(x::AbsVec, o::Object{K}) where {K} = in(SVector{K}(x), o)
-
 # Create the user interface such that maxwellsys.add(shape, material, ∆lmax) uses this function.
-# setmat!(o::Object, m::Material) = (o.mat = m; o)
-# setmax∆l!(o::Object{K}, ∆lmax::AbsVec) where {K} = (o.∆lmax = SVector{K}(∆lmax); o)
-# setmax∆l!(o::Object{K}, ∆lmax::Number) where {K} = setmax∆l!(o, SVector(ntuple(k->∆lmax, Val(K))))
+# setmat!(obj::Object, m::Material) = (obj.mat = m; obj)
+# setmax∆l!(obj::Object{K}, ∆lmax::AbsVec) where {K} = (obj.∆lmax = SVector{K}(∆lmax); obj)
+# setmax∆l!(obj::Object{K}, ∆lmax::Number) where {K} = setmax∆l!(obj, SVector(ntuple(k->∆lmax, Val(K))))
 
-max∆l(o::Object) = o.∆lmax
-matparam(o::Object, ft::FieldType) = matparam(o.mat, ft)
-paramind(o::Object{K}, ft::FieldType) where {K} = o.pind[Int(ft)]
-objind(o::Object) = o.oind
+shape(obj::Object) = obj.shp
+matparam(obj::Object, ft::FieldType) = matparam(obj.mat, ft)
+max∆l(obj::Object) = obj.∆lmax
 
-# Consider using resize! on ovec.
-function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, os::AbsVec{<:Object{K}}) where {K}
-    for o = os
-        add!(ovec, paramset, o)
+# Relationships between pind2matprm, oind2pind, oind2shp
+#
+# - pind2matprm is a vector of material parameter tensors.  pind2matprm[n] is a 3×3 material
+# parameter tensor for the parameter index n.
+#
+# - oind2pind is a map from the object index to the parameter index.
+#
+# - oind2shp is a map from the object index to the shape.
+
+# Returns a vector of submatrix views of material parameter tensors.
+pint2matprmview(pind2matprm::AbsVec{<:SSComplex{Ke,Ke²}}, inds::AbsVecInteger) where {Ke,Ke²} =
+    [view(mp,inds,inds) for mp = pind2matprm]
+
+# Consider using resize! on oind2obj.
+function add!(oind2shp::AbsVec{Shape{K,K²}}, oind2pind::Tuple2{AbsVec{ParamInd}},
+              pind2matprm::Tuple{AbsVec{SSComplex{Ke,Ke²}},AbsVec{SSComplex{Km,Km²}}},
+              objs::AbsVec{<:Object{K,Ke,Km,<:Shape{K,K²},Ke²,Km²}}) where {K,Ke,Km,K²,Ke²,Km²}
+    for obj = objs
+        add!(oind2obj, oind2pind, pind2matprm, obj)
     end
 end
 
-# Consider using resize! on ovec.
-function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, os::Object{K}...) where {K}
-    for o = os
-        add!(ovec, paramset, o)
+# Consider using resize! on oind2obj.
+function add!(oind2shp::AbsVec{Shape{K,K²}}, oind2pind::Tuple2{AbsVec{ParamInd}},
+              pind2matprm::Tuple{AbsVec{SSComplex{Ke,Ke²}},AbsVec{SSComplex{Km,Km²}}},
+              objs::Object{K,Ke,Km,<:Shape{K,K²},Ke²,Km²}...) where {K,Ke,Km,K²,Ke²,Km²}
+    for obj = objs
+        add!(oind2shp, oind2pind, pind2matprm, obj)
     end
 end
 
-# When I put an periodic array of an object, consider assigning the same object index to the
-# periodized objects.  That way, I can treat two of objects over a periodic boundary as the
-# same object.  (This is not implemented yet.)
+# Populate `oind2shp`, `oind2pind`, `pind2matprm` with a given object.  See above for the
+# meaning of `oind2shp`, `oind2pind`, `pind2matprm`.  In doing so, figure out the unique
+# indices for the material parameters and use them as pind in `oind2pind` and `pind2matprm`.
 #
-# In other words, when assigning the same object index to distinct objects, we have to make
-# sure that the two objects have the same surface normal directions at the equivalent points
-# on the two objects, at least on the boundaries.  Therefore, for example if we put a cubic
-# across a periodic boundary such that it is bisected by the boundary, we should not put one
-# non-cubic box that is tangential to one end of the domain and another non-cubic box that
-# is tengential to the other end of the domain.  Instead, we should create two cubics and
-# place each of them centered on each boundary, such thay they stick out of the domain.
-# (We can put two non-cubic boxes that stick out of the domain, too, because they have to
-# produce the same surface normals only at equivalent points on the boundaries.)
+# When I put an periodic array of objects, some object could be across a boundary.  In that
+# case, the rule is to put two different objects at the negative-end and positive-end
+# boundaries.  Make sure, though, the two objects have the same surface normal at the
+# boundary points, so that the surface normal calculation is not ambiguous there.
 #
-# Assigining the same object index is specifically to treat an object across a periodic
-# boundary.  Therefore, we should not assign the same object index to the dintinct periodic
-# objects in the domain (e.g., holes in a photonic crystal slab).
-function add!(ovec::AbsVec{Object{K}}, paramset::Tuple2{AbsVec{SMat3Complex}}, o::Object{K}) where {K}
-    # Assign the object index to o.
-    o.oind = isempty(ovec) ? 1 : objind(ovec[end])+1  # not just length(ovec)+1 to handle periodized objects (see comments above)
-    push!(ovec, o)  # append o (for potential use of ovec with KDTree, must use pushfirst! to prepend)
+# Note that pind2matprm stores the same material parameter "value" only once.  Therefore,
+# if two objects are created with different Material instances with the same material
+# parameter tensor, then the two objects' materials are assigned with the same pind.
+function add!(oind2shp::AbsVec{Shape{K,K²}},  # initially empty vector
+              oind2pind::Tuple2{AbsVec{ParamInd}},  # tuple of initially empty vectors
+              pind2matprm::Tuple{AbsVec{SSComplex{Ke,Ke²}},AbsVec{SSComplex{Km,Km²}}},  # tuple of initially empty vectors
+              obj::Object{K,Ke,Km,<:Shape{K,K²},Ke²,Km²}) where {K,Ke,Km,K²,Ke²,Km²}
+    push!(oind2shp, shape(obj))  # append obj (for potential use of oind2obj with KDTree, must use pushfirst! to prepend)
 
-    # Assign the material parameter indices to o.
-    p, pset = matparam(o,EE), paramset[nE]
-    pind_e = findlast(x -> x==p, pset)  # number if p is already in pset
-    pind_e==nothing && (push!(pset, p); pind_e = length(pset))  # update pind_e if p is not in pset
+    # Assign the material parameter indices to obj.
+    # If the material is aleady used in some object that was previously added, then use the
+    # index already assigned to that material.
+    for ft = EH
+        nft = Int(ft)
 
-    p, pset = matparam(o,HH), paramset[nH]
-    pind_h = findlast(x -> x==p, pset)  # number if p is already in psent
-    pind_h==nothing && (push!(pset, p); pind_h = length(pset))  # update pind_h if p is not in pset
-
-    o.pind = (pind_e, pind_h)
+        mp, on2pn, pn2mp = matparam(obj,ft), oind2pind[nft], pind2matprm[nft]
+        pind = findlast(x -> x==mp, pn2mp)  # number if mp is already in pn2mp
+        pind==nothing && (push!(pn2mp, mp); pind = length(pn2mp))  # update pind if mp is not in pn2mp
+        push!(on2pn, pind)
+    end
 
     return nothing
 end
 
-function GeometryPrimitives.periodize(o::Object{K}, A::AbsMat, ∆range::Shape{K}) where {K}
-    shp_array = periodize(o.shape, A, ∆range)
+function GeometryPrimitives.periodize(obj::Object{K}, A::AbsMat, ∆range::Shape{K}) where {K}
+    shp_array = periodize(obj.shp, A, ∆range)
     N = length(shp_array)
     obj_array = Vector{Object{K}}(N)
     for n = 1:N
-        obj_array[n] = Object(shp_array[n], o.mat, o.∆lmax)
+        obj_array[n] = Object(shp_array[n], obj.mat, obj.∆lmax)
     end
 
     return obj_array
 end
 
 
-abstract type Interval end
-
-struct OpenInterval <: Interval
-    bounds::Tuple2{Float}
-    ∆lmax::Float
-
-    function OpenInterval(bounds::Tuple2{Real}, ∆lmax::Real=Inf)
-        bounds[nP] ≥ bounds[nN] || throw(ArgumentError("bounds = $bounds must be ordered."))
-        return new(bounds, ∆lmax)
-    end
-end
-OpenInterval(o::Object, w::Int) = (b = bounds(o.shape); OpenInterval((b[nN][w], b[nP][w]), max∆l(o)[w]))  # w: direction
-
-struct ClosedInterval <: Interval
-    bounds::Tuple2{Float}
-    ∆lmax::Float
-
-    function ClosedInterval(bounds::Tuple2{Real}, ∆lmax::Real=Inf)
-        bounds[nP] ≥ bounds[nN] || throw(ArgumentError("bounds = $bounds must be ordered."))
-        return new(bounds, ∆lmax)
-    end
-end
-ClosedInterval(o::Object, w::Int) = (b = bounds(o); ClosedInterval((b[nN][w], b[nP][w]), max∆l(o)[w]))  # w: direction
-
-GeometryPrimitives.bounds(intv::Interval) = intv.bounds
-max∆l(intv::Interval) = intv.∆lmax
-
-Base.length(intv::Interval) = intv.bounds[nP] - intv.bounds[nN]
-Base.in(l::Real, oi::OpenInterval) = oi.bounds[1] < l < oi.bounds[2]
-Base.in(l::Real, ci::ClosedInterval) = ci.bounds[1] ≤ l ≤ ci.bounds[2]
+# The following includes operation on shapes.  These will need to be defined in GeometryPrimitives.
+# Then, I will need to define the same functions for Object that delegate the operations to
+# Shape's functions.
+#
+# See also test/object.jl
 
 
 # # distance to the boundary.  If I want to get 0 for internal points, compare
 # # dist(l,c) = (distance between l and center), and if it is less than L_(i) / 2,
 # # return zero; otherwise return dist(l,c).
 # @inline dist2bound(i::Interval1D, l::Real) = (a1 = abs(i.bound[nN]-l)) < (a2 = abs(i.bound[nP]-l)) ? a1 : a2
-#
-# # Shapes
-# abstract type Shape end
-#
-# immutable Box <: Shape
-#     cbox::Interval3D  # circum-box
-#     c::Tuple3{Float}  # center
-#     s::Tuple3{Float}  # semiside
-#
-#     function Box(bound::Tuple32{Real}, ∆lmax::Tuple3{Real})
-#         cbox = Interval3D(bound, ∆lmax)
-#         c = center_(cbox)
-#         s = L_(cbox) ./ 2
-#
-#         new(cbox, c, s)
-#     end
-# end
-# Box(bound::Tuple32{Real}, ∆lmax::Real) = Box(bound, (∆lmax,∆lmax,∆lmax))
-# Box(bound::Tuple32{Real}) = Box(bound, Inf)
-#
-# # Vectorization for a vector of l is achieved by the dot syntax: lsf.(b, l)
-# lsf(b::Box) = (l::Tuple3{Real}) -> 1 - maximum(abs, (
-#     (l[nX]-b.c[nX]) / b.s[nX],
-#     (l[nY]-b.c[nY]) / b.s[nY],
-#     (l[nZ]-b.c[nZ]) / b.s[nZ]
-# ))
-#
-# immutable Ellipsoid <: Shape
-#     cbox::Interval3D  # circum-box
-#     c::Tuple3{Float}  # center
-#     s::Tuple3{Float}  # semiaxes
-#
-#     function Ellipsoid(center::Tuple3{Real}, semiaxis::Tuple3{Real}, ∆lmax::Tuple3{Real})
-#         any(semiaxis .≤ 0) && throw(ArgumentError("Elements of semiaxis = $semiaxis must be all positive."))
-#
-#         c = center
-#         s = semiaxis
-#         bound = ((c[nX]-s[nX],c[nX]+s[nX]), (c[nY]-s[nY],c[nY]+s[nY]), (c[nZ]-s[nZ],c[nZ]+s[nZ]))
-#         cbox = Interval3D(bound, ∆lmax)
-#
-#         new(cbox, c, s)
-#     end
-# end
-# Ellipsoid(center::Tuple3{Real}, semiaxis::Tuple3{Real}, ∆lmax::Real) = Ellipsoid(center, semiaxis, (∆lmax,∆lmax,∆lmax))
-# Ellipsoid(center::Tuple3{Real}, semiaxis::Tuple3{Real}) = Ellipsoid(center, semiaxis, Inf)
-#
-# sphere(center::Tuple3{Real}, radius::Real, ∆lmax::Tuple3{Real}) = Ellipsoid(center, (radius,radius,radius), ∆lmax)
-# sphere(center::Tuple3{Real}, radius::Real, ∆lmax::Real) = sphere(center, radius, (∆lmax,∆lmax,∆lmax))
-# sphere(center::Tuple3{Real}, radius::Real) = sphere(center, radius, Inf)
-#
-# # Vectorization for a vector of l is achieved by the dot syntax: lsf.(b, l)
-# lsf(e::Ellipsoid) = (l::Tuple3{Real}) -> 1 - hypot(
-#     (l[nX]-e.c[nX]) / e.s[nX],
-#     (l[nY]-e.c[nY]) / e.s[nY],
-#     (l[nZ]-e.c[nZ]) / e.s[nZ]
-# )
-#
-#
+
 # # Functions common to all Shape's
 #
-# # size and getindex (to use the dot syntax for contains())
-# size(::Shape) = ()
-# getindex(s::Shape, ::CartesianIndex{0}) = s
-#
+
 # # contains
 # # Sometimes, we only have level-set functions rather than Shape instances.
 # @inline contains(lsf::Function, l::Tuple3{Real}, isinclusive::Bool=true) = isinclusive ? lsf(l) ≥ 0 : lsf(l) > 0

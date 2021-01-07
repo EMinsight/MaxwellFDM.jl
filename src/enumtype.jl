@@ -1,5 +1,6 @@
-export FieldType, BC
-export EH, nE, nH, nEH
+export FieldType, BC  # types
+export EH, nE, nH, nEH  # instances
+export ft2gt  # functions
 
 # Field types
 const nE, nH = 1, 2  # E-, H-fields
@@ -13,7 +14,6 @@ StaggeredGridCalculus.alter(ins::FieldType) = ins==EE ? HH : EE
 # Given boundary field types, determine whether the grid planes specified by the given field
 # type ft are primal or dual grid planes in the Cartesian directions.
 ft2gt(ft::FieldType, boundft::FieldType) = PD[2 - (boundft==ft)]
-
 
 # Boundary conditions
 @enum BC PERIODIC=1 CONDUCTING  # periodic boundary condition, perfect conductor boundary condition

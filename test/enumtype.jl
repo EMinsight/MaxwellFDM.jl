@@ -22,4 +22,11 @@ end
     @test alter(nH) == nE
 end
 
+@testset "ft2gt" begin
+    @test MaxwellFDM.ft2gt(EE,EE) == PRIM
+    @test MaxwellFDM.ft2gt(HH,EE) == DUAL
+    @test MaxwellFDM.ft2gt(EE,HH) == DUAL
+    @test MaxwellFDM.ft2gt(HH,HH) == PRIM
+end
+
 end  # @testset "enumtype"

@@ -284,10 +284,10 @@ g3 = Grid(lprim, isbloch)
 
 # Create materials.
 εvac = 1.0
-vac = Material("Vacuum", ε=εvac)
+vac = Material{3,3}("Vacuum", ε=εvac)
 
 εdiel = 12.0
-diel = Material("Dielectric", ε=εdiel)
+diel = Material{3,3}("Dielectric", ε=εdiel)
 
 # Create objects.
 dom_vac = Object(Box(g3.bounds), vac)
@@ -301,22 +301,27 @@ obj_zn_diel = Object(Sphere([0,0,-150], 75), diel)
 obj_zp_diel = Object(Sphere([0,0,150], 75), diel)
 
 # Add objects.
-ovec = Object3[]
-paramset = (SMat3Complex[], SMat3Complex[])
-# add!(ovec, paramset, dom_vac)
-# add!(ovec, paramset, dom_vac, obj_diel)
-add!(ovec, paramset, dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
+oind2shp = Shape3[]
+oind2εind = ParamInd[]
+oind2μind = ParamInd[]
+εind2ε = SSComplex3[]
+μind2μ = SSComplex3[]
+
+add!(oind2shp, (oind2εind,oind2μind), (εind2ε,μind2μ), dom_vac, obj_diel, obj_xn_diel, obj_xp_diel, obj_yn_diel, obj_yp_diel, obj_zn_diel, obj_zp_diel)
+
 
 N = g3.N
-ε3d = create_param3d(N)
-εobj3d = create_n3d(Object3, N)
-εind3d = create_n3d(ParamInd, N)
-εoind3d = create_n3d(ObjInd, N)
+ε3d = create_param_array(N)
+εxx_oind3d = create_oind_array(N)
+εyy_oind3d = create_oind_array(N)
+εzz_oind3d = create_oind_array(N)
+εoo_oind3d = create_oind_array(N)
 
-μ3d = create_param3d(N)
-μobj3d = create_n3d(Object3, N)
-μind3d = create_n3d(ParamInd, N)
-μoind3d = create_n3d(ObjInd, N)
+μ3d = create_param_array(N)
+μxx_oind3d = create_oind_array(N)
+μyy_oind3d = create_oind_array(N)
+μzz_oind3d = create_oind_array(N)
+μoo_oind3d = create_oind_array(N)
 
 τl = g3.ghosted.τl
 
@@ -330,7 +335,7 @@ ind = (map((m,b)->circshift(1:m, b), M, g3.isbloch.data),
        map((m,b)->circshift(1:m, -b), M, g3.isbloch.data))
 
 gt_cmp = SVector(gt, gt, gt)
-gt_cmp = map((k,g)->(k==nw ? alter(g) : g), nXYZ, gt_cmp)  # no change if nw = 0
+gt_cmp = map((k,g)->(k==nw ? alter(g) : g), SVector(1,2,3), gt_cmp)  # no change if nw = 0
 
 # Choose the circularly shifted indices to use.
 ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
@@ -339,15 +344,13 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 τlcmp = view.(MaxwellFDM.t_ind(τl,gt_cmp), ind_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
 
 # Prepare the circularly shifted viewes of various arrays to match the sorted
-# τl.  Even though all arrays are for same locations, param3d_cmp contains gt
-# material, whereas obj3d_cmp, pind3d_cmp, oind3d_cmp contain alter(gt)
+# τl.  Even though all arrays are for same locations, param_cmp contains gt
+# material, whereas obj_cmp, pind_cmp, oind_cmp contain alter(gt)
 # material, so use ngt′ instead of ngt for them.
-ε3d_cmp = view(ε3d, ind_cmp..., nXYZ, nXYZ)
-μobj3d_cmp = view(μobj3d[nw], ind_cmp...)
-μind3d_cmp = view(μind3d[nw], ind_cmp...)
-μoind3d_cmp = view(μoind3d[nw], ind_cmp...)
+ε3d_cmp = view(ε3d, ind_cmp..., 1:3, 1:3)
+μoind_cmp = view((μxx_oind3d,μyy_oind3d,μzz_oind3d)[nw], ind_cmp...)
 
-# o = ovec[2]  # ovec[1]: Box, ovec[2]: Sphere
+# o = oind2obj[2]  # oind2obj[1]: Box, oind2obj[2]: Sphere
 # shape = o.shape
 #
 # gt′ = alter(gt)
@@ -355,29 +358,40 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # pind′ = paramind(o,gt′)
 # oind = objind(o)
 #
-# arrays = (pind3d_cmp, oind3d_cmp, obj3d_cmp)
+# arrays = (pind_cmp, oind_cmp, obj_cmp)
 # vals = (pind′, oind, o)
 #
-# println("# of objects = $(length(ovec))")
-# # @time assign_val_shape!((arrays..., @view(param3d_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
-# # @code_warntype assign_val_shape!((arrays..., param3d_cmp), (vals, param), shape, τlcmp)
+# println("# of objects = $(length(oind2obj))")
+# # @time assign_val_shape!((arrays..., @view(param_cmp[:,:,:,nw,nw])), (vals..., param[nw,nw]), shape, τlcmp)
+# # @code_warntype assign_val_shape!((arrays..., param_cmp), (vals, param), shape, τlcmp)
 
-# assign_val_shape!(pind3d_cmp, pind′, shape, τlcmp)
-# assign_val_shape!(oind3d_cmp, oind, shape, τlcmp)
-# assign_val_shape!(obj3d_cmp, o, shape, τlcmp)
+# assign_val_shape!(pind_cmp, pind′, shape, τlcmp)
+# assign_val_shape!(oind_cmp, oind, shape, τlcmp)
+# assign_val_shape!(obj_cmp, o, shape, τlcmp)
 # if nw == 4
-#     assign_val_shape!(param3d_cmp, param, shape, τlcmp)
+#     assign_val_shape!(param_cmp, param, shape, τlcmp)
 # else  # nw = 1, 2, 3
-#     assign_val_shape!(@view(param3d_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
+#     assign_val_shape!(@view(param_cmp[:,:,:,nw,nw]), param[nw,nw], shape, τlcmp)
 # end
 
 
-# @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param3d_cmp, obj3d_cmp, pind3d_cmp, oind3d_cmp, ovec, τlcmp)
-# @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, ovec, g3.ghosted.τl, g3.isbloch)
+# @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param_cmp, obj_cmp, pind_cmp, oind_cmp, oind2obj, τlcmp)
+# @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, oind2obj, g3.ghosted.τl, g3.isbloch)
 
+@load "benchmark/smoothing_result.jld2" ε3d_assigned ε3d_smoothed
 boundft = SVector(EE,EE,EE)
-@time assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
-ε3d_assigned = copy(ε3d)
+@time begin
+      # Dealing with the diagonal entries first and then the off-diagonal entries is more
+      # error-prone because at some point the code was written such that dealing with the off-
+      # diagonal entries deals with the entires entries and the diagonal entries are
+      # overwritten later.  The more error-prone code is tested.
+    assign_param!(ε3d, (μxx_oind3d,μyy_oind3d,μzz_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(ε3d, tuple(μoo_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, tuple(εoo_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+end
+@info "ε3d == ε3d_assigned? $(ε3d == ε3d_assigned)"
+
 
 # gt_cmp′ = alter.(gt_cmp)
 # lcmp = MaxwellFDM.t_ind(g3.l, gt_cmp)
@@ -386,19 +400,27 @@ boundft = SVector(EE,EE,EE)
 # ∆τcmp′ = MaxwellFDM.t_ind(g3.ghosted.∆τ, gt_cmp′)
 #
 # param3d_gt = param3d[ngt]
-# obj3d_cmp′ = obj3d[ngt][nw]
-# pind3d_cmp′ = pind3d[ngt][nw]
-# oind3d_cmp′ = oind3d[ngt][nw]
+# obj_cmp′ = obj3d[ngt][nw]
+# pind_cmp′ = pind3d[ngt][nw]
+# oind_cmp′ = oind3d[ngt][nw]
 
-# @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj3d_cmp′, pind3d_cmp′, oind3d_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
+# @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj_cmp′, pind_cmp′, oind_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
 
-ft = EE
-@time smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
-ε3d_smoothed = copy(ε3d)
-@save "benchmark/smoothing_result.jld2" ε3d_assigned ε3d_smoothed
+@time begin
+    # Dealing with the diagonal entries first and then the off-diagonal entries is more
+    # error-prone because at some point the code was written such that dealing with the off-
+    # diagonal entries deals with the entires entries and the diagonal entries are
+    # overwritten later.  The more error-prone code is tested.
+    smooth_param!(ε3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(ε3d, tuple(εoo_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+end
+# @info "ε3d ≈ ε3d_smoothed? $(ε3d ≈ ε3d_smoothed)"
+err_max, ci = findmax(abs.(ε3d .- ε3d_smoothed))
+@info "ε3d ≈ ε3d_smoothed? $(err_max / abs(ε3d_smoothed[ci]) < Base.rtoldefault(Float64))"
+
 
 # # Construct arguments and call assign_param!.
-# kd = KDTree(ovec)
+# kd = KDTree(oind2obj)
 # param3d = create_default_param3d(g3.N)
 # @time assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.isbloch)
 # @btime assign_param!(param3d, kd, g3.l, g3.lg, g3.N, g3.L, g3.isbloch)

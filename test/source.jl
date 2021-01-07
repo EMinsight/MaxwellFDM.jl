@@ -1,5 +1,7 @@
 @testset "source" begin
 
+nX, nY, nZ = 1, 2, 3
+
 @testset "distweights" begin
     ∆lg = 2:2:22  # make sure ∆l's are varying to prevent false positive
     l′ = cumsum([-1; ∆lg])  # [-1,1,5,11,19,29,41,55,71,89,109,131]: spacing is even
@@ -119,7 +121,7 @@
 end  # @testset "distweights"
 
 @testset "PlaneSrc" begin
-    src = PlaneSrc(Ẑ, 0, X̂)  # x-polarized source in z-normal plane
+    src = PlaneSrc([0,0,1], 0, [1,0,0])  # x-polarized source in z-normal plane
 
     isbloch = [true, true, true]
 
@@ -131,8 +133,8 @@ end  # @testset "distweights"
     ft = EE
     boundft = SVector(EE,EE,EE)
 
-    j3d = create_field3d(g3.N)
-    add!(j3d, ft, boundft, g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
+    j3d = create_field_array(g3.N)
+    add!(j3d, ft2gt.(ft,boundft), g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
 
     @test maximum(abs, j3d) == 1.0  # J = K / ∆z
     @test all(j3d[:,:,:,nY] .== 0)  # Jy = 0
@@ -142,8 +144,8 @@ end  # @testset "distweights"
     lprim = (-10:0.5:10, -10:0.5:10, -10:0.5:10)
     g3_fine = Grid(lprim, isbloch)
 
-    j3d_fine = create_field3d(g3_fine.N)
-    add!(j3d_fine, ft, boundft, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
+    j3d_fine = create_field_array(g3_fine.N)
+    add!(j3d_fine, ft2gt.(ft,boundft), g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
     ∆a_fine = 0.5^2  # area element
 
     @test sum(j3d[1,:,:,nX]) * ∆a ≈ sum(j3d_fine[1,:,:,nX]) * ∆a_fine  # total current through x-normal cross section is independent of grid resolution
@@ -159,8 +161,8 @@ end  # @testset "distweights"
     ∆yprim = g3_nu.∆l[nPR][nY]
     ∆zprim = g3_nu.∆l[nPR][nZ]
 
-    j3d_nu = create_field3d(g3_nu.N)
-    add!(j3d_nu, ft, boundft, g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
+    j3d_nu = create_field_array(g3_nu.N)
+    add!(j3d_nu, ft2gt.(ft,boundft), g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
 
     @test sum(j3d[1,:,:,nX]) * ∆a ≈ sum(j3d_nu[1,:,:,nX] .* (∆yprim * transpose(∆zprim)))  # total current through x-normal cross section is independent of grid resolution
 
@@ -180,26 +182,26 @@ end  # @testset "PlaneSrc"
     ft = EE
     boundft = SVector(EE,EE,EE)
 
-    j3d = create_field3d(g3.N)
-    add!(j3d, ft, boundft, g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
+    j3d = create_field_array(g3.N)
+    add!(j3d, ft2gt.(ft,boundft), g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
 
     @test sum(j3d[:,:,:,nX] .!= 0) == sum(j3d[:,:,:,nY] .!= 0) == sum(j3d[:,:,:,nZ] .!= 0) == 8
-    @test sum(j3d[:,:,:,nX]) * ∆v == src.Id * src.p[nX]
-    @test sum(j3d[:,:,:,nY]) * ∆v == src.Id * src.p[nY]
-    @test sum(j3d[:,:,:,nZ]) * ∆v == src.Id * src.p[nZ]
+    @test sum(j3d[:,:,:,nX]) * ∆v == src.I∆r * src.p[nX]
+    @test sum(j3d[:,:,:,nY]) * ∆v == src.I∆r * src.p[nY]
+    @test sum(j3d[:,:,:,nZ]) * ∆v == src.I∆r * src.p[nZ]
 
     # Fine grid
     lprim = (-10:0.5:10, -10:0.5:10, -10:0.5:10)
     g3_fine = Grid(lprim, isbloch)
 
-    j3d_fine = create_field3d(g3_fine.N)
-    add!(j3d_fine, ft, boundft, g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
+    j3d_fine = create_field_array(g3_fine.N)
+    add!(j3d_fine, ft2gt.(ft,boundft), g3_fine.bounds, g3_fine.l, g3_fine.∆l, g3_fine.isbloch, src)
     ∆v_fine = 0.5^3  # volume element (dipole-normal area element * dipole length)
 
     @test sum(j3d_fine[:,:,:,nX] .!= 0) == sum(j3d_fine[:,:,:,nY] .!= 0) == sum(j3d_fine[:,:,:,nZ] .!= 0) == 8
-    @test sum(j3d_fine[:,:,:,nX]) * ∆v_fine == src.Id * src.p[nX]
-    @test sum(j3d_fine[:,:,:,nY]) * ∆v_fine == src.Id * src.p[nY]
-    @test sum(j3d_fine[:,:,:,nZ]) * ∆v_fine == src.Id * src.p[nZ]
+    @test sum(j3d_fine[:,:,:,nX]) * ∆v_fine == src.I∆r * src.p[nX]
+    @test sum(j3d_fine[:,:,:,nY]) * ∆v_fine == src.I∆r * src.p[nY]
+    @test sum(j3d_fine[:,:,:,nZ]) * ∆v_fine == src.I∆r * src.p[nZ]
 
 
     # Nonuniform grid in x, y, z
@@ -213,8 +215,8 @@ end  # @testset "PlaneSrc"
     ∆yprim = g3_nu.∆l[nPR][nY]
     ∆zdual = g3_nu.∆l[nDL][nZ]
 
-    j3d_nu = create_field3d(g3_nu.N)
-    add!(j3d_nu, ft, boundft, g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
+    j3d_nu = create_field_array(g3_nu.N)
+    add!(j3d_nu, ft2gt.(ft,boundft), g3_nu.bounds, g3_nu.l, g3_nu.∆l, g3_nu.isbloch, src)
 
     Nx, Ny, Nz = g3_nu.N.data
     @test sum(j3d[:,:,:,nZ]) * ∆v ≈ sum(j3d_nu[:,:,:,nZ] .* (reshape(∆xprim,Nx,1,1) .* reshape(∆yprim,1,Ny,1) .* reshape(∆zdual,1,1,Nz)))  # total current through x-normal cross section is independent of grid resolution

@@ -34,7 +34,7 @@ mutable struct Maxwell
     g::Grid{3}
     bounds::Tuple2{AbsVecReal}  # ([xmin,ymin,zmin], [xmax,ymax,zmax])
     ∆l::AbsVecReal  # [∆x,∆y,∆z]
-    boundft::SVec3{FieldType}  # boundary field type
+    boundft::SVector{3,FieldType}  # boundary field type
     isbloch::AbsVecBool  # [Bool,Bool,Bool]
     kbloch::AbsVecReal  # [Real,Real,Real]
     e⁻ⁱᵏᴸ::AbsVecComplex
@@ -43,12 +43,10 @@ mutable struct Maxwell
     Npml::Tuple2{AbsVecInteger}
     s∆l::Tuple2{Tuple3{Vector{CFloat}}}
 
-    # Domain
-    εdom::Real
-
     # Objects and materials
-    ovec::AbsVec{Object3}
-    paramset::Tuple2{AbsVec{SMat3Complex}}
+    oind2shp::AbsVec{Shape{3,9}}
+    oind2pind::Tuple2{AbsVec{ParamInd}}
+    pind2matprm::Tuple2{AbsVec{SSComplex3}}
     param3d::Tuple2{AbsArrComplex{5}}
 
     # Sources
@@ -75,8 +73,9 @@ mutable struct Maxwell
         m.kbloch = @SVector zeros(3)
         m.∆l = @SVector ones(3)
 
-        m.ovec = Object3[]
-        m.paramset = (SMat3Complex[], SMat3Complex[])
+        m.oind2shp = Shape{3,9}[]
+        m.oind2pind = (ParamInd[], ParamInd[])
+        m.pind2matprm = (SSComplex3[], SSComplex3[])
 
         return m
     end
@@ -116,7 +115,7 @@ function get_e⁻ⁱᵏᴸ(m::Maxwell)
         else
             g = get_grid(m)
             L = g.L
-            kbloch = SVec3(m.kbloch)
+            kbloch = SVector{3}(m.kbloch)
 
             m.e⁻ⁱᵏᴸ = exp.(-im .* kbloch .* L)
         end
@@ -136,10 +135,10 @@ set_background!(m::Maxwell, matname::String, ε::MatParam) = add_obj!(m, matname
 add_obj!(m::Maxwell, matname::String, ε::MatParam, shapes::Shape...) = add_obj!(m, matname, ε, [shapes...])
 
 function add_obj!(m::Maxwell, matname::String, ε::MatParam, shapes::AbsVec{<:Shape})
-    mat = Material(matname, ε=ε)
+    mat = Material{3,3}(matname, ε=ε)
     for s = shapes  # shapes is tuple
         obj = Object(s, mat)
-        add!(m.ovec, m.paramset, obj)
+        add!(m.oind2shp, m.oind2pind, m.pind2matprm, obj)
     end
 
     return nothing
@@ -152,20 +151,17 @@ function get_param3d(m::Maxwell)
         N = g.N
 
         # Initialize other fields that depend on the grid.
-        ε3d = create_param3d(N)
-        εobj3d = create_n3d(Object3, N)
-        εind3d = create_n3d(ParamInd, N)
-        εoind3d = create_n3d(ObjInd, N)
+        ε3d = create_param_array(N)
+        εoind3d = create_p_storage(ObjInd, N)
 
-        μ3d = create_param3d(N)
-        μobj3d = create_n3d(Object3, N)
-        μind3d = create_n3d(ParamInd, N)
-        μoind3d = create_n3d(ObjInd, N)
+        μ3d = create_param_array(N)
+        μoind3d = create_p_storage(ObjInd, N)
 
-        assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), m.boundft, m.ovec, g.ghosted.τl, g.isbloch)
+        assign_param!(ε3d, μoind3d, EE, m.boundft, m.oind2shp, m.oind2pind[nE], m.pind2matprm[nE], g.ghosted.τl, g.isbloch)
+        assign_param!(μ3d, εoind3d, HH, m.boundft, m.oind2shp, m.oind2pind[nH], m.pind2matprm[nH], g.ghosted.τl, g.isbloch)
 
-        smooth_param!(ε3d, εobj3d, εind3d, εoind3d, EE, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
-        smooth_param!(μ3d, μobj3d, μind3d, μoind3d, HH, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
+        smooth_param!(ε3d, εoind3d, m.oind2shp, m.oind2pind[nE], m.pind2matprm[nE], EE, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
+        smooth_param!(μ3d, μoind3d, m.oind2shp, m.oind2pind[nH], m.pind2matprm[nH], HH, m.boundft, g.l, g.ghosted.l, g.σ, g.ghosted.∆τ)
 
         m.param3d = (ε3d, μ3d)
     end
@@ -202,7 +198,7 @@ function get_εmatrix(m::Maxwell)
         ∆l′ = t_ind(s∆l, alter.(gh))
 
         ε3d = m.param3d[nE]
-        m.Mε = param3d2mat(ε3d, EE, m.boundft, g.N, ∆l, ∆l′, g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Mε = create_paramop(ε3d, EE, m.boundft, g.N, ∆l, ∆l′, g.isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=true)
     end
 
     return m.Mε
@@ -215,7 +211,7 @@ function get_curle(m::Maxwell)
         gh = ft2gt.(HH, m.boundft)  # HH, not EE, because ∆l for Ce is defined at H-field locations
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Ce = create_curl(m.boundft.==EE, g.N, t_ind(s∆l,gh), g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Ce = create_curl(m.boundft.==EE, g.N, t_ind(s∆l,gh), g.isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=true)
     end
 
     return m.Ce
@@ -228,7 +224,7 @@ function get_curlm(m::Maxwell)
         ge = ft2gt.(EE, m.boundft)  # EE, not HH, because ∆l for Cm is defined at E-field locations
         e⁻ⁱᵏᴸ = get_e⁻ⁱᵏᴸ(m)
 
-        m.Cm = create_curl(m.boundft.==HH, g.N, t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, reorder=true)
+        m.Cm = create_curl(m.boundft.==HH, g.N, t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=true)
     end
 
     return m.Cm
@@ -290,7 +286,7 @@ function get_Mc(m::Maxwell)
         # - We supply ∆l and ∆l′ because we want to use weighted arithmetic averaging for
         # this backward averaging.
         # - kdiag = 0 for putting Ex, Ey, Ez to voxel corners.
-        m.Mc = create_mean(m.boundft.==HH, g.N, t_ind(s∆l,gh), t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, kdiag=0, reorder=true)
+        m.Mc = create_mean(m.boundft.==HH, g.N, t_ind(s∆l,gh), t_ind(s∆l,ge), g.isbloch, e⁻ⁱᵏᴸ, kdiag=0, order_cmpfirst=true)
     end
 
     return m.Mc
@@ -310,7 +306,7 @@ function get_Ml(m::Maxwell)
         # - We do not supply ∆l and ∆l′ because we want to use unweighted arithmetic
         # averaging for this forward averaging.
         # - kdiag = +1 for putting Ex, Ey, Ez to Ez, Ex, Ey locations.
-        m.Ml = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=1, reorder=true)
+        m.Ml = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=1, order_cmpfirst=true)
     end
 
     return m.Ml
@@ -330,7 +326,7 @@ function get_Mr(m::Maxwell)
         # - We do not supply ∆l and ∆l′ because we want to use unweighted arithmetic
         # averaging for this forward averaging.
         # - kdiag = -1 for putting Ex, Ey, Ez to Ey, Ez, Ex locations.
-        m.Mr = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=-1, reorder=true)
+        m.Mr = create_mean(m.boundft.==EE, g.N, g.isbloch, e⁻ⁱᵏᴸ, kdiag=-1, order_cmpfirst=true)
     end
 
     return m.Mr
@@ -340,14 +336,14 @@ end
 function require_je3d!(m::Maxwell)
     if ~isdefined(m, :je3d)
         g = get_grid(m)
-        m.je3d = create_field3d(g.N)
+        m.je3d = create_field_array(g.N)
     end
 end
 
 function require_jm3d!(m::Maxwell)
     if ~isdefined(m, :jm3d)
         g = get_grid(m)
-        m.jm3d = create_field3d(g.N)
+        m.jm3d = create_field_array(g.N)
     end
 end
 
@@ -373,8 +369,8 @@ function get_bvector(m::Maxwell)
         require_je3d!(m)
         require_jm3d!(m)
 
-        je = field3d2vec(m.je3d, reorder=true)
-        jm = field3d2vec(m.jm3d, reorder=true)
+        je = field_arr2vec(m.je3d, order_cmpfirst=true)
+        jm = field_arr2vec(m.jm3d, order_cmpfirst=true)
 
         ω = in_ω₀(get_osc(m))
         Cm = get_curlm(m)
