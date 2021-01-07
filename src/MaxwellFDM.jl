@@ -57,6 +57,7 @@ const AbsArrNumber{N} = AbsArr{<:Number,N}
 const SBool{K} = SVector{K,Bool}
 const SFloat{K} = SVector{K,Float}
 const SInt{K} = SVector{K,Int}
+const SReal{K} = SVector{K,<:Real}
 const SComplex{K} = SVector{K,CFloat}
 const SNumber{K} = SVector{K,<:Number}
 
