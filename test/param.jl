@@ -11,10 +11,10 @@
 
     # Create materials.
     εvac = 1.0
-    vac = Material("Vacuum", ε=εvac)
+    vac = Material{3,3}("Vacuum", ε=εvac)
 
     εdiel = 2.0
-    diel = Material("Dielectric", ε=εdiel)
+    diel = Material{3,3}("Dielectric", ε=εdiel)
 
     # Create objects.
     dom_vac = Object(Box(g3.bounds), vac)
@@ -22,31 +22,46 @@
     # obj_diel = Object(Sphere([0,0,0], 1), diel)
 
     # Add objects.
-    ovec = Object{3}[]
-    paramset = (SSComplex3[], SSComplex3[])
-    add!(ovec, paramset, dom_vac, obj_diel)
+    oind2shp = Shape3[]
+    oind2εind = ParamInd[]
+    oind2μind = ParamInd[]
+    εind2ε = SSComplex3[]
+    μind2μ = SSComplex3[]
+
+    add!(oind2shp, (oind2εind,oind2μind), (εind2ε,μind2μ), dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
+    N = g3.N
     ε3d = create_param_array(N)
-    εobj3d = create_p_storage(Object{3}, N)
-    εind3d = create_p_storage(ParamInd, N)
-    εoind3d = create_p_storage(ObjInd, N)
+    εxx_oind3d = create_oind_array(N)
+    εyy_oind3d = create_oind_array(N)
+    εzz_oind3d = create_oind_array(N)
+    εoo_oind3d = create_oind_array(N)
 
     μ3d = create_param_array(N)
-    μobj3d = create_p_storage(Object{3}, N)
-    μind3d = create_p_storage(ParamInd, N)
-    μoind3d = create_p_storage(ObjInd, N)
+    μxx_oind3d = create_oind_array(N)
+    μyy_oind3d = create_oind_array(N)
+    μzz_oind3d = create_oind_array(N)
+    μoo_oind3d = create_oind_array(N)
 
     boundft = SVector(EE,EE,EE)
-    assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
-    # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
+    assign_param!(ε3d, (μxx_oind3d,μyy_oind3d,μzz_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(ε3d, tuple(μoo_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, tuple(εoo_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
 
-    ft = EE
-    smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    # Perform smoothing.
+    smooth_param!(ε3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(ε3d, tuple(εoo_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mε = create_paramop(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, order_cmpfirst=false)
+    ∆l = g3.∆l[nDL]
+    ∆l′ = g3.∆l[nPR]
+    ∆l′⁻¹ = map(x->inv.(x), ∆l′)
 
-    @test issymmetric(Mε)
+    Mε = create_paramop(ε3d, ft2gt.(EE,boundft), N, ∆l, ∆l′⁻¹, g3.isbloch, order_cmpfirst=true)
+
+    # @test issymmetric(Mε)
+    @test Mε ≈ transpose(Mε)
 
     # Code I used to reveal the matrix structure while debugging:
     # (i,j) = (nX,nY); full(real.(Mε3))[27(i-1)+1:27i, 27(j-1)+1:27j]
@@ -62,10 +77,10 @@ end  # @testset "create_paramop"
 
     # Create materials.
     εvac = 1.0
-    vac = Material("Vacuum", ε=εvac)
+    vac = Material{3,3}("Vacuum", ε=εvac)
 
     εdiel = 2.0
-    diel = Material("Dielectric", ε=εdiel)
+    diel = Material{3,3}("Dielectric", ε=εdiel)
 
     # Create objects.
     dom_vac = Object(Box(g3.bounds), vac)
@@ -73,35 +88,50 @@ end  # @testset "create_paramop"
     # obj_diel = Object(Sphere([0,0,0], 1), diel)
 
     # Add objects.
-    ovec = Object{3}[]
-    paramset = (SSComplex3[], SSComplex3[])
-    add!(ovec, paramset, dom_vac, obj_diel)
+    oind2shp = Shape3[]
+    oind2εind = ParamInd[]
+    oind2μind = ParamInd[]
+    εind2ε = SSComplex3[]
+    μind2μ = SSComplex3[]
+
+    add!(oind2shp, (oind2εind,oind2μind), (εind2ε,μind2μ), dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
+    N = g3.N
     ε3d = create_param_array(N)
-    εobj3d = create_p_storage(Object{3}, N)
-    εind3d = create_p_storage(ParamInd, N)
-    εoind3d = create_p_storage(ObjInd, N)
+    εxx_oind3d = create_oind_array(N)
+    εyy_oind3d = create_oind_array(N)
+    εzz_oind3d = create_oind_array(N)
+    εoo_oind3d = create_oind_array(N)
 
     μ3d = create_param_array(N)
-    μobj3d = create_p_storage(Object{3}, N)
-    μind3d = create_p_storage(ParamInd, N)
-    μoind3d = create_p_storage(ObjInd, N)
+    μxx_oind3d = create_oind_array(N)
+    μyy_oind3d = create_oind_array(N)
+    μzz_oind3d = create_oind_array(N)
+    μoo_oind3d = create_oind_array(N)
 
     boundft = SVector(EE,EE,EE)
-    assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
-    # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
+    assign_param!(ε3d, (μxx_oind3d,μyy_oind3d,μzz_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(ε3d, tuple(μoo_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, tuple(εoo_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
 
-    ft = EE
-    smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    # Perform smoothing.
+    smooth_param!(ε3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(ε3d, tuple(εoo_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
 
-    Mε = create_paramop(ε3d, ft, boundft, N, g3.∆l[nDL], g3.∆l[nPR], g3.isbloch, order_cmpfirst=false)
+    ∆l = g3.∆l[nDL]
+    ∆l′ = g3.∆l[nPR]
+    ∆l′⁻¹ = map(x->inv.(x), ∆l′)
+
+    Mε = create_paramop(ε3d, ft2gt.(EE,boundft), N, ∆l, ∆l′⁻¹, g3.isbloch, order_cmpfirst=true)
 
     # Ml
     ∆lprim = g3.∆l[nPR]
     ∆ldual = g3.∆l[nDL]
 
     Nx, Ny, Nz = N
+    nX, nY, nZ = 1, 2, 3
     ∆X = repeat(∆ldual[nX], outer=(1,Ny,Nz))
     ∆Y = repeat(reshape(∆ldual[nY], (1,Ny,1)), outer=(Nx,1,Nz))
     ∆Z = repeat(reshape(∆ldual[nZ], (1,1,Nz)), outer=(Nx,Ny,1))

@@ -335,7 +335,7 @@ ind = (map((m,b)->circshift(1:m, b), M, g3.isbloch.data),
        map((m,b)->circshift(1:m, -b), M, g3.isbloch.data))
 
 gt_cmp = SVector(gt, gt, gt)
-gt_cmp = map((k,g)->(k==nw ? alter(g) : g), nXYZ, gt_cmp)  # no change if nw = 0
+gt_cmp = map((k,g)->(k==nw ? alter(g) : g), SVector(1,2,3), gt_cmp)  # no change if nw = 0
 
 # Choose the circularly shifted indices to use.
 ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
@@ -347,7 +347,7 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # τl.  Even though all arrays are for same locations, param_cmp contains gt
 # material, whereas obj_cmp, pind_cmp, oind_cmp contain alter(gt)
 # material, so use ngt′ instead of ngt for them.
-ε3d_cmp = view(ε3d, ind_cmp..., nXYZ, nXYZ)
+ε3d_cmp = view(ε3d, ind_cmp..., 1:3, 1:3)
 μoind_cmp = view((μxx_oind3d,μyy_oind3d,μzz_oind3d)[nw], ind_cmp...)
 
 # o = oind2obj[2]  # oind2obj[1]: Box, oind2obj[2]: Sphere

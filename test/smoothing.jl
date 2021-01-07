@@ -1,22 +1,5 @@
 @testset "smoothing" begin
 
-@testset "sort8!" begin
-    v = rand(8)
-    ind = collect(1:8)
-    @inferred(MaxwellFDM.sort8!(ind,v))
-    @test issorted(v[ind])
-    @test @inferred(MaxwellFDM.countdiff(ind,v)) == (8,8)
-end  # @testset "sort8!"
-
-# @testset "Object" begin
-#     vac = Material("Vacuum")
-#     ivac = EncodedMaterial(PRIM, vac)
-#     box = Box(((0,1), (0,1), (0,1)))
-#     obj = Object(ivac, box)
-#     obj_array = Object.(ivac, [box,box,box])  # vectorization over shapes
-#     @test obj_array == [obj, obj, obj]
-# end  # @testset "Object"
-
 # Need to test non-box object, such as a sphere and see if subpixel smoothing generates
 # the expected smoothed material parameters (instead of simply using kottke_input_simple or
 # amean_param or hmean_param.)
@@ -31,10 +14,10 @@ end  # @testset "sort8!"
 
     # Create materials.
     εvac = 1.0
-    vac = Material("Vacuum", ε=εvac)
+    vac = Material{3,3}("Vacuum", ε=εvac)
 
     εdiel = 2.0
-    diel = Material("Dielectric", ε=εdiel)
+    diel = Material{3,3}("Dielectric", ε=εdiel)
 
     # Create objects.
     dom_vac = Object(Box(g3.bounds), vac)
@@ -42,29 +25,41 @@ end  # @testset "sort8!"
     # obj_diel = Object(Sphere([0,0,0], 1), diel)
 
     # Add objects.
-    ovec = Object{3}[]
-    paramset = (SSComplex3[], SSComplex3[])
-    add!(ovec, paramset, dom_vac, obj_diel)
+    oind2shp = Shape3[]
+    oind2εind = ParamInd[]
+    oind2μind = ParamInd[]
+    εind2ε = SSComplex3[]
+    μind2μ = SSComplex3[]
+
+    add!(oind2shp, (oind2εind,oind2μind), (εind2ε,μind2μ), dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
+    N = g3.N
     ε3d = create_param_array(N)
-    εobj3d = create_p_storage(Object{3}, N)
-    εind3d = create_p_storage(ParamInd, N)
-    εoind3d = create_p_storage(ObjInd, N)
+    εxx_oind3d = create_oind_array(N)
+    εyy_oind3d = create_oind_array(N)
+    εzz_oind3d = create_oind_array(N)
+    εoo_oind3d = create_oind_array(N)
 
     μ3d = create_param_array(N)
-    μobj3d = create_p_storage(Object{3}, N)
-    μind3d = create_p_storage(ParamInd, N)
-    μoind3d = create_p_storage(ObjInd, N)
+    μxx_oind3d = create_oind_array(N)
+    μyy_oind3d = create_oind_array(N)
+    μzz_oind3d = create_oind_array(N)
+    μoo_oind3d = create_oind_array(N)
 
     boundft = SVector(EE,EE,EE)
-    assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
-    # Test the sanity the assigned param3d here.  It is relatively easy, and it was very helpful.
+    assign_param!(ε3d, (μxx_oind3d,μyy_oind3d,μzz_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(ε3d, tuple(μoo_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, tuple(εoo_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
 
-    ft = EE
-    smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    # To-do: test the sanity of the assigned param3d here.  It is relatively easy, and it was very helpful.
 
-    ε3dred = view(ε3d, 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
+    # Perform smoothing.
+    smooth_param!(ε3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(ε3d, tuple(εoo_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+
+    ε3dred = view(ε3d, 1:N[1], 1:N[2], 1:N[3], 1:3, 1:3)
 
     # Construct an expected ε3d.
     ε3dexp = Array{ComplexF64}(undef,3,3,3,3,3)
@@ -73,7 +68,7 @@ end  # @testset "sort8!"
     εa = rvol*εdiel + (1-rvol)*εvac  # arithmetic average
 
     # Initialize ε3dexp.
-    for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
+    for k = 1:N[3], j = 1:N[2], i = 1:N[1]
         ε3dexp[i,j,k,:,:] = εvac * Matrix(I,3,3)
     end
 
@@ -125,10 +120,13 @@ end  # @testset "sort8!"
     ε3dexp[3,3,3,2,2] = εvac
     ε3dexp[3,3,3,3,3] = εvac
 
-    for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
+    for k = 1:N[3], j = 1:N[2], i = 1:N[1]
         # @info "(i,j,k) = $((i,j,k))"  # uncomment this to know where test fails
         @test @view(ε3dred[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
-        @test issymmetric(@view(ε3dred[i,j,k,:,:]))
+        # @info "$(@view(ε3dred[i,j,k,:,:]))"
+        # @test issymmetric(@view(ε3dred[i,j,k,:,:]))
+        A = @view(ε3dred[i,j,k,:,:])
+        @test A ≈ transpose(A)
     end
 end  # @testset "smoothing, box with odd number of voxels"
 
@@ -141,10 +139,10 @@ end  # @testset "smoothing, box with odd number of voxels"
 
     # Create materials.
     εvac = 1.0
-    vac = Material("Vacuum", ε=εvac)
+    vac = Material{3,3}("Vacuum", ε=εvac)
 
     εdiel = 2.0
-    diel = Material("Dielectric", ε=εdiel)
+    diel = Material{3,3}("Dielectric", ε=εdiel)
 
     # Create objects.
     dom_vac = Object(Box(g3.bounds), vac)
@@ -152,28 +150,41 @@ end  # @testset "smoothing, box with odd number of voxels"
     # obj_diel = Object(Sphere([0,0,0], 1), diel)
 
     # Add objects.
-    ovec = Object{3}[]
-    paramset = (SSComplex3[], SSComplex3[])
-    add!(ovec, paramset, dom_vac, obj_diel)
+    oind2shp = Shape3[]
+    oind2εind = ParamInd[]
+    oind2μind = ParamInd[]
+    εind2ε = SSComplex3[]
+    μind2μ = SSComplex3[]
+
+    add!(oind2shp, (oind2εind,oind2μind), (εind2ε,μind2μ), dom_vac, obj_diel)
 
     # Construct arguments and call assign_param!.
+    N = g3.N
     ε3d = create_param_array(N)
-    εobj3d = create_p_storage(Object{3}, N)
-    εind3d = create_p_storage(ParamInd, N)
-    εoind3d = create_p_storage(ObjInd, N)
+    εxx_oind3d = create_oind_array(N)
+    εyy_oind3d = create_oind_array(N)
+    εzz_oind3d = create_oind_array(N)
+    εoo_oind3d = create_oind_array(N)
 
     μ3d = create_param_array(N)
-    μobj3d = create_p_storage(Object{3}, N)
-    μind3d = create_p_storage(ParamInd, N)
-    μoind3d = create_p_storage(ObjInd, N)
+    μxx_oind3d = create_oind_array(N)
+    μyy_oind3d = create_oind_array(N)
+    μzz_oind3d = create_oind_array(N)
+    μoo_oind3d = create_oind_array(N)
 
     boundft = SVector(EE,EE,EE)
-    assign_param!((ε3d,μ3d), (εobj3d,μobj3d), (εind3d,μind3d), (εoind3d,μoind3d), boundft, ovec, g3.ghosted.τl, g3.isbloch)
+    assign_param!(ε3d, (μxx_oind3d,μyy_oind3d,μzz_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(ε3d, tuple(μoo_oind3d), ft2gt.(EE,boundft), oind2shp, oind2εind, εind2ε, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
+    assign_param!(μ3d, tuple(εoo_oind3d), ft2gt.(HH,boundft), oind2shp, oind2μind, μind2μ, g3.ghosted.τl, g3.isbloch)
 
-    ft = EE
-    smooth_param!(ε3d, εobj3d, εind3d, εoind3d, ft, boundft, g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    # To-do: test the sanity of the assigned param3d here.  It is relatively easy, and it was very helpful.
 
-    ε3dred = view(ε3d, 1:N[nX], 1:N[nY], 1:N[nZ], 1:3, 1:3)
+    # Perform smoothing.
+    smooth_param!(ε3d, (εxx_oind3d,εyy_oind3d,εzz_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+    smooth_param!(ε3d, tuple(εoo_oind3d), oind2shp, oind2εind, εind2ε, ft2gt.(EE,boundft), g3.l, g3.ghosted.l, g3.σ, g3.ghosted.∆τ)
+
+    ε3dred = view(ε3d, 1:N[1], 1:N[2], 1:N[3], 1:3, 1:3)
 
     # Construct an expected ε3d.
     ε3dexp = Array{ComplexF64}(undef,4,4,4,3,3)
@@ -182,7 +193,7 @@ end  # @testset "smoothing, box with odd number of voxels"
     εa = rvol*εdiel + (1-rvol)*εvac  # arithmetic average
 
     # Initialize ε3dexp.
-    for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
+    for k = 1:N[3], j = 1:N[2], i = 1:N[1]
         ε3dexp[i,j,k,:,:] = εvac * Matrix(I,3,3)
     end
 
@@ -352,10 +363,12 @@ end  # @testset "smoothing, box with odd number of voxels"
     ε3dexp[4,4,4,2,2] = εvac
     ε3dexp[4,4,4,3,3] = εvac
 
-    for k = 1:N[nZ], j = 1:N[nY], i = 1:N[nX]
+    for k = 1:N[3], j = 1:N[2], i = 1:N[1]
         # @info "(i,j,k) = $((i,j,k))"  # uncomment this to know where test fails
         @test @view(ε3dred[i,j,k,:,:]) ≈ @view(ε3dexp[i,j,k,:,:])
-        @test issymmetric(@view(ε3dred[i,j,k,:,:]))
+        # @test issymmetric(@view(ε3dred[i,j,k,:,:]))
+        A = @view(ε3dred[i,j,k,:,:])
+        @test A ≈ transpose(A)
     end
 end  # @testset "smoothing, box with even number of voxels"
 

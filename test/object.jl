@@ -15,28 +15,6 @@
     end  # @testset "Box"
 end  # @testset "Object"
 
-@testset "Object Vector" begin
-    oind2obj = Object{3,3,3}[]
-    pind2matprm = (SSComplex3[], SSComplex3[])
-    vac = Material{3,3}("vacuum")
-    Si = Material{3,3}("Si", ε = 12)
-
-    box_vac = Object(Box((rand(3),rand(3))), vac)
-    add!(oind2obj, pind2matprm, box_vac)
-    @test paramind(box_vac,EE)==1 && paramind(box_vac,HH)==1
-
-    el_Si = Object(Ellipsoid(rand(3),rand(3)), Si)
-    add!(oind2obj, pind2matprm, el_Si)
-    @test paramind(el_Si,EE)==2 && paramind(el_Si,HH)==1
-
-    box2_vac = Object(Box((rand(3),rand(3))), vac)
-    add!(oind2obj, pind2matprm, box2_vac)
-    @test paramind(box2_vac,EE)==1 && paramind(box2_vac,HH)==1
-
-    @test create_oind2pind(oind2obj,EE) == [1,2,1]
-    @test create_oind2pind(oind2obj,HH) == [1,1,1]
-end  # @testset "Object vector"
-
 # @testset "periodize" begin
 #     # Square lattice
 #     Si = Material("Si", ε = 12)
