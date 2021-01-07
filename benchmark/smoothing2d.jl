@@ -308,12 +308,12 @@ add!(oind2shp, (oind2εind,oind2μind), (εind2ε,μind2μ), dom_vac, obj_diel, 
 
 
 N = g2.N
-ε2d = create_param_array(N,2)
+ε2d = create_param_array(N, ncmp=2)
 εxx_oind2d = create_oind_array(N)
 εyy_oind2d = create_oind_array(N)
 εoo_oind2d = create_oind_array(N)
 
-μ2d = create_param_array(N,1)
+μ2d = create_param_array(N, ncmp=1)
 μzz_oind2d = create_oind_array(N)
 
 boundft = SVector(EE,EE)

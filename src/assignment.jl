@@ -64,7 +64,7 @@ export create_param_array, create_oind_array, assign_param!, assign_val_shape!
 # For length(N) = 2, the output paramKd is indexd as paramKd[i,j,v,w], where (i,j) is the
 # grid cell location, and v and w are the row and column indices of the ncmp×ncmp tensorial
 # material parameters (like the ε tensor and μ tensor).
-create_param_array(N::SInt, ncmp::Int=3) = (s = (N.+1).data; zeros(CFloat, s..., ncmp, ncmp))  # (i,j,...) element is ncmp×ncmp tensor
+create_param_array(N::SInt; ncmp::Int=3) = (s = (N.+1).data; zeros(CFloat, s..., ncmp, ncmp))  # (i,j,...) element is ncmp×ncmp tensor
 
 #  Create an array to store object indices.
 create_oind_array(N::SInt) = zeros(ObjInd, (N.+1).data)

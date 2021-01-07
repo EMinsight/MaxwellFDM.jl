@@ -17,7 +17,7 @@ export create_field_array, field_arr2vec
 # Therefore, again the E[i,j,k,w] indexing scheme results in an operation on a more
 # contiguous block in memory space.
 
-create_field_array(N::SInt, ncmp::Int=3) = zeros(CFloat, N.data..., ncmp)
+create_field_array(N::SInt; ncmp::Int=3) = zeros(CFloat, N.data..., ncmp)
 
 
 # Below, permutedims(fKd, ...) create a new array, whereas reshape(fKd, :) doesn't.
