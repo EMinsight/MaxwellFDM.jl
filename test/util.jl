@@ -29,6 +29,7 @@ end
     v = MArray{Tuple{2,2,2}}(rand(8))
     ind = MArray{Tuple{2,2,2}}(collect(1:8))
     @inferred(MaxwellWave.sort_ind!(ind,v))
+    @info "v = $v, ind = $ind"
     @test issorted(v[ind])
     @test @inferred(MaxwellWave.countdiff(ind,v)) == (8,8)
 end  # @testset "sort8!"
