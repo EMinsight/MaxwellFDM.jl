@@ -1,4 +1,4 @@
-using MaxwellFDM
+using MaxwellWave
 using BenchmarkTools
 using StaticArrays
 using JLD2
@@ -338,10 +338,10 @@ gt_cmp = SVector(gt, gt, gt)
 gt_cmp = map((k,g)->(k==nw ? alter(g) : g), SVector(1,2,3), gt_cmp)  # no change if nw = 0
 
 # Choose the circularly shifted indices to use.
-ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
+ind_cmp = MaxwellWave.t_ind(ind, gt_cmp)
 
 # Prepare the circularly shifted locations of the field components.
-τlcmp = view.(MaxwellFDM.t_ind(τl,gt_cmp), ind_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
+τlcmp = view.(MaxwellWave.t_ind(τl,gt_cmp), ind_cmp)  # Tuple3{VecFloat}: locations of Fw = Uw or Vw
 
 # Prepare the circularly shifted viewes of various arrays to match the sorted
 # τl.  Even though all arrays are for same locations, param_cmp contains gt
@@ -375,7 +375,7 @@ ind_cmp = MaxwellFDM.t_ind(ind, gt_cmp)
 # end
 
 
-# @code_warntype MaxwellFDM.assign_param_cmp!(gt, nw, param_cmp, obj_cmp, pind_cmp, oind_cmp, oind2obj, τlcmp)
+# @code_warntype MaxwellWave.assign_param_cmp!(gt, nw, param_cmp, obj_cmp, pind_cmp, oind_cmp, oind2obj, τlcmp)
 # @code_warntype assign_param!(param3d, obj3d, pind3d, oind3d, oind2obj, g3.ghosted.τl, g3.isbloch)
 
 @load "benchmark/smoothing_result.jld2" ε3d_assigned ε3d_smoothed
@@ -394,17 +394,17 @@ end
 
 
 # gt_cmp′ = alter.(gt_cmp)
-# lcmp = MaxwellFDM.t_ind(g3.l, gt_cmp)
-# σcmp = MaxwellFDM.t_ind(g3.σ, gt_cmp)
-# lcmp′ = MaxwellFDM.t_ind(g3.ghosted.l, gt_cmp′)
-# ∆τcmp′ = MaxwellFDM.t_ind(g3.ghosted.∆τ, gt_cmp′)
+# lcmp = MaxwellWave.t_ind(g3.l, gt_cmp)
+# σcmp = MaxwellWave.t_ind(g3.σ, gt_cmp)
+# lcmp′ = MaxwellWave.t_ind(g3.ghosted.l, gt_cmp′)
+# ∆τcmp′ = MaxwellWave.t_ind(g3.ghosted.∆τ, gt_cmp′)
 #
 # param3d_gt = param3d[ngt]
 # obj_cmp′ = obj3d[ngt][nw]
 # pind_cmp′ = pind3d[ngt][nw]
 # oind_cmp′ = oind3d[ngt][nw]
 
-# @code_warntype MaxwellFDM.smooth_param_cmp!(gt, nw, param3d_gt, obj_cmp′, pind_cmp′, oind_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
+# @code_warntype MaxwellWave.smooth_param_cmp!(gt, nw, param3d_gt, obj_cmp′, pind_cmp′, oind_cmp′, lcmp, lcmp′, σcmp, ∆τcmp′)
 
 @time begin
     # Dealing with the diagonal entries first and then the off-diagonal entries is more

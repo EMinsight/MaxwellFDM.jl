@@ -1,4 +1,4 @@
-name = "MaxwellFDM"
+name = "MaxwellWave"
 uuid = "9ee19b4e-b9c3-5130-be0e-e5859ba17e49"
 license = "MIT"
 desc = "High-performance 3D finite-difference frequency-domain (FDFD) solver of Maxwell's equations written in Julia"

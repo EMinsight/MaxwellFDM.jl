@@ -296,7 +296,7 @@ function assign_param!(paramKd::AbsArrComplex{K₊₂},  # electric (magnetic) p
 end
 
 
-# This is the innermost function that is customized for MaxwellFDM (i.e., it takes arrays
+# This is the innermost function that is customized for MaxwellWave (i.e., it takes arrays
 # of specific element types).
 #
 # The goal of this function is to set all the arrays' entries, where the arrays are

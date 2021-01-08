@@ -69,7 +69,7 @@ function create_paramop(paramKd::AbsArrComplex{K₊₂},  # material parameter a
         # create a simple arithmetic averaging operator.  This is because the area factor matrix
         # multiplied for symmetry to the left of the material parameter matrix multiplies the
         # same area factor to the two fields being averaged.  (See my notes on Jul/18/2018 in
-        # MaxwellFDM in Agenda.)
+        # MaxwellWave in Agenda.)
         Mout = create_mean(isfwd_out, N, isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=order_cmpfirst)
 
         # For the input averaging, ∆l and ∆l′ are supplied to create min in order to create
@@ -78,7 +78,7 @@ function create_paramop(paramKd::AbsArrComplex{K₊₂},  # material parameter a
         # matrix divides the two fields being averaged by different (= nonuniform) line
         # segments.  The ∆l factors multiplied inside create_minfo cancel the effect of this
         # multiplication with the nonuniform line segments.  (See my notes on Jul/18/2018 in
-        # MaxwellFDM in Agenda.)
+        # MaxwellWave in Agenda.)
         Min = create_mean(isfwd_in, N, ∆l, ∆l′⁻¹, isbloch, e⁻ⁱᵏᴸ, order_cmpfirst=order_cmpfirst)
 
         # Off-diagonal components of material parameter tensor

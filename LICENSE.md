@@ -1,4 +1,4 @@
-The MaxwellFDM.jl package is licensed under the MIT "Expat" License:
+The MaxwellWave.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2016: Wonseok Shin.
 > 

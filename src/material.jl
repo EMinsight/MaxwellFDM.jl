@@ -49,7 +49,7 @@ end
 # isotropic ε between E-field voxels, which is arithmetic averaging.  The only other case is
 # the case with Shape{1} and Kf = 1  (like Ex in the slapes in the z-direction).  We can
 # easily prove that in these cases again the averaging reduces to simple arithmetic
-# averaging between material parameter tensors.  See Agenda > MaxwellFDM > Feb/22/2020.
+# averaging between material parameter tensors.  See Agenda > MaxwellWave > Feb/22/2020.
 kottke_avg_param(param1::AbsMatNumber, param2::AbsMatNumber, rvol1::Real) =
     param1 .* rvol1 + param2 .* (1-rvol1)
 

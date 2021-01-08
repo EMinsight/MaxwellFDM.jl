@@ -1,9 +1,9 @@
 @testset "material" begin
 
 @testset "tensorize" begin
-    @test MaxwellFDM.tensorize(3, Val(2)) === SMatrix{2,2,Complex{Float64},4}(3,0,0,3)
-    @test MaxwellFDM.tensorize([2,4], Val(2)) === SMatrix{2,2,Complex{Float64},4}(2,0,0,4)
-    @test MaxwellFDM.tensorize([1 3; 2 4], Val(2)) === SMatrix{2,2,Complex{Float64},4}(1,2,3,4)
+    @test MaxwellWave.tensorize(3, Val(2)) === SMatrix{2,2,Complex{Float64},4}(3,0,0,3)
+    @test MaxwellWave.tensorize([2,4], Val(2)) === SMatrix{2,2,Complex{Float64},4}(2,0,0,4)
+    @test MaxwellWave.tensorize([1 3; 2 4], Val(2)) === SMatrix{2,2,Complex{Float64},4}(1,2,3,4)
 end
 
 @testset "Material" begin
@@ -24,10 +24,10 @@ end
     ε3temp = zeros(Complex{Float64}, 3, 3)
     ε3temp[1:2,1:2] .= ε2
     ε3temp[3,3] = rand(Complex{Float64})
-    ε3 = MaxwellFDM.SSComplex3(ε3temp)
+    ε3 = MaxwellWave.SSComplex3(ε3temp)
 
-    τ2 = MaxwellFDM.τ_trans(ε2)
-    τ3 = MaxwellFDM.τ_trans(ε3)
+    τ2 = MaxwellWave.τ_trans(ε2)
+    τ3 = MaxwellWave.τ_trans(ε3)
     @test τ3[1:2,1:2] == τ2
 end
 

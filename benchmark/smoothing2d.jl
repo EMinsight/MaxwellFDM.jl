@@ -1,4 +1,4 @@
-using MaxwellFDM
+using MaxwellWave
 using BenchmarkTools
 using StaticArrays
 using JLD2
