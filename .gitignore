@@ -2,5 +2,4 @@ MATLAB
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
-Manifest.toml
 old/
