@@ -138,7 +138,7 @@ function add_obj!(m::Maxwell, matname::String, ε::MatParam, shapes::AbsVec{<:Sh
     mat = Material{3,3}(matname, ε=ε)
     for s = shapes  # shapes is tuple
         obj = Object(s, mat)
-        add!(m.oind2shp, m.oind2pind, m.pind2matprm, obj)
+        add_obj!(m.oind2shp, m.oind2pind, m.pind2matprm, obj)
     end
 
     return nothing
@@ -350,7 +350,7 @@ end
 function add_srce!(m::Maxwell, src::Source)
     require_je3d!(m)
     g = get_grid(m)
-    add!(m.je3d, EE, m.boundft, g.bounds, g.l, g.∆l, g.isbloch, src)
+    add_src!(m.je3d, EE, m.boundft, g.bounds, g.l, g.∆l, g.isbloch, src)
 
     return nothing
 end
@@ -358,7 +358,7 @@ end
 function add_srcm!(m::Maxwell, src::Source)
     require_jm3d!(m)
     g = get_grid(m)
-    add!(m.jm3d, HH, m.boundft, g.bounds, g.l, g.∆l, g.isbloch, src)
+    add_src!(m.jm3d, HH, m.boundft, g.bounds, g.l, g.∆l, g.isbloch, src)
 
     return nothing
 end
