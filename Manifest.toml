@@ -1,12 +1,20 @@
 # This file is machine-generated - editing it directly is not advised
 
+[[AbbreviatedTypes]]
+deps = ["Reexport", "StaticArrays"]
+git-tree-sha1 = "a75c6d621ec23e06b13fde0bd46faca5e1e90d29"
+repo-rev = "main"
+repo-url = "https://github.com/wsshin/AbbreviatedTypes.jl"
+uuid = "1766def0-c946-4dda-a59e-d0d07f8410f7"
+version = "0.1.0"
+
 [[GeometryPrimitives]]
 deps = ["LinearAlgebra", "StaticArrays", "Statistics"]
-git-tree-sha1 = "bdfa023f511d9779370551fe60d83cab3ef1bda5"
+git-tree-sha1 = "8250e50c6995759c587a84a93d84a1fe216499fa"
 repo-rev = "master"
 repo-url = "https://github.com/stevengj/GeometryPrimitives.jl"
 uuid = "17051e67-205e-509e-8301-03b320b998e6"
-version = "0.0.0"
+version = "0.1.0"
 
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -14,6 +22,14 @@ uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 [[LinearAlgebra]]
 deps = ["Libdl"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[[MaxwellBase]]
+deps = ["AbbreviatedTypes", "GeometryPrimitives", "LinearAlgebra", "Reexport", "SparseArrays", "StaggeredGridCalculus", "StaticArrays"]
+git-tree-sha1 = "a620f7ec82ce16b2a05b523974d38850c57a27d2"
+repo-rev = "main"
+repo-url = "https://github.com/wsshin/MaxwellBase.jl"
+uuid = "7ddc1c72-b467-4b56-ac1e-188734e3cfa7"
+version = "0.1.0"
 
 [[Random]]
 deps = ["Serialization"]
@@ -32,12 +48,12 @@ deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[StaggeredGridCalculus]]
-deps = ["LinearAlgebra", "Reexport", "SparseArrays", "StaticArrays"]
-git-tree-sha1 = "d1739b173c6f55ff60519f401f311dda19018ea3"
-repo-rev = "master"
+deps = ["AbbreviatedTypes", "LinearAlgebra", "Reexport", "SparseArrays", "StaticArrays"]
+git-tree-sha1 = "7c7a22a1abc4a0058e3b3026f29cff635672d7b7"
+repo-rev = "main"
 repo-url = "https://github.com/wsshin/StaggeredGridCalculus.jl"
 uuid = "fead5d43-7759-5ac8-9dff-97135399d9eb"
-version = "0.0.0"
+version = "0.1.0"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
