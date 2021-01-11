@@ -8,7 +8,7 @@ platform:
 
 branches:
   only:
-    - master
+    - main
 
 install:
   - ps: iex ((new-object net.webclient).DownloadString("https://raw.githubusercontent.com/JuliaCI/Appveyor.jl/version-1/bin/install.ps1"))

@@ -1,8 +1,8 @@
 # MaxwellWave
 
-[![Build Status](https://travis-ci.org/wsshin/MaxwellWave.jl.svg?branch=master)](https://travis-ci.org/wsshin/MaxwellWave.jl)
-[![Build status](https://ci.appveyor.com/api/projects/status/wo68v47m6pxg4g2b/branch/master?svg=true)](https://ci.appveyor.com/project/wsshin/MaxwellWave-jl/branch/master)
-[![codecov](https://codecov.io/gh/wsshin/MaxwellWave.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/wsshin/MaxwellWave.jl)
+[![Build Status](https://travis-ci.com/wsshin/MaxwellWave.jl.svg?branch=main)](https://travis-ci.com/wsshin/MaxwellWave.jl)
+[![Build status](https://ci.appveyor.com/api/projects/status/msqy41b4qsslmm0u/branch/main?svg=true)](https://ci.appveyor.com/project/wsshin/maxwellwave-jl/branch/main)
+[![codecov](https://codecov.io/gh/wsshin/MaxwellWave.jl/branch/main/graph/badge.svg?token=T2UuPYQTXB)](https://codecov.io/gh/wsshin/MaxwellWave.jl)
 
 MaxwellWave is a high-performance finite-difference frequency-domain (FDFD) solver package
 written in Julia.  This package aims to combine the functionalities of
