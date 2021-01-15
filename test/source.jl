@@ -131,7 +131,7 @@ end  # @testset "distweights"
     ∆a = 1.0^2  # area element
 
     ft = EE
-    boundft = SVector(EE,EE,EE)
+    boundft = SVec(EE,EE,EE)
 
     j3d = create_field_array(g3.N)
     add_src!(j3d, ft2gt.(ft,boundft), g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
@@ -180,7 +180,7 @@ end  # @testset "PlaneSrc"
     ∆v = 1.0^3  # volume element (dipole-normal area element * dipole length)
 
     ft = EE
-    boundft = SVector(EE,EE,EE)
+    boundft = SVec(EE,EE,EE)
 
     j3d = create_field_array(g3.N)
     add_src!(j3d, ft2gt.(ft,boundft), g3.bounds, g3.l, g3.∆l, g3.isbloch, src)
