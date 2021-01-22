@@ -8,6 +8,6 @@ using AbbreviatedTypes
 # must be included first.
 include("source/source.jl")
 # include("equation.jl")
-# include("maxwell.jl")
+include("model/model.jl")
 
 end # module MaxwellWave
