@@ -16,8 +16,8 @@
 # think there were cases some getters need to be called before all the setters are called.)
 export set_unitlen!, set_bounds!, set_∆l!, set_boundft!, set_isbloch!, set_kbloch!, set_Npml!,
     set_wvlen!, set_freq!, get_unit, get_osc, get_grid, set_background!, add_obj!, get_param3d,
-    get_stretched_∆l, get_εmatrix, get_μmatrix, get_curle, get_curlm, get_curls, get_dblcurl, get_Amatrix,
-    get_Mc, get_Ml, get_Mr, add_srce!, add_srcm!, get_bvector
+    get_stretched_∆l, get_εmatrix, get_μmatrix, get_curle, get_curlm, get_curls, get_dblcurl,
+    get_Amatrix, get_Mc, get_Ml, get_Mr, add_srce!, add_srcm!, get_bvector
 # export Model3D  # do not export; instantiate with qualification as MaxwellWave.Model3D(...)
 
 # Add quantities, and construct various systems at the end at once?
@@ -207,15 +207,9 @@ end
 function get_stretched_∆l(m3::Model3D)
     if ~isdefined(m3, :s∆l)
         g3 = get_grid(m3)
-        lpml, Lpml = get_pml_loc(g3.l[nPR], g3.bounds, m3.Npml)
-
         ω = in_ω₀(get_osc(m3))
-        sfactor = gen_stretch_factor(ω, g3.l, lpml, Lpml)
 
-        s∆lprim = map((x,y)->x.*y, sfactor[nPR], g3.∆l[nPR])
-        s∆ldual = map((x,y)->x.*y, sfactor[nDL], g3.∆l[nDL])
-
-        m3.s∆l = (s∆lprim, s∆ldual)
+        m3.s∆l = create_stretched_∆l(ω, g3, m3.Npml)
     end
 
     return m3.s∆l
@@ -223,12 +217,7 @@ end
 
 function get_stretched_∆l⁻¹(m3::Model3D)
     if ~isdefined(m3, :s∆l⁻¹)
-        s∆lprim, s∆ldual = get_stretched_∆l(m3)
-
-        s∆lprim⁻¹ = map(x->inv.(x), s∆lprim)
-        s∆ldual⁻¹ = map(x->inv.(x), s∆ldual)
-
-        m3.s∆l⁻¹ = (s∆lprim⁻¹, s∆ldual⁻¹)
+        m3.s∆l⁻¹ = invert_∆l(get_stretched_∆l(m3))
     end
 
     return m3.s∆l⁻¹
