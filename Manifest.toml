@@ -8,6 +8,14 @@ repo-url = "https://github.com/wsshin/AbbreviatedTypes.jl"
 uuid = "1766def0-c946-4dda-a59e-d0d07f8410f7"
 version = "0.1.0"
 
+[[GeometryPrimitives]]
+deps = ["LinearAlgebra", "StaticArrays", "Statistics"]
+git-tree-sha1 = "f536576be3169960f71dda7c30538f5f6c22134b"
+repo-rev = "master"
+repo-url = "https://github.com/stevengj/GeometryPrimitives.jl"
+uuid = "17051e67-205e-509e-8301-03b320b998e6"
+version = "0.1.0"
+
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
@@ -38,6 +46,20 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 [[SparseArrays]]
 deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[[StaggeredGridCalculus]]
+deps = ["AbbreviatedTypes", "LinearAlgebra", "Reexport", "SparseArrays", "StaticArrays"]
+git-tree-sha1 = "4e824bf7548a8651b4b2a6ab6636de9c73175bf3"
+repo-rev = "main"
+repo-url = "https://github.com/wsshin/StaggeredGridCalculus.jl"
+uuid = "fead5d43-7759-5ac8-9dff-97135399d9eb"
+version = "0.1.0"
+
+[[StaticArrays]]
+deps = ["LinearAlgebra", "Random", "Statistics"]
+git-tree-sha1 = "9da72ed50e94dbff92036da395275ed114e04d49"
+uuid = "90137ffa-7385-5640-81b9-e52037218182"
+version = "1.0.1"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
