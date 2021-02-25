@@ -25,7 +25,7 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[MaxwellBase]]
 deps = ["AbbreviatedTypes", "GeometryPrimitives", "LinearAlgebra", "Reexport", "SparseArrays", "StaggeredGridCalculus", "StaticArrays"]
-git-tree-sha1 = "3bb6e236b79dd9688c07d77a36da48aac6353563"
+git-tree-sha1 = "e9a3ef88a17d44247c6627336446d4f037073fc5"
 repo-rev = "main"
 repo-url = "https://github.com/wsshin/MaxwellBase.jl"
 uuid = "7ddc1c72-b467-4b56-ac1e-188734e3cfa7"
