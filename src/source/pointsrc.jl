@@ -72,7 +72,7 @@ function add_src!(jKd::AbsArrNumber{K₊₁},  # (K+1)-dimensional array of Je (
     @assert K₊₁==K+1
 
     for nw = 1:Kf  # set Jw (w-component of J)
-        gt_cmp = src.isfield˔shp ? gt₀ : gt_w(nw, gt₀)  # grid type of Jw
+        gt_cmp = src.isfield˔shp ? gt₀ : gt_w(nw, gt₀)  # grid type of location of Jw
 
         lcmp = t_ind(l, gt_cmp)
         ∆lcmp = t_ind(∆l, gt_cmp)
