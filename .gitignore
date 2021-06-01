@@ -2,4 +2,3 @@ MATLAB
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
-old/
