@@ -2,10 +2,10 @@ export set_ω!, set_boundft!, set_Npml!, set_kbloch!  # basic setter functions
 export clear_objs!, clear_srcs!  # plural because clearing both electric and magnetic quantities
 export add_srce!, add_srcm!  # add_obj! is imported from MaxwellBase
 export create_paramops, create_curls, create_srcs, create_linsys, e2h, h2e
+export create_Mcs, create_Mls, create_Mrs
 
 # Do not export Model; quality it with the package name MaxwellWave, because I would have
-# similar types in other packages such as MaxwellGuide and MaxwellSALT.
-
+# similar types in other packages such as MaxwellSALT and MaxwellGuide.
 mutable struct Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}
     # Frequency
     ω::Number  # can be complex
@@ -67,6 +67,8 @@ set_ω!(mdl::Model{K}, ω::Number) where {K} = (mdl.ω = ω; nothing)
 set_boundft!(mdl::Model{K}, boundft::AbsVec{FieldType}) where {K} = (mdl.boundft = SVec{K}(boundft); nothing)
 set_Npml!(mdl::Model{K}, Npml::Tuple2{AbsVecInteger}) where {K} = (mdl.Npml = SVec{K}.(Npml); nothing)
 set_kbloch!(mdl::Model{K}, kbloch::AbsVecReal) where {K} = (mdl.kbloch = SVec{K}(kbloch); nothing)
+
+create_e⁻ⁱᵏᴸ(mdl::Model) = exp.(-im .* mdl.kbloch .* mdl.grid.L)
 
 # Main functions
 function clear_objs!(mdl::Model{K,Kₑ,Kₘ}) where {K,Kₑ,Kₘ}
