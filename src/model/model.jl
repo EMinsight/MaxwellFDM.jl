@@ -102,20 +102,11 @@ end
 function create_stretched_∆ls(mdl::Model)
     ω = mdl.ω
     grid = mdl.grid
-
-    N = grid.N
-    L = grid.L
-    isbloch = grid.isbloch
-
-    boundft = mdl.boundft
     Npml = mdl.Npml
-    kbloch = mdl.kbloch
-
-    e⁻ⁱᵏᴸ = exp.(-im .* kbloch .* L)
-
     s∆l = create_stretched_∆l(ω, grid, Npml)
     s∆l⁻¹ = invert_∆l(s∆l)
 
+    boundft = mdl.boundft
     gₑ = ft2gt.(EE, boundft)
     gₘ = ft2gt.(HH, boundft)
 
@@ -128,21 +119,15 @@ function create_stretched_∆ls(mdl::Model)
 end
 
 function create_paramops(mdl::Model; order_cmpfirst::Bool=true)
-    grid = mdl.grid
-
-    kbloch = mdl.kbloch
-    L = grid.L
-    e⁻ⁱᵏᴸ = exp.(-im .* kbloch .* L)
+    s∆lₑ, s∆lₘ, s∆lₑ⁻¹, s∆lₘ⁻¹ = create_stretched_∆ls(mdl)
+    calc_matparams!(mdl)
 
     boundft = mdl.boundft
     gₑ = ft2gt.(EE, boundft)
     gₘ = ft2gt.(HH, boundft)
 
-    s∆lₑ, s∆lₘ, s∆lₑ⁻¹, s∆lₘ⁻¹ = create_stretched_∆ls(mdl)
-
-    calc_matparams!(mdl)
-
-    isbloch = grid.isbloch
+    isbloch = mdl.grid.isbloch
+    e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
     Mε = create_paramop(mdl.εarr, gₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
     Mμ = create_paramop(mdl.μarr, gₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
 
@@ -150,17 +135,13 @@ function create_paramops(mdl::Model; order_cmpfirst::Bool=true)
 end
 
 function create_curls(mdl::Model; order_cmpfirst::Bool=true)
-    grid = mdl.grid
-
-    kbloch = mdl.kbloch
-    L = grid.L
-    e⁻ⁱᵏᴸ = exp.(-im .* kbloch .* L)
-
     _, _, s∆lₑ⁻¹, s∆lₘ⁻¹ = create_stretched_∆ls(mdl)
 
     boundft = mdl.boundft
-    isbloch = grid.isbloch
     cmpₛ, cmpₑ, cmpₘ = mdl.cmpₛ, mdl.cmpₑ, mdl.cmpₘ
+
+    isbloch = mdl.grid.isbloch
+    e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
     Cₑ = create_curl(boundft.==EE, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₘ, cmp_in=cmpₑ, order_cmpfirst)
     Cₘ = create_curl(boundft.==HH, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₑ, cmp_in=cmpₘ, order_cmpfirst)
 
@@ -175,9 +156,7 @@ function clear_srcs!(mdl::Model)
 end
 
 function add_srce!(mdl::Model{K,Kₑ}, src::Source{K,Kₑ}) where {K,Kₑ}
-    boundft = mdl.boundft
-    gₑ = ft2gt.(EE, boundft)
-
+    gₑ = ft2gt.(EE, mdl.boundft)
     grid = mdl.grid
     jₑarr = mdl.jₑarr
     add_src!(jₑarr, gₑ, grid.bounds, grid.l, grid.∆l, grid.isbloch, src)
@@ -186,9 +165,7 @@ function add_srce!(mdl::Model{K,Kₑ}, src::Source{K,Kₑ}) where {K,Kₑ}
 end
 
 function add_srcm!(mdl::Model{K,Kₑ,Kₘ}, src::Source{K,Kₘ}) where {K,Kₑ,Kₘ}
-    boundft = mdl.boundft
-    gₘ = ft2gt.(HH, boundft)
-
+    gₘ = ft2gt.(HH, mdl.boundft)
     grid = mdl.grid
     jₘarr = mdl.jₘarr
     add_src!(jₘarr, gₘ, grid.bounds, grid.l, grid.∆l, grid.isbloch, src)
@@ -203,26 +180,26 @@ function create_srcs(mdl::Model; order_cmpfirst::Bool=true)
     return jₑ, jₘ  # note jₑ and jₘ share memory with mdl.jₑarr and mdl.jₘarr
 end
 
-create_linsys(fieldtype::FieldType,
+create_linsys(ft::FieldType,
               ω::Number,
               M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber};
               kwargs...) =
-    create_linsys(fieldtype, ω, M..., C..., j...; kwargs...)
+    create_linsys(ft, ω, M..., C..., j...; kwargs...)
 
-function create_linsys(fieldtype::FieldType,
+function create_linsys(ft::FieldType,
                        ω::Number,
                        Mε::AbsMatNumber, Mμ::AbsMatNumber,
                        Cₑ::AbsMatNumber, Cₘ::AbsMatNumber,
                        jₑ::AbsVecNumber, jₘ::AbsVecNumber;
                        order_cmpfirst::Bool=true)
-    if fieldtype==EE
+    if ft == EE
         A = Cₘ * (Mμ \ Cₑ) - ω^2 * Mε
         b = -im * ω * jₑ - Cₘ * (Mμ \ jₘ)
-    elseif fieldtype==HH
+    elseif ft == HH
         A = Cₑ * (Mε \ Cₘ) - ω^2 * Mμ
         b = -im * ω * jₘ + Cₑ * (Mε \ jₑ)
     else
-        @error "fieldtype = $fieldtype is unsupported."
+        @error "ft = $ft is unsupported."
     end
 
     return A, b
