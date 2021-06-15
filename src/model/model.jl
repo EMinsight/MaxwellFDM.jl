@@ -215,6 +215,75 @@ h2e(h::AbsVecNumber, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber
 h2e(h::AbsVecNumber, ω::Number, Mε::AbsMatNumber, Cₘ::AbsMatNumber, jₑ::AbsVecNumber) =
     (-im/ω) .* (Mε \ (Cₘ*h - jₑ))
 
+# Create the operator interpolating solution fields at grid cell corners.
+function create_Mcs(mdl::Model; order_cmpfirst::Bool=true)
+    s∆lₑ, s∆lₘ, s∆lₑ⁻¹, s∆lₘ⁻¹ = create_stretched_∆ls(mdl)
+
+    # Arguments of create_mean:
+    # - isfwd is set to average the solution fields to get the fields at the voxel corners.
+    # (For boundft[w] = ft, solution field is backward-averaged along w.)
+    # - ∆l and ∆l′⁻¹ are supplied to use weighted arithmetic averaging in calculating
+    # the field at the voxel corners.
+    boundft = mdl.boundft
+    isbloch = mdl.grid.isbloch
+    e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
+    Mcₑ = create_mean(boundft.!=EE, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+    Mcₘ = create_mean(boundft.!=HH, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+
+    return Mcₑ, Mcₘ
+end
+
+# Create operator interpolating the voxel-corner solution fields Fx, Fy, Fz at Fz, Fx, Fy
+# (i.e., left component locations).
+#
+# Note that the corner field averaged along the w-direction is put at the Fw-location.  For
+# example, the corner Fx is averaged along the z-direction to be placed at the Fz-location.
+function create_Mls(mdl::Model; order_cmpfirst::Bool=true)
+    N = mdl.grid.N
+    Pl = create_πcmp(N, SVec(3,1,2); order_cmpfirst)  # move Fx to Fz-location, Fy to Fx-location, and Fz to Fy-location
+
+    # Arguments of create_mean:
+    # - isfwd is set to average the fields at the voxel corners to get the fields at the
+    # solution field locations (but with polarization not meant for that locations).
+    # (For boundft[w] = ft, voxel-corner field is forward-averaged along w.)
+    # - ∆l and ∆l′⁻¹ are not supplied; use unweighted arithmetic averaging.
+    boundft = mdl.boundft
+    isbloch = mdl.grid.isbloch
+    e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
+    Mₑ = create_mean(boundft.==EE, N, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+    Mₘ = create_mean(boundft.==HH, N, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+
+    Mlₑ = Mₑ * Pl
+    Mlₘ = Mₘ * Pl
+
+    return Mlₑ, Mlₘ
+end
+
+# Create operator interpolating the voxel-corner solution fields Fx, Fy, Fz at Fy, Fz, Fx
+# (i.e., right component) locations.
+#
+# Note that the corner field averaged along the w-direction is put at the Fw-location.  For
+# example, the corner Fx is averaged along the z-direction to be placed at the Fz-location.
+function create_Mrs(mdl::Model; order_cmpfirst::Bool=true)
+    N = mdl.grid.N
+    Pr = create_πcmp(N, SVec(2,3,1); order_cmpfirst)  # move Fx to Fy-location, Fy to Fz-location, and Fz to Fx-location
+
+    # Arguments of create_mean:
+    # - isfwd is set to average the fields at the voxel corners to get the fields at the
+    # solution field locations (but with polarization not meant for that locations).
+    # - ∆l and ∆l′⁻¹ are not supplied; use unweighted arithmetic averaging.
+    boundft = mdl.boundft
+    isbloch = mdl.grid.isbloch
+    e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
+    Mₑ = create_mean(boundft.==EE, N, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+    Mₘ = create_mean(boundft.==HH, N, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+
+    Mrₑ = Mₑ * Pr
+    Mrₘ = Mₘ * Pr
+
+    return Mrₑ, Mrₘ
+end
+
 include("full.jl")
 include("te.jl")
 include("tm.jl")
