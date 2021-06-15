@@ -52,7 +52,7 @@ mutable struct PointSrc{K,Kf} <: Source{K,Kf}
     # Specify geometry first, current next (because the value of current is optional).
     c::SFloat{K}  # location in shape dimension (c menas center)
     p::SFloat{Kf}  # polarization direction in field dimension
-    I∆r::CFloat  # source strength (= dipole current I∆r); complex in order to represent phase difference between point sources
+    I∆r::ComplexF  # source strength (= dipole current I∆r); complex in order to represent phase difference between point sources
     isfield˔shp::Bool  # true if spaces where field and shapes are defined are orthogonal complement of each other; false if they are the same
 
     PointSrc{K,Kf}(c::AbsVecReal, p::AbsVecReal, I∆r::Number, isfield˔shp::Bool) where {K,Kf} = new(c, normalize(p), I∆r, isfield˔shp)

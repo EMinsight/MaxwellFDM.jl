@@ -148,7 +148,7 @@ end
 # This makes the amount of compiled code minimal.
 #
 # Note that the situation here is a bit different from create_curl.  There, I wanted to
-# create a curl operator of differnt types, such as Float, CFloat, and even Int.  Therefore,
+# create a curl operator of differnt types, such as Float, ComplexF, and even Int.  Therefore,
 # I had to allow generation of different kernel code for different argument types.
 distweights(c::Real, gt::GridType, bounds::AbsVecReal, l::AbsVecReal, ∆l::AbsVecReal, isbloch::Bool) =
     distweights(float(c), gt, SFloat{2}(bounds), float(l), float(∆l), isbloch)

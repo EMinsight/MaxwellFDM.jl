@@ -16,7 +16,7 @@ mutable struct PlaneSrc{K,Kf} <: Source{K,Kf}
     n::SFloat{K}  # direction normal to plane; currently supports only Cartesian directions
     c::Float  # intercept (c means center)
     p::SFloat{Kf}  # polarization direction in field dimension
-    J∆n::CFloat # sheet current density (current per unit in-plane length normal to flow direction); complex in order to represent phase difference between plane sources
+    J∆n::ComplexF # sheet current density (current per unit in-plane length normal to flow direction); complex in order to represent phase difference between plane sources
     isfield˔shp::Bool  # true if spaces where field and shapes are defined are orthogonal complement of each other; false if they are the same
 
     PlaneSrc{K,Kf}(n::AbsVecReal, c::Real, p::AbsVecReal, J∆n::Number, isfield˔shp::Bool) where {K,Kf} = new(normalize(n), c, normalize(p), J∆n, isfield˔shp)

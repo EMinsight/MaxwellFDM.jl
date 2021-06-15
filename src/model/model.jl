@@ -22,19 +22,19 @@ mutable struct Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}
     kbloch::SFloat{K}  # [kx_bloch, ky_bloch, kz_bloch]
 
     # Material parameter arrays
-    εarr::ArrComplex{K₊₂}
-    μarr::ArrComplex{K₊₂}
+    εarr::ArrComplexF{K₊₂}
+    μarr::ArrComplexF{K₊₂}
 
     # Current density arrays
-    jₑarr::ArrComplex{K₊₁}
-    jₘarr::ArrComplex{K₊₁}
+    jₑarr::ArrComplexF{K₊₁}
+    jₘarr::ArrComplexF{K₊₁}
 
     # Storage for assignment and smoothing of material parameters
     oind2shp::Vector{Shape{K,K²}}
     oind2εind::Vector{ParamInd}
     oind2μind::Vector{ParamInd}
-    εind2ε::Vector{SSComplex{Kₑ,Kₑ²}}
-    μind2μ::Vector{SSComplex{Kₘ,Kₘ²}}
+    εind2ε::Vector{SSComplexF{Kₑ,Kₑ²}}
+    μind2μ::Vector{SSComplexF{Kₘ,Kₘ²}}
 
     function Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}(grid::Grid{K},
                                                cmpₛ::SInt{K}, cmpₑ::SInt{Kₑ}, cmpₘ::SInt{Kₘ}
@@ -50,8 +50,8 @@ mutable struct Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}
         oind2shp = Shape{K,K^2}[]
         oind2εind = ParamInd[]
         oind2μind = ParamInd[]
-        εind2ε = SSComplex{Kₑ,Kₑ^2}[]
-        μind2μ = SSComplex{Kₘ,Kₘ^2}[]
+        εind2ε = SSComplexF{Kₑ,Kₑ^2}[]
+        μind2μ = SSComplexF{Kₘ,Kₘ^2}[]
 
         boundft = SVec(ntuple(k->EE, Val(K)))
         kbloch = SVec(ntuple(k->0.0, Val(K)))
