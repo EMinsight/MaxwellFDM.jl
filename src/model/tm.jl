@@ -1,13 +1,13 @@
-# Type abbreviation of Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂} for 2D TM Maxwell's equations
-const ModelTM = Model{2,1,2, 4,1,4, 3,4}
+# Abbreviation of Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²} for 2D TM Maxwell's equations
+const ModelTM{AK₊₁,AK₊₂} = Model{2,1,2, 3,4, AK₊₁,AK₊₂, 4,1,4}
 
 # Convenience constructor
-function ModelTM(grid::Grid)
+function ModelTM(grid::Grid; Atype::Type=Array)
     cmpₛ = SVec(1,2)  # shapes in xy-plane
     cmpₑ = SVec(3)  # E-field with z-component
     cmpₘ = SVec(1,2)  # H-field with x- and y-components
 
-    return ModelTM(grid, cmpₛ, cmpₑ, cmpₘ)
+    return ModelTM{Atype{ComplexF,3},Atype{ComplexF,4}}(grid, cmpₛ, cmpₑ, cmpₘ)
 end
 
 # Assign the material parameters on the grid and smooth them.

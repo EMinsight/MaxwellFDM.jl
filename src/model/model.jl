@@ -6,7 +6,9 @@ export create_Mcs, create_Mls, create_Mrs
 
 # Do not export Model; quality it with the package name MaxwellWave, because I would have
 # similar types in other packages such as MaxwellSALT and MaxwellGuide.
-mutable struct Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}
+mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
+                     AK₊₁<:AbsArrComplexF{K₊₁},AK₊₂<:AbsArrComplexF{K₊₂},
+                     K²,Kₑ²,Kₘ²}
     # Frequency
     ω::Number  # can be complex
 
@@ -22,12 +24,12 @@ mutable struct Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}
     kbloch::SFloat{K}  # [kx_bloch, ky_bloch, kz_bloch]
 
     # Material parameter arrays
-    εarr::ArrComplexF{K₊₂}
-    μarr::ArrComplexF{K₊₂}
+    εarr::AK₊₂
+    μarr::AK₊₂
 
     # Current density arrays
-    jₑarr::ArrComplexF{K₊₁}
-    jₘarr::ArrComplexF{K₊₁}
+    jₑarr::AK₊₁
+    jₘarr::AK₊₁
 
     # Storage for assignment and smoothing of material parameters
     oind2shp::Vector{Shape{K,K²}}
@@ -36,9 +38,9 @@ mutable struct Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}
     εind2ε::Vector{SSComplexF{Kₑ,Kₑ²}}
     μind2μ::Vector{SSComplexF{Kₘ,Kₘ²}}
 
-    function Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}(grid::Grid{K},
-                                               cmpₛ::SInt{K}, cmpₑ::SInt{Kₑ}, cmpₘ::SInt{Kₘ}
-                                               ) where {K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}
+    function Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²}(
+        grid::Grid{K}, cmpₛ::SInt{K}, cmpₑ::SInt{Kₑ}, cmpₘ::SInt{Kₘ}
+        ) where {K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁<:AbsArrComplexF{K₊₁},AK₊₂<:AbsArrComplexF{K₊₂},K²,Kₑ²,Kₘ²}
         ω = 0.0
 
         εarr = create_param_array(grid.N, ncmp=Kₑ)  # filled with zeros
@@ -58,7 +60,7 @@ mutable struct Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂}
         Npml = (SVec(ntuple(k->0, Val(K))), SVec(ntuple(k->0, Val(K))))
 
         return new(ω, grid, cmpₛ, cmpₑ, cmpₘ, boundft, Npml, kbloch, εarr, μarr, jₑarr, jₘarr,
-                     oind2shp, oind2εind, oind2μind, εind2ε, μind2μ)
+                   oind2shp, oind2εind, oind2μind, εind2ε, μind2μ)
     end
 end
 

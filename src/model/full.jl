@@ -1,13 +1,13 @@
-# Type abbreviation of Model{K,Kₑ,Kₘ,K²,Kₑ²,Kₘ²,K₊₁,K₊₂} for full 3D Maxwell's equations
-const ModelFull = Model{3,3,3, 9,9,9, 4,5}
+# Abbreviation of Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²} for full 3D Maxwell's equations
+const ModelFull{AK₊₁,AK₊₂} = Model{3,3,3, 4,5, AK₊₁,AK₊₂, 9,9,9}
 
 # Convenience constructor
-function ModelFull(grid::Grid)
+function ModelFull(grid::Grid; Atype::Type=Array)
     cmpₛ = SVec(1,2,3)  # shapes in 3D space
     cmpₑ = SVec(1,2,3)  # E-field with x-, y-, and y-components
     cmpₘ = SVec(1,2,3)  # H-field with x-, y-, and y-components
 
-    return ModelFull(grid, cmpₛ, cmpₑ, cmpₘ)
+    return ModelFull{Atype{ComplexF,4},Atype{ComplexF,5}}(grid, cmpₛ, cmpₑ, cmpₘ)
 end
 
 # Assign the material parameters on the grid and smooth them.
