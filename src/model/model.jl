@@ -177,7 +177,7 @@ function create_srcs(mdl::Model; order_cmpfirst::Bool=true)
     jₑ = field_arr2vec(mdl.jₑarr; order_cmpfirst)
     jₘ = field_arr2vec(mdl.jₘarr; order_cmpfirst)
 
-    return jₑ, jₘ  # note jₑ and jₘ share memory with mdl.jₑarr and mdl.jₘarr
+    return jₑ, jₘ  # note jₑ and jₘ do not share memory with mdl.jₑarr and mdl.jₘarr
 end
 
 create_linsys(ft::FieldType,
