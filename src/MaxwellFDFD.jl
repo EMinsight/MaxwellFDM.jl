@@ -1,4 +1,4 @@
-module MaxwellWave
+module MaxwellFDFD
 
 using Reexport
 @reexport using MaxwellBase
@@ -10,4 +10,4 @@ include("source/source.jl")
 # include("equation.jl")
 include("model/model.jl")
 
-end # module MaxwellWave
+end # module MaxwellFDFD

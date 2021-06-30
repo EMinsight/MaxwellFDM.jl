@@ -4,7 +4,7 @@ export add_srce!, add_srcm!  # add_obj! is imported from MaxwellBase
 export create_paramops, create_curls, create_srcs, create_linsys, e2h, h2e
 export create_Mcs, create_Mls, create_Mrs
 
-# Do not export Model; quality it with the package name MaxwellWave, because I would have
+# Do not export Model; quality it with the package name MaxwellFDFD, because I would have
 # similar types in other packages such as MaxwellSALT and MaxwellGuide.
 mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
                      AK₊₁<:AbsArrComplexF{K₊₁},AK₊₂<:AbsArrComplexF{K₊₂},

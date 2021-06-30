@@ -1,10 +1,10 @@
-# MaxwellWave
+# MaxwellFDFD
 
-[![Build Status](https://travis-ci.com/wsshin/MaxwellWave.jl.svg?branch=main)](https://travis-ci.com/wsshin/MaxwellWave.jl)
-[![Build status](https://ci.appveyor.com/api/projects/status/msqy41b4qsslmm0u/branch/main?svg=true)](https://ci.appveyor.com/project/wsshin/maxwellwave-jl/branch/main)
-[![codecov](https://codecov.io/gh/wsshin/MaxwellWave.jl/branch/main/graph/badge.svg?token=T2UuPYQTXB)](https://codecov.io/gh/wsshin/MaxwellWave.jl)
+[![Build Status](https://travis-ci.com/wsshin/MaxwellFDFD.jl.svg?branch=main)](https://travis-ci.com/wsshin/MaxwellFDFD.jl)
+[![Build status](https://ci.appveyor.com/api/projects/status/msqy41b4qsslmm0u/branch/main?svg=true)](https://ci.appveyor.com/project/wsshin/MaxwellFDFD-jl/branch/main)
+[![codecov](https://codecov.io/gh/wsshin/MaxwellFDFD.jl/branch/main/graph/badge.svg?token=T2UuPYQTXB)](https://codecov.io/gh/wsshin/MaxwellFDFD.jl)
 
-MaxwellWave is a high-performance finite-difference frequency-domain (FDFD) solver package
+MaxwellFDFD is a high-performance finite-difference frequency-domain (FDFD) solver package
 written in Julia.  This package aims to combine the functionalities of
 [MaxwellFDFD](https://github.com/wsshin/maxwellfdfd) (written in MATLAB) and
 [FD3D](https://github.com/wsshin/fd3d) (written in C using the PETSc library).
@@ -25,21 +25,21 @@ between a local computer with a MATLAB license and computation cluster, thereby 
 situation even worse.
 
 
-MaxwellWave aims to avoid these complications by implementing an FDFD solver in Julia.  Julia
+MaxwellFDFD aims to avoid these complications by implementing an FDFD solver in Julia.  Julia
 can easily replace any programs written in MATLAB, so it is straightforward to implement the
-capabilities of MaxwellFDFD in MaxwellWave.  Furthermore, using the [Julia wrapper of the
+capabilities of MaxwellFDFD in MaxwellFDFD.  Furthermore, using the [Julia wrapper of the
 PETSc library](https://github.com/JuliaParallel/PETSc.jl), we can implement the capabilities
 of FD3D, i.e., iterative solution algorithms for distributed—memory computation clusters,
-directly within MaxwellWave.  This means that you don't need to deal with multiple programs
+directly within MaxwellFDFD.  This means that you don't need to deal with multiple programs
 to launch a next solve based on the current solution.
 
-In addition, MaxwellWave aims to implement capabilities lacking in MaxwellFDFD and FD3D, such
+In addition, MaxwellFDFD aims to implement capabilities lacking in MaxwellFDFD and FD3D, such
 as
 
 - subpixel smoothing of material parameters
 - symmetry boundary on the positive end of the computation domain
 - more general TF/SF method
 
-MaxwellWave is still a project under development.
+MaxwellFDFD is still a project under development.
 
 <!---Mention Ian Williamson's repository.--->
