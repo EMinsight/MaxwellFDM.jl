@@ -1,7 +1,7 @@
 export set_ω!, set_boundft!, set_Npml!, set_kbloch!  # basic setter functions
 export clear_objs!, clear_srcs!  # plural because clearing both electric and magnetic quantities
 export add_srce!, add_srcm!  # add_obj! is imported from MaxwellBase
-export create_paramops, create_curls, create_srcs, create_linsys, e2h, h2e
+export create_paramops, create_curls, create_srcs, create_linsys, create_A, create_b, e2h, h2e
 export create_Mcs, create_Mls, create_Mrs
 
 # Do not export Model; quality it with the package name MaxwellFDFD, because I would have
@@ -182,29 +182,71 @@ function create_srcs(mdl::Model; order_cmpfirst::Bool=true)
     return jₑ, jₘ  # note jₑ and jₘ do not share memory with mdl.jₑarr and mdl.jₘarr
 end
 
-create_linsys(ft::FieldType,
-              ω::Number,
-              M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber};
-              kwargs...) =
-    create_linsys(ft, ω, M..., C..., j...; kwargs...)
+create_linsys(ft::FieldType, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
+    create_linsys(ft, ω, M..., C..., j...)
 
-function create_linsys(ft::FieldType,
-                       ω::Number,
+function create_linsys(ft::FieldType, ω::Number,
                        Mε::AbsMatNumber, Mμ::AbsMatNumber,
                        Cₑ::AbsMatNumber, Cₘ::AbsMatNumber,
-                       jₑ::AbsVecNumber, jₘ::AbsVecNumber;
-                       order_cmpfirst::Bool=true)
-    if ft == EE
-        A = Cₘ * (Mμ \ Cₑ) - ω^2 * Mε
-        b = -im * ω * jₑ - Cₘ * (Mμ \ jₘ)
-    elseif ft == HH
-        A = Cₑ * (Mε \ Cₘ) - ω^2 * Mμ
-        b = -im * ω * jₘ + Cₑ * (Mε \ jₑ)
+                       jₑ::AbsVecNumber, jₘ::AbsVecNumber)
+    A = create_A(ft, ω, Mε, Mμ, Cₑ, Cₘ)
+    b = create_b(ft, ω, Mε, Mμ, Cₑ, Cₘ, jₑ, jₘ)
+
+    return A, b
+end
+
+create_A(ft::FieldType, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}) =
+    create_A(ft, ω, M..., C...)
+
+function create_A(ft::FieldType,
+                  ω::Number,
+                  Mε::AbsMatNumber, Mμ::AbsMatNumber,
+                  Cₑ::AbsMatNumber, Cₘ::AbsMatNumber)
+    # Consider a potential approach to save memory:
+    #     Y = copy(Cₑ)
+    #     ldiv!(some_factorization(Mμ), Y)
+    #     A = copy(Y)
+    #     mul!(A, Cₘ, Y)
+    # This still uses two allocations, so it is no better than A = Cₘ * (Mμ \ Cₑ)
+    if ft == EE  # A = Cₘ (Mμ⁻¹ Cₑ) - ω² Mε
+        A = Cₘ * (Mμ \ Cₑ)
+        iszero(ω) || (A -= ω^2 * Mε)
+    elseif ft == HH  # A = Cₑ (Mε⁻¹ Cₘ) - ω² Mμ
+        A = Cₑ * (Mε \ Cₘ)
+        iszero(ω) || (A -= ω^2 * Mμ)
     else
         @error "ft = $ft is unsupported."
     end
 
-    return A, b
+    return A
+end
+
+create_b(ft::FieldType, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
+    create_b(ft, ω, M..., C..., j...; order_cmpfirst)
+
+function create_b(ft::FieldType, ω::Number,
+                  Mε::AbsMatNumber, Mμ::AbsMatNumber,
+                  Cₑ::AbsMatNumber, Cₘ::AbsMatNumber,
+                  jₑ::AbsVecNumber, jₘ::AbsVecNumber)
+    # Consider a potential approach to save memory:
+    #     y = copy(jₘ)
+    #     ldiv!(some_factorization(Mμ), y)
+    #     b = copy(y)
+    #     mul!(b, Cₘ, y)
+    #     b .*= -1
+    # This still uses two allocations, so it is no better than b = -Cₘ * (Mμ \ jₘ)
+    if ft == EE  # b = -i ω jₑ - Cₘ (Mμ⁻¹ jₘ)
+        b = Cₘ * (Mμ \ jₘ)
+        b .*= -1
+        iszero(ω) || (b .-= (im * ω) .* jₑ)
+    elseif ft == HH  # b = -i ω jₘ + Cₑ (Mε⁻¹ jₑ)
+        b = Cₑ * (Mε \ jₑ)
+        iszero(ω) || (b .-= (im * ω) .* jₘ)
+    else
+        @error "ft = $ft is unsupported."
+    end
+
+    return b
 end
 
 e2h(e::AbsVecNumber, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
