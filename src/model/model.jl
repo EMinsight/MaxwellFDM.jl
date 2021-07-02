@@ -35,8 +35,8 @@ mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
     oind2shp::Vector{Shape{K,K²}}
     oind2εind::Vector{ParamInd}
     oind2μind::Vector{ParamInd}
-    εind2ε::Vector{SSComplexF{Kₑ,Kₑ²}}
-    μind2μ::Vector{SSComplexF{Kₘ,Kₘ²}}
+    εind2ε::Vector{S²ComplexF{Kₑ,Kₑ²}}
+    μind2μ::Vector{S²ComplexF{Kₘ,Kₘ²}}
 
     function Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²}(
         grid::Grid{K}, cmpₛ::SInt{K}, cmpₑ::SInt{Kₑ}, cmpₘ::SInt{Kₘ}
@@ -52,8 +52,8 @@ mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
         oind2shp = Shape{K,K^2}[]
         oind2εind = ParamInd[]
         oind2μind = ParamInd[]
-        εind2ε = SSComplexF{Kₑ,Kₑ^2}[]
-        μind2μ = SSComplexF{Kₘ,Kₘ^2}[]
+        εind2ε = S²ComplexF{Kₑ,Kₑ^2}[]
+        μind2μ = S²ComplexF{Kₘ,Kₘ^2}[]
 
         boundft = SVec(ntuple(k->EE, Val(K)))
         kbloch = SVec(ntuple(k->0.0, Val(K)))
