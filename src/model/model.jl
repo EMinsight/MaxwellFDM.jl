@@ -12,7 +12,7 @@ Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
     # Frequency
     ω::Number = 0.0  # can be complex
 
-    # Dimensions
+    # Grid
     grid::Grid{K}
     cmpₛ::SInt{K}  # Cartesian components of shape dimension
     cmpₑ::SInt{Kₑ}  # Cartesian components of E-field
@@ -31,12 +31,15 @@ Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
     jₑarr::AK₊₁ = create_field_array(grid.N, ncmp=Kₑ)  # filled with zeros
     jₘarr::AK₊₁ = create_field_array(grid.N, ncmp=Kₘ)  # filled with zeros
 
-    # Storage for assignment and smoothing of material parameters
+    # Temporary storages for assignment and smoothing of material parameters
     oind2shp::Vector{Shape{K,K²}} = Shape{K,K^2}[]
     oind2εind::Vector{ParamInd} = ParamInd[]
     oind2μind::Vector{ParamInd} = ParamInd[]
     εind2ε::Vector{S²ComplexF{Kₑ,Kₑ²}} = S²ComplexF{Kₑ,Kₑ^2}[]
     μind2μ::Vector{S²ComplexF{Kₘ,Kₘ²}} = S²ComplexF{Kₘ,Kₘ^2}[]
+
+    # Indexing scheme for DOFs
+    order_cmpfirst::Bool = true
 end
 
 # Basic setters
@@ -95,7 +98,7 @@ function create_stretched_∆ls(mdl::Model)
     return s∆lₑ, s∆lₘ, s∆lₑ⁻¹, s∆lₘ⁻¹
 end
 
-function create_paramops(mdl::Model; order_cmpfirst::Bool=true)
+function create_paramops(mdl::Model)
     s∆lₑ, s∆lₘ, s∆lₑ⁻¹, s∆lₘ⁻¹ = create_stretched_∆ls(mdl)
     calc_matparams!(mdl)  # assignment and smoothing; implemented for each specialized alias of Model
 
@@ -105,13 +108,13 @@ function create_paramops(mdl::Model; order_cmpfirst::Bool=true)
 
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Mε = create_paramop(mdl.εarr, gₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
-    Mμ = create_paramop(mdl.μarr, gₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+    Mε = create_paramop(mdl.εarr, gₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Mμ = create_paramop(mdl.μarr, gₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
     return Mε, Mμ
 end
 
-function create_curls(mdl::Model; order_cmpfirst::Bool=true)
+function create_curls(mdl::Model)
     _, _, s∆lₑ⁻¹, s∆lₘ⁻¹ = create_stretched_∆ls(mdl)
 
     boundft = mdl.boundft
@@ -119,8 +122,8 @@ function create_curls(mdl::Model; order_cmpfirst::Bool=true)
 
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Cₑ = create_curl(boundft.==EE, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₘ, cmp_in=cmpₑ, order_cmpfirst)
-    Cₘ = create_curl(boundft.==HH, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₑ, cmp_in=cmpₘ, order_cmpfirst)
+    Cₑ = create_curl(boundft.==EE, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₘ, cmp_in=cmpₑ, mdl.order_cmpfirst)
+    Cₘ = create_curl(boundft.==HH, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₑ, cmp_in=cmpₘ, mdl.order_cmpfirst)
 
     return Cₑ, Cₘ
 end
@@ -150,9 +153,9 @@ function add_srcm!(mdl::Model{K,Kₑ,Kₘ}, src::Source{K,Kₘ}) where {K,Kₑ,K
     return nothing
 end
 
-function create_srcs(mdl::Model; order_cmpfirst::Bool=true)
-    jₑ = field_arr2vec(mdl.jₑarr; order_cmpfirst)
-    jₘ = field_arr2vec(mdl.jₘarr; order_cmpfirst)
+function create_srcs(mdl::Model)
+    jₑ = field_arr2vec(mdl.jₑarr; mdl.order_cmpfirst)
+    jₘ = field_arr2vec(mdl.jₘarr; mdl.order_cmpfirst)
 
     return jₑ, jₘ  # note jₑ and jₘ do not share memory with mdl.jₑarr and mdl.jₘarr
 end
@@ -197,7 +200,7 @@ function create_A(ft::FieldType,
 end
 
 create_b(ft::FieldType, ω::Number, Ms::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}, js::Tuple2{AbsVecNumber}) =
-    create_b(ft, ω, Ms..., Cs..., js...; order_cmpfirst)
+    create_b(ft, ω, Ms..., Cs..., js...)
 
 function create_b(ft::FieldType, ω::Number,
                   Mε::AbsMatNumber, Mμ::AbsMatNumber,
@@ -235,7 +238,7 @@ h2e(h::AbsVecNumber, ω::Number, Mε::AbsMatNumber, Cₘ::AbsMatNumber, jₑ::Ab
     (-im/ω) .* (Mε \ (Cₘ*h - jₑ))
 
 # Create the operator interpolating solution fields at grid cell corners.
-function create_Mcs(mdl::Model; order_cmpfirst::Bool=true)
+function create_Mcs(mdl::Model)
     s∆lₑ, s∆lₘ, s∆lₑ⁻¹, s∆lₘ⁻¹ = create_stretched_∆ls(mdl)
 
     # Arguments of create_mean:
@@ -246,8 +249,8 @@ function create_Mcs(mdl::Model; order_cmpfirst::Bool=true)
     boundft = mdl.boundft
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Mcₑ = create_mean(boundft.!=EE, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
-    Mcₘ = create_mean(boundft.!=HH, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+    Mcₑ = create_mean(boundft.!=EE, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Mcₘ = create_mean(boundft.!=HH, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
     return Mcₑ, Mcₘ
 end
@@ -257,9 +260,9 @@ end
 #
 # Note that the corner field averaged along the w-direction is put at the Fw-location.  For
 # example, the corner Fx is averaged along the z-direction to be placed at the Fz-location.
-function create_Mls(mdl::Model; order_cmpfirst::Bool=true)
+function create_Mls(mdl::Model)
     N = mdl.grid.N
-    Pl = create_πcmp(N, SVec(3,1,2); order_cmpfirst)  # move Fx to Fz-location, Fy to Fx-location, and Fz to Fy-location
+    Pl = create_πcmp(N, SVec(3,1,2); mdl.order_cmpfirst)  # move Fx to Fz-location, Fy to Fx-location, and Fz to Fy-location
 
     # Arguments of create_mean:
     # - isfwd is set to average the fields at the voxel corners to get the fields at the
@@ -269,8 +272,8 @@ function create_Mls(mdl::Model; order_cmpfirst::Bool=true)
     boundft = mdl.boundft
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Mₑ = create_mean(boundft.==EE, N, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
-    Mₘ = create_mean(boundft.==HH, N, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+    Mₑ = create_mean(boundft.==EE, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Mₘ = create_mean(boundft.==HH, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
     Mlₑ = Mₑ * Pl
     Mlₘ = Mₘ * Pl
@@ -283,9 +286,9 @@ end
 #
 # Note that the corner field averaged along the w-direction is put at the Fw-location.  For
 # example, the corner Fx is averaged along the z-direction to be placed at the Fz-location.
-function create_Mrs(mdl::Model; order_cmpfirst::Bool=true)
+function create_Mrs(mdl::Model)
     N = mdl.grid.N
-    Pr = create_πcmp(N, SVec(2,3,1); order_cmpfirst)  # move Fx to Fy-location, Fy to Fz-location, and Fz to Fx-location
+    Pr = create_πcmp(N, SVec(2,3,1); mdl.order_cmpfirst)  # move Fx to Fy-location, Fy to Fz-location, and Fz to Fx-location
 
     # Arguments of create_mean:
     # - isfwd is set to average the fields at the voxel corners to get the fields at the
@@ -294,8 +297,8 @@ function create_Mrs(mdl::Model; order_cmpfirst::Bool=true)
     boundft = mdl.boundft
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Mₑ = create_mean(boundft.==EE, N, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
-    Mₘ = create_mean(boundft.==HH, N, isbloch, e⁻ⁱᵏᴸ; order_cmpfirst)
+    Mₑ = create_mean(boundft.==EE, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Mₘ = create_mean(boundft.==HH, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
     Mrₑ = Mₑ * Pr
     Mrₘ = Mₘ * Pr
