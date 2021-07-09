@@ -7,7 +7,7 @@ function ModelTE(grid::Grid; Atype::Type=Array)
     cmpₑ = SVec(1,2)  # E-field with x- and y-components
     cmpₘ = SVec(3)  # H-field with z-component
 
-    return ModelTE{Atype{ComplexF,3},Atype{ComplexF,4}}(grid, cmpₛ, cmpₑ, cmpₘ)
+    return ModelTE{Atype{ComplexF,3},Atype{ComplexF,4}}(grid=grid, cmpₛ=cmpₛ, cmpₑ=cmpₑ, cmpₘ=cmpₘ)
 end
 
 # Assign the material parameters on the grid and smooth them.

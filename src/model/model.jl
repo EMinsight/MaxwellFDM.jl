@@ -6,11 +6,11 @@ export create_Mcs, create_Mls, create_Mrs
 
 # Do not export Model; quality it with the package name MaxwellFDFD, because I would have
 # similar types in other packages such as MaxwellSALT and MaxwellGuide.
-mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
+Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
                      AK₊₁<:AbsArrComplexF{K₊₁},AK₊₂<:AbsArrComplexF{K₊₂},
                      K²,Kₑ²,Kₘ²}
     # Frequency
-    ω::Number  # can be complex
+    ω::Number = 0.0  # can be complex
 
     # Dimensions
     grid::Grid{K}
@@ -19,49 +19,24 @@ mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
     cmpₘ::SInt{Kₘ}  # Cartesian components of H-field
 
     # Boundary properties
-    boundft::SVec{K,FieldType}
-    Npml::Tuple2{SInt{K}}
-    kbloch::SFloat{K}  # [kx_bloch, ky_bloch, kz_bloch]
+    boundft::SVec{K,FieldType} = SVec(ntuple(k->EE, Val(K)))
+    Npml::Tuple2{SInt{K}} = (SVec(ntuple(k->0, Val(K))), SVec(ntuple(k->0, Val(K))))
+    kbloch::SFloat{K} = SVec(ntuple(k->0.0, Val(K)))  # [kx_bloch, ky_bloch, kz_bloch]
 
     # Material parameter arrays
-    εarr::AK₊₂
-    μarr::AK₊₂
+    εarr::AK₊₂ = create_param_array(grid.N, ncmp=Kₑ)  # filled with zeros
+    μarr::AK₊₂ = create_param_array(grid.N, ncmp=Kₘ)  # filled with zeros
 
     # Current density arrays
-    jₑarr::AK₊₁
-    jₘarr::AK₊₁
+    jₑarr::AK₊₁ = create_field_array(grid.N, ncmp=Kₑ)  # filled with zeros
+    jₘarr::AK₊₁ = create_field_array(grid.N, ncmp=Kₘ)  # filled with zeros
 
     # Storage for assignment and smoothing of material parameters
-    oind2shp::Vector{Shape{K,K²}}
-    oind2εind::Vector{ParamInd}
-    oind2μind::Vector{ParamInd}
-    εind2ε::Vector{S²ComplexF{Kₑ,Kₑ²}}
-    μind2μ::Vector{S²ComplexF{Kₘ,Kₘ²}}
-
-    function Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²}(
-        grid::Grid{K}, cmpₛ::SInt{K}, cmpₑ::SInt{Kₑ}, cmpₘ::SInt{Kₘ}
-        ) where {K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁<:AbsArrComplexF{K₊₁},AK₊₂<:AbsArrComplexF{K₊₂},K²,Kₑ²,Kₘ²}
-        ω = 0.0
-
-        εarr = create_param_array(grid.N, ncmp=Kₑ)  # filled with zeros
-        µarr = create_param_array(grid.N, ncmp=Kₘ)  # filled with zeros
-
-        jₑarr = create_field_array(grid.N, ncmp=Kₑ)  # filled with zeros
-        jₘarr = create_field_array(grid.N, ncmp=Kₘ)  # filled with zeros
-
-        oind2shp = Shape{K,K^2}[]
-        oind2εind = ParamInd[]
-        oind2μind = ParamInd[]
-        εind2ε = S²ComplexF{Kₑ,Kₑ^2}[]
-        μind2μ = S²ComplexF{Kₘ,Kₘ^2}[]
-
-        boundft = SVec(ntuple(k->EE, Val(K)))
-        kbloch = SVec(ntuple(k->0.0, Val(K)))
-        Npml = (SVec(ntuple(k->0, Val(K))), SVec(ntuple(k->0, Val(K))))
-
-        return new(ω, grid, cmpₛ, cmpₑ, cmpₘ, boundft, Npml, kbloch, εarr, μarr, jₑarr, jₘarr,
-                   oind2shp, oind2εind, oind2μind, εind2ε, μind2μ)
-    end
+    oind2shp::Vector{Shape{K,K²}} = Shape{K,K^2}[]
+    oind2εind::Vector{ParamInd} = ParamInd[]
+    oind2μind::Vector{ParamInd} = ParamInd[]
+    εind2ε::Vector{S²ComplexF{Kₑ,Kₑ²}} = S²ComplexF{Kₑ,Kₑ^2}[]
+    μind2μ::Vector{S²ComplexF{Kₘ,Kₘ²}} = S²ComplexF{Kₘ,Kₘ^2}[]
 end
 
 # Basic setters
