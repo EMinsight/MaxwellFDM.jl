@@ -50,9 +50,9 @@ function calc_matparams!(mdl::ModelTM)
     assign_param!(εarr, tuple(μoo_oind2d), oind2shp, oind2εind, εind2ε, ge, τl, isbloch)  # ε tensors (rank-0, so scalars)
 
     # Smooth the material parameters.
-    smooth_param!(μarr, (μxx_oind2d,μyy_oind2d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ)  # diagonal entries of μ tensors
-    smooth_param!(μarr, tuple(μoo_oind2d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ)  # off-diagonal entries of μ tensors
-    smooth_param!(εarr, tuple(εzz_oind2d), oind2shp, oind2εind, εind2ε, ge, l, lg, σ, ∆τ)  # ε tensors (rank-0, so scalars)
+    smooth_param!(μarr, (μxx_oind2d,μyy_oind2d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ, mdl.ish˔shp)  # diagonal entries of μ tensors
+    smooth_param!(μarr, tuple(μoo_oind2d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ, mdl.ish˔shp)  # off-diagonal entries of μ tensors
+    smooth_param!(εarr, tuple(εzz_oind2d), oind2shp, oind2εind, εind2ε, ge, l, lg, σ, ∆τ, mdl.ise˔shp)  # ε tensors (rank-0, so scalars)
 
     return nothing
 end

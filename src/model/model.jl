@@ -38,6 +38,12 @@ Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
     εind2ε::Vector{S²ComplexF{Kₑ,Kₑ²}} = S²ComplexF{Kₑ,Kₑ^2}[]
     μind2μ::Vector{S²ComplexF{Kₘ,Kₘ²}} = S²ComplexF{Kₘ,Kₘ^2}[]
 
+    # Boolean flags indicating if the E- and H-field dimensions are orthogonal to the shape
+    # dimensions.  Used for material parameter smoothing in calc_matparams!().  The default
+    # values are correct in most cases, but override them if needed in special cases.
+    ise˔shp::Bool = isfield_ortho_shape(Kₑ,K)
+    ish˔shp::Bool = isfield_ortho_shape(Kₘ,K)
+
     # Indexing scheme for DOFs
     order_cmpfirst::Bool = true
 end

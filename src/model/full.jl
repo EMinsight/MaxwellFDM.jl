@@ -55,10 +55,10 @@ function calc_matparams!(mdl::ModelFull)
     assign_param!(μarr, tuple(εoo_oind3d), oind2shp, oind2μind, μind2μ, gh, τl, isbloch)  # off-diagonal entries of μ tensors
 
     # Smooth the material parameters.
-    smooth_param!(εarr, (εxx_oind3d,εyy_oind3d,εzz_oind3d), oind2shp, oind2εind, εind2ε, ge, l, lg, σ, ∆τ)  # diagonal entries of ε tensors
-    smooth_param!(εarr, tuple(εoo_oind3d), oind2shp, oind2εind, εind2ε, ge, l, lg, σ, ∆τ)  # off-diagonal entries of ε tensors
-    smooth_param!(μarr, (μxx_oind3d,μyy_oind3d,μzz_oind3d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ)  # diagonal entries of μ tensors
-    smooth_param!(μarr, tuple(μoo_oind3d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ)  # off-diagonal entries of μ tensors
+    smooth_param!(εarr, (εxx_oind3d,εyy_oind3d,εzz_oind3d), oind2shp, oind2εind, εind2ε, ge, l, lg, σ, ∆τ, mdl.ise˔shp)  # diagonal entries of ε tensors
+    smooth_param!(εarr, tuple(εoo_oind3d), oind2shp, oind2εind, εind2ε, ge, l, lg, σ, ∆τ, mdl.ise˔shp)  # off-diagonal entries of ε tensors
+    smooth_param!(μarr, (μxx_oind3d,μyy_oind3d,μzz_oind3d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ, mdl.ish˔shp)  # diagonal entries of μ tensors
+    smooth_param!(μarr, tuple(μoo_oind3d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ, mdl.ish˔shp)  # off-diagonal entries of μ tensors
 
     return nothing
 end
