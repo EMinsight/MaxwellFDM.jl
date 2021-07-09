@@ -182,8 +182,8 @@ function create_srcs(mdl::Model; order_cmpfirst::Bool=true)
     return jₑ, jₘ  # note jₑ and jₘ do not share memory with mdl.jₑarr and mdl.jₘarr
 end
 
-create_linsys(ft::FieldType, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
-    create_linsys(ft, ω, M..., C..., j...)
+create_linsys(ft::FieldType, ω::Number, Ms::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}, js::Tuple2{AbsVecNumber}) =
+    create_linsys(ft, ω, Ms..., Cs..., js...)
 
 function create_linsys(ft::FieldType, ω::Number,
                        Mε::AbsMatNumber, Mμ::AbsMatNumber,
@@ -195,8 +195,8 @@ function create_linsys(ft::FieldType, ω::Number,
     return A, b
 end
 
-create_A(ft::FieldType, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}) =
-    create_A(ft, ω, M..., C...)
+create_A(ft::FieldType, ω::Number, Ms::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}) =
+    create_A(ft, ω, Ms..., Cs...)
 
 function create_A(ft::FieldType,
                   ω::Number,
@@ -221,8 +221,8 @@ function create_A(ft::FieldType,
     return A
 end
 
-create_b(ft::FieldType, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
-    create_b(ft, ω, M..., C..., j...; order_cmpfirst)
+create_b(ft::FieldType, ω::Number, Ms::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}, js::Tuple2{AbsVecNumber}) =
+    create_b(ft, ω, Ms..., Cs..., js...; order_cmpfirst)
 
 function create_b(ft::FieldType, ω::Number,
                   Mε::AbsMatNumber, Mμ::AbsMatNumber,
