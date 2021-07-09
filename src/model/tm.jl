@@ -1,4 +1,4 @@
-# Abbreviation of Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²} for 2D TM Maxwell's equations
+# Alias of Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²} for 2D TM Maxwell's equations
 const ModelTM{AK₊₁,AK₊₂} = Model{2,1,2, 3,4, AK₊₁,AK₊₂, 4,1,4}
 
 # Convenience constructor

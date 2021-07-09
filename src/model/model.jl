@@ -122,7 +122,7 @@ end
 
 function create_paramops(mdl::Model; order_cmpfirst::Bool=true)
     s∆lₑ, s∆lₘ, s∆lₑ⁻¹, s∆lₘ⁻¹ = create_stretched_∆ls(mdl)
-    calc_matparams!(mdl)
+    calc_matparams!(mdl)  # assignment and smoothing; implemented for each specialized alias of Model
 
     boundft = mdl.boundft
     gₑ = ft2gt.(EE, boundft)
