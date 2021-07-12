@@ -114,10 +114,10 @@ function create_paramops(mdl::Model)
 
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Mε = create_paramop(mdl.εarr, gₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
-    Mμ = create_paramop(mdl.μarr, gₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Pε = create_paramop(mdl.εarr, gₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Pμ = create_paramop(mdl.μarr, gₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
-    return Mε, Mμ
+    return Pε, Pμ
 end
 
 function create_curls(mdl::Model)
@@ -166,38 +166,38 @@ function create_srcs(mdl::Model)
     return jₑ, jₘ  # note jₑ and jₘ do not share memory with mdl.jₑarr and mdl.jₘarr
 end
 
-create_linsys(ft::FieldType, ω::Number, Ms::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}, js::Tuple2{AbsVecNumber}) =
-    create_linsys(ft, ω, Ms..., Cs..., js...)
+create_linsys(ft::FieldType, ω::Number, Ps::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}, js::Tuple2{AbsVecNumber}) =
+    create_linsys(ft, ω, Ps..., Cs..., js...)
 
 function create_linsys(ft::FieldType, ω::Number,
-                       Mε::AbsMatNumber, Mμ::AbsMatNumber,
+                       Pε::AbsMatNumber, Pμ::AbsMatNumber,
                        Cₑ::AbsMatNumber, Cₘ::AbsMatNumber,
                        jₑ::AbsVecNumber, jₘ::AbsVecNumber)
-    A = create_A(ft, ω, Mε, Mμ, Cₑ, Cₘ)
-    b = create_b(ft, ω, Mε, Mμ, Cₑ, Cₘ, jₑ, jₘ)
+    A = create_A(ft, ω, Pε, Pμ, Cₑ, Cₘ)
+    b = create_b(ft, ω, Pε, Pμ, Cₑ, Cₘ, jₑ, jₘ)
 
     return A, b
 end
 
-create_A(ft::FieldType, ω::Number, Ms::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}) =
-    create_A(ft, ω, Ms..., Cs...)
+create_A(ft::FieldType, ω::Number, Ps::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}) =
+    create_A(ft, ω, Ps..., Cs...)
 
 function create_A(ft::FieldType,
                   ω::Number,
-                  Mε::AbsMatNumber, Mμ::AbsMatNumber,
+                  Pε::AbsMatNumber, Pμ::AbsMatNumber,
                   Cₑ::AbsMatNumber, Cₘ::AbsMatNumber)
     # Consider a potential approach to save memory:
     #     Y = copy(Cₑ)
-    #     ldiv!(some_factorization(Mμ), Y)
+    #     ldiv!(some_factorization(Pμ), Y)
     #     A = copy(Y)
     #     mul!(A, Cₘ, Y)
-    # This still uses two allocations, so it is no better than A = Cₘ * (Mμ \ Cₑ)
-    if ft == EE  # A = Cₘ (Mμ⁻¹ Cₑ) - ω² Mε
-        A = Cₘ * (Mμ \ Cₑ)
-        iszero(ω) || (A -= ω^2 * Mε)
-    elseif ft == HH  # A = Cₑ (Mε⁻¹ Cₘ) - ω² Mμ
-        A = Cₑ * (Mε \ Cₘ)
-        iszero(ω) || (A -= ω^2 * Mμ)
+    # This still uses two allocations, so it is no better than A = Cₘ * (Pμ \ Cₑ)
+    if ft == EE  # A = Cₘ (Pμ⁻¹ Cₑ) - ω² Pε
+        A = Cₘ * (Pμ \ Cₑ)
+        iszero(ω) || (A -= ω^2 * Pε)
+    elseif ft == HH  # A = Cₑ (Pε⁻¹ Cₘ) - ω² Pμ
+        A = Cₑ * (Pε \ Cₘ)
+        iszero(ω) || (A -= ω^2 * Pμ)
     else
         @error "ft = $ft is unsupported."
     end
@@ -205,26 +205,26 @@ function create_A(ft::FieldType,
     return A
 end
 
-create_b(ft::FieldType, ω::Number, Ms::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}, js::Tuple2{AbsVecNumber}) =
-    create_b(ft, ω, Ms..., Cs..., js...)
+create_b(ft::FieldType, ω::Number, Ps::Tuple2{AbsMatNumber}, Cs::Tuple2{AbsMatNumber}, js::Tuple2{AbsVecNumber}) =
+    create_b(ft, ω, Ps..., Cs..., js...)
 
 function create_b(ft::FieldType, ω::Number,
-                  Mε::AbsMatNumber, Mμ::AbsMatNumber,
+                  Pε::AbsMatNumber, Pμ::AbsMatNumber,
                   Cₑ::AbsMatNumber, Cₘ::AbsMatNumber,
                   jₑ::AbsVecNumber, jₘ::AbsVecNumber)
     # Consider a potential approach to save memory:
     #     y = copy(jₘ)
-    #     ldiv!(some_factorization(Mμ), y)
+    #     ldiv!(some_factorization(Pμ), y)
     #     b = copy(y)
     #     mul!(b, Cₘ, y)
     #     b .*= -1
-    # This still uses two allocations, so it is no better than b = -Cₘ * (Mμ \ jₘ)
-    if ft == EE  # b = -i ω jₑ - Cₘ (Mμ⁻¹ jₘ)
-        b = Cₘ * (Mμ \ jₘ)
+    # This still uses two allocations, so it is no better than b = -Cₘ * (Pμ \ jₘ)
+    if ft == EE  # b = -i ω jₑ - Cₘ (Pμ⁻¹ jₘ)
+        b = Cₘ * (Pμ \ jₘ)
         b .*= -1
         iszero(ω) || (b .-= (im * ω) .* jₑ)
-    elseif ft == HH  # b = -i ω jₘ + Cₑ (Mε⁻¹ jₑ)
-        b = Cₑ * (Mε \ jₑ)
+    elseif ft == HH  # b = -i ω jₘ + Cₑ (Pε⁻¹ jₑ)
+        b = Cₑ * (Pε \ jₑ)
         iszero(ω) || (b .-= (im * ω) .* jₘ)
     else
         @error "ft = $ft is unsupported."
@@ -235,13 +235,13 @@ end
 
 e2h(e::AbsVecNumber, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
     e2h(e, ω, M[2], C[1], j[2])
-e2h(e::AbsVecNumber, ω::Number, Mμ::AbsMatNumber, Cₑ::AbsMatNumber, jₘ::AbsVecNumber) =
-    (im/ω) .* (Mμ \ (Cₑ*e + jₘ))
+e2h(e::AbsVecNumber, ω::Number, Pμ::AbsMatNumber, Cₑ::AbsMatNumber, jₘ::AbsVecNumber) =
+    (im/ω) .* (Pμ \ (Cₑ*e + jₘ))
 
 h2e(h::AbsVecNumber, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
     h2e(h, ω, M[1], C[2], j[1])
-h2e(h::AbsVecNumber, ω::Number, Mε::AbsMatNumber, Cₘ::AbsMatNumber, jₑ::AbsVecNumber) =
-    (-im/ω) .* (Mε \ (Cₘ*h - jₑ))
+h2e(h::AbsVecNumber, ω::Number, Pε::AbsMatNumber, Cₘ::AbsMatNumber, jₑ::AbsVecNumber) =
+    (-im/ω) .* (Pε \ (Cₘ*h - jₑ))
 
 # Create the operator interpolating solution fields at grid cell corners.
 function create_Mcs(mdl::Model)
