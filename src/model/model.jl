@@ -109,13 +109,14 @@ function create_paramops(mdl::Model)
     calc_matparams!(mdl)  # assignment and smoothing; implemented for each specialized alias of Model
 
     boundft = mdl.boundft
-    gₑ = ft2gt.(EE, boundft)
-    gₘ = ft2gt.(HH, boundft)
-
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Pε = create_paramop(mdl.εarr, gₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
-    Pμ = create_paramop(mdl.μarr, gₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+
+    isfwd_inₑ = boundft.!=EE
+    isfwd_inₘ = boundft.!=HH
+
+    Pε = create_paramop(mdl.εarr, isfwd_inₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Pμ = create_paramop(mdl.μarr, isfwd_inₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
     return Pε, Pμ
 end
