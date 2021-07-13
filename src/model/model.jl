@@ -259,8 +259,12 @@ function create_Mcs(mdl::Model)
     boundft = mdl.boundft
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Mcₑ = create_mean(boundft.!=EE, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
-    Mcₘ = create_mean(boundft.!=HH, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+
+    isfwdₑ = boundft.!=EE
+    isfwdₘ = boundft.!=HH
+
+    Mcₑ = create_mean(isfwdₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Mcₘ = create_mean(isfwdₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
     return Mcₑ, Mcₘ
 end
@@ -282,8 +286,12 @@ function create_Mls(mdl::Model)
     boundft = mdl.boundft
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Mₑ = create_mean(boundft.==EE, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
-    Mₘ = create_mean(boundft.==HH, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+
+    isfwdₑ = boundft.==EE
+    isfwdₘ = boundft.==HH
+
+    Mₑ = create_mean(isfwdₑ, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Mₘ = create_mean(isfwdₘ, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
     Mlₑ = Mₑ * Pl
     Mlₘ = Mₘ * Pl
@@ -303,12 +311,17 @@ function create_Mrs(mdl::Model)
     # Arguments of create_mean:
     # - isfwd is set to average the fields at the voxel corners to get the fields at the
     # solution field locations (but with polarization not meant for that locations).
+    # (For boundft[w] = ft, voxel-corner field is forward-averaged along w.)
     # - ∆l and ∆l′⁻¹ are not supplied; use unweighted arithmetic averaging.
     boundft = mdl.boundft
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Mₑ = create_mean(boundft.==EE, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
-    Mₘ = create_mean(boundft.==HH, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+
+    isfwdₑ = boundft.==EE
+    isfwdₘ = boundft.==HH
+
+    Mₑ = create_mean(isfwdₑ, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Mₘ = create_mean(isfwdₘ, N, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
     Mrₑ = Mₑ * Pr
     Mrₘ = Mₘ * Pr
