@@ -126,11 +126,14 @@ function create_curls(mdl::Model)
 
     boundft = mdl.boundft
     cmpₛ, cmpₑ, cmpₘ = mdl.cmpₛ, mdl.cmpₑ, mdl.cmpₘ
-
     isbloch = mdl.grid.isbloch
     e⁻ⁱᵏᴸ = create_e⁻ⁱᵏᴸ(mdl)
-    Cₑ = create_curl(boundft.==EE, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₘ, cmp_in=cmpₑ, mdl.order_cmpfirst)
-    Cₘ = create_curl(boundft.==HH, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₑ, cmp_in=cmpₘ, mdl.order_cmpfirst)
+
+    isfwdₑ = boundft.==EE
+    isfwdₘ = boundft.==HH
+
+    Cₑ = create_curl(isfwdₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₘ, cmp_in=cmpₑ, mdl.order_cmpfirst)
+    Cₘ = create_curl(isfwdₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; cmp_shp=cmpₛ, cmp_out=cmpₑ, cmp_in=cmpₘ, mdl.order_cmpfirst)
 
     return Cₑ, Cₘ
 end
