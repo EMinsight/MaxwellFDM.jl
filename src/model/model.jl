@@ -1,4 +1,27 @@
-export set_ω!, set_boundft!, set_Npml!, set_kbloch!  # basic setter functions
+# Note about the the physicist's Maxwell's equations and the engineer's Maxwell's equations
+#
+# Physicsists use the time dependence of exp(-iωt).  Engineers use exp(+iωt).
+#
+# What is really done to obtain the physicist's Maxwell's equations from the engineer's
+# Maxwell's equations is to take the complex conjugate of the entire equations.  This makes
+# the time dependence from exp(+iωt) to conj{exp(+i ω_eng t)} = exp(-i conj(ω_eng) t). This
+# is why we use the conjugated frequency ω_phy = conj(ω_eng) in SALT.
+#
+# The PML formula is embedded inside Maxwell's equations, so it is also affected by the
+# conjugation.  It turns out that i appears only in the form of i ω_eng, and all the other
+# PML parameters except for ω_eng are real.  Therefore, the PML formula for SALT is obtained
+# by using -i instead of i and conj(ω_eng) instead of ω_eng.
+#
+# In SALT, we are already using conj(ω_eng) = ω_phy, so we only need to flip the sign of i
+# in order to optain the PML formula for the SALT equation.  Because i appears only in the
+# form of iω in the PML formula, this can be achieved by inputting -ω_phy in MaxwellFDFD's
+# PML formula.
+#
+# In fact, ω always (not just in the PML formula) appears in the form of iω in Maxwell's
+# equations.  Therefore, pass -ω_phy to all the arguments ω to get the physicist's Maxwell's
+# equations.
+export set_ωpml!, set_boundft!, set_Npml!, set_kbloch!  # basic setter functions
+export create_e⁻ⁱᵏᴸ
 export clear_objs!, clear_srcs!  # plural because clearing both electric and magnetic quantities
 export add_srce!, add_srcm!  # add_obj! is imported from MaxwellBase
 export create_paramops, create_curls, create_srcs, create_linsys, create_A, create_b, e2h, h2e
@@ -10,7 +33,7 @@ Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
                      AK₊₁<:AbsArrComplexF{K₊₁},AK₊₂<:AbsArrComplexF{K₊₂},
                      K²,Kₑ²,Kₘ²}
     # Frequency
-    ω::Number = 0.0  # can be complex
+    ωpml::Number = 0.0  # can be complex
 
     # Grid
     grid::Grid{K}
@@ -49,7 +72,7 @@ Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
 end
 
 # Basic setters
-set_ω!(mdl::Model{K}, ω::Number) where {K} = (mdl.ω = ω; nothing)
+set_ωpml!(mdl::Model{K}, ωpml::Number) where {K} = (mdl.ωpml = ωpml; nothing)
 set_boundft!(mdl::Model{K}, boundft::AbsVec{FieldType}) where {K} = (mdl.boundft = SVec{K}(boundft); nothing)
 set_Npml!(mdl::Model{K}, Npml::Tuple2{AbsVecInteger}) where {K} = (mdl.Npml = SVec{K}.(Npml); nothing)
 set_kbloch!(mdl::Model{K}, kbloch::AbsVecReal) where {K} = (mdl.kbloch = SVec{K}(kbloch); nothing)
@@ -86,10 +109,10 @@ function MaxwellBase.add_obj!(mdl::Model{K,Kₑ,Kₘ}, matname::String, shapes::
 end
 
 function create_stretched_∆ls(mdl::Model)
-    ω = mdl.ω
+    ωpml = mdl.ωpml
     grid = mdl.grid
     Npml = mdl.Npml
-    s∆l = create_stretched_∆l(ω, grid, Npml)
+    s∆l = create_stretched_∆l(ωpml, grid, Npml)
     s∆l⁻¹ = invert_∆l(s∆l)
 
     boundft = mdl.boundft
