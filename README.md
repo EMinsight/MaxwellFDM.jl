@@ -1,10 +1,9 @@
 # MaxwellFDFD
 
-[![Build Status](https://travis-ci.com/wsshin/MaxwellFDFD.jl.svg?branch=main)](https://travis-ci.com/wsshin/MaxwellFDFD.jl)
-[![Build status](https://ci.appveyor.com/api/projects/status/msqy41b4qsslmm0u/branch/main?svg=true)](https://ci.appveyor.com/project/wsshin/MaxwellFDFD-jl/branch/main)
-[![codecov](https://codecov.io/gh/wsshin/MaxwellFDFD.jl/branch/main/graph/badge.svg?token=T2UuPYQTXB)](https://codecov.io/gh/wsshin/MaxwellFDFD.jl)
+[![CI](https://github.com/wsshin/MaxwellFDFD.jl/workflows/CI/badge.svg)](https://github.com/wsshin/MaxwellFDFD.jl/actions)
+[![Codecov](http://codecov.io/github/wsshin/MaxwellFDFD.jl/coverage.svg?branch=main)](http://codecov.io/github/wsshin/MaxwellFDFD.jl?branch=main)
 
-MaxwellFDFD is a high-performance finite-difference frequency-domain (FDFD) solver package
+**MaxwellFDFD** is a high-performance finite-difference frequency-domain (FDFD) solver package
 written in Julia.  This package aims to combine the functionalities of
 [MaxwellFDFD](https://github.com/wsshin/maxwellfdfd) (written in MATLAB) and
 [FD3D](https://github.com/wsshin/fd3d) (written in C using the PETSc library).
