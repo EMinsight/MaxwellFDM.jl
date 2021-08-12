@@ -127,7 +127,7 @@ function create_stretched_∆ls(mdl::Model)
     return s∆lₑ, s∆lₘ, s∆lₑ⁻¹, s∆lₘ⁻¹
 end
 
-function create_paramops(mdl::Model)
+function create_paramops(mdl::Model{K,Kₑ,Kₘ}) where {K,Kₑ,Kₘ}
     s∆lₑ, s∆lₘ, s∆lₑ⁻¹, s∆lₘ⁻¹ = create_stretched_∆ls(mdl)
     calc_matparams!(mdl)  # assignment and smoothing; implemented for each specialized alias of Model
 
@@ -138,9 +138,12 @@ function create_paramops(mdl::Model)
     isfwd_inₑ = boundft.!=EE
     isfwd_inₘ = boundft.!=HH
 
-    Pε = create_paramop(mdl.εarr, isfwd_inₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
-    Pμ = create_paramop(mdl.μarr, isfwd_inₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Pε = Kₑ==1 ? create_paramop(mdl.εarr; mdl.order_cmpfirst) :
+                 create_paramop(mdl.εarr, isfwd_inₑ, s∆lₘ, s∆lₑ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
+    Pμ = Kₘ==1 ? create_paramop(mdl.μarr; mdl.order_cmpfirst) :
+                 create_paramop(mdl.μarr, isfwd_inₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
+    @info "size(Pε) = $(size(Pε)), size(Pμ) = $(size(Pμ))"
     return Pε, Pμ
 end
 
