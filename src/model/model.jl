@@ -143,7 +143,6 @@ function create_paramops(mdl::Model{K,Kₑ,Kₘ}) where {K,Kₑ,Kₘ}
     Pμ = Kₘ==1 ? create_paramop(mdl.μarr; mdl.order_cmpfirst) :
                  create_paramop(mdl.μarr, isfwd_inₘ, s∆lₑ, s∆lₘ⁻¹, isbloch, e⁻ⁱᵏᴸ; mdl.order_cmpfirst)
 
-    @info "size(Pε) = $(size(Pε)), size(Pμ) = $(size(Pμ))"
     return Pε, Pμ
 end
 
