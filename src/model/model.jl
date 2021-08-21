@@ -71,6 +71,16 @@ Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
     order_cmpfirst::Bool = true
 end
 
+function Base.size(mdl::Model{K,Kₑ,Kₘ}, ft::FieldType) where {K,Kₑ,Kₘ}
+    Kf = ft==EE ? Kₑ : Kₘ
+    sz_grid = size(mdl.grid)
+    sz = mdl.order_cmpfirst ? (Kf, sz_grid...) : (sz_grid..., Kf)
+
+    return sz
+end
+
+Base.length(mdl::Model, ft::FieldType) = prod(size(mdl, ft))
+
 # Basic setters
 set_ωpml!(mdl::Model{K}, ωpml::Number) where {K} = (mdl.ωpml = ωpml; nothing)
 set_boundft!(mdl::Model{K}, boundft::AbsVec{FieldType}) where {K} = (mdl.boundft = SVec{K}(boundft); nothing)
