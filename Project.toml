@@ -3,7 +3,7 @@ uuid = "9ee19b4e-b9c3-5130-be0e-e5859ba17e49"
 license = "MIT"
 desc = "High-performance 3D finite-difference frequency-domain (FDFD) solver of Maxwell's equations written in Julia"
 authors = ["Wonseok Shin <wsshin97@gmail.com> and contributors"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 AbbreviatedTypes = "1766def0-c946-4dda-a59e-d0d07f8410f7"
