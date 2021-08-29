@@ -24,7 +24,7 @@ export set_ωpml!, set_boundft!, set_Npml!, set_kbloch!  # basic setter function
 export create_e⁻ⁱᵏᴸ
 export clear_objs!, clear_srcs!  # plural because clearing both electric and magnetic quantities
 export add_srce!, add_srcm!  # add_obj! is imported from MaxwellBase
-export create_paramops, create_curls, create_srcs, create_linsys, create_A, create_b, e2h, h2e
+export create_paramops, create_curls, create_srcs, create_linsys, create_A, create_b, h_from_e, e_from_h
 export create_Mcs
 
 # Do not export Model; quality it with the package name MaxwellFDFD, because I would have
@@ -272,14 +272,14 @@ function create_b(ft::FieldType, ω::Number,
     return b
 end
 
-e2h(e::AbsVecNumber, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
-    e2h(e, ω, M[2], C[1], j[2])
-e2h(e::AbsVecNumber, ω::Number, Pμ::AbsMatNumber, Cₑ::AbsMatNumber, jₘ::AbsVecNumber) =
+h_from_e(e::AbsVecNumber, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
+    h_from_e(e, ω, M[2], C[1], j[2])
+h_from_e(e::AbsVecNumber, ω::Number, Pμ::AbsMatNumber, Cₑ::AbsMatNumber, jₘ::AbsVecNumber) =
     (im/ω) .* (Pμ \ (Cₑ*e + jₘ))
 
-h2e(h::AbsVecNumber, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
-    h2e(h, ω, M[1], C[2], j[1])
-h2e(h::AbsVecNumber, ω::Number, Pε::AbsMatNumber, Cₘ::AbsMatNumber, jₑ::AbsVecNumber) =
+e_from_h(h::AbsVecNumber, ω::Number, M::Tuple2{AbsMatNumber}, C::Tuple2{AbsMatNumber}, j::Tuple2{AbsVecNumber}) =
+    e_from_h(h, ω, M[1], C[2], j[1])
+e_from_h(h::AbsVecNumber, ω::Number, Pε::AbsMatNumber, Cₘ::AbsMatNumber, jₑ::AbsVecNumber) =
     (-im/ω) .* (Pε \ (Cₘ*h - jₑ))
 
 # Create the operator interpolating solution fields at grid cell corners.
