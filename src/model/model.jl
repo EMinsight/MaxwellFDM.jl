@@ -29,9 +29,9 @@ export create_Mcs
 
 # Do not export Model; quality it with the package name MaxwellFDFD, because I would have
 # similar types in other packages such as MaxwellSALT and MaxwellGuide.
-Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,K₊₁,K₊₂,
-                     AK₊₁<:AbsArrComplexF{K₊₁},AK₊₂<:AbsArrComplexF{K₊₂},
-                     K²,Kₑ²,Kₘ²}
+Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,
+                                 K₊₁,K₊₂,AK₊₁<:AbsArrComplexF{K₊₁},AK₊₂<:AbsArrComplexF{K₊₂},
+                                 K²,Kₑ²,Kₘ²}
     # Frequency
     ωpml::Number = 0.0  # can be complex
 
