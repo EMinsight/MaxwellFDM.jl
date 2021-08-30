@@ -3,9 +3,9 @@ const ModelTM{AK₊₁,AK₊₂} = Model{2,1,2, 3,4, AK₊₁,AK₊₂, 4,1,4}
 
 # Convenience constructor
 function ModelTM(grid::Grid; Atype::Type=Array)
-    cmpₛ = SVec(1,2)  # shapes in xy-plane
-    cmpₑ = SVec(3)  # E-field with z-component
-    cmpₘ = SVec(1,2)  # H-field with x- and y-components
+    cmpₛ = SInt(1,2)  # shapes in xy-plane
+    cmpₑ = SInt(3)  # E-field with z-component
+    cmpₘ = SInt(1,2)  # H-field with x- and y-components
 
     return ModelTM{Atype{ComplexF,3},Atype{ComplexF,4}}(grid=grid, cmpₛ=cmpₛ, cmpₑ=cmpₑ, cmpₘ=cmpₘ)
 end

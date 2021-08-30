@@ -3,9 +3,9 @@ const ModelFull{AK₊₁,AK₊₂} = Model{3,3,3, 4,5, AK₊₁,AK₊₂, 9,9,9}
 
 # Convenience constructor
 function ModelFull(grid::Grid; Atype::Type=Array)
-    cmpₛ = SVec(1,2,3)  # shapes in 3D space
-    cmpₑ = SVec(1,2,3)  # E-field with x-, y-, and y-components
-    cmpₘ = SVec(1,2,3)  # H-field with x-, y-, and y-components
+    cmpₛ = SInt(1,2,3)  # shapes in 3D space
+    cmpₑ = SInt(1,2,3)  # E-field with x-, y-, and y-components
+    cmpₘ = SInt(1,2,3)  # H-field with x-, y-, and y-components
 
     return ModelFull{Atype{ComplexF,4},Atype{ComplexF,5}}(grid=grid, cmpₛ=cmpₛ, cmpₑ=cmpₑ, cmpₘ=cmpₘ)
 end

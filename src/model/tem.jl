@@ -3,9 +3,9 @@ const ModelTEM{AK₊₁,AK₊₂} = Model{1,1,1, 2,3, AK₊₁,AK₊₂, 1,1,1}
 
 # Convenience constructor
 function ModelTEM(grid::Grid; Atype::Type=Array)
-    cmpₛ = SVec(3)  # shapes in z-axis
-    cmpₑ = SVec(1)  # E-field with x-component
-    cmpₘ = SVec(2)  # H-field with y-component
+    cmpₛ = SInt(3)  # shapes in z-axis
+    cmpₑ = SInt(1)  # E-field with x-component
+    cmpₘ = SInt(2)  # H-field with y-component
 
     return ModelTEM{Atype{ComplexF,2},Atype{ComplexF,3}}(grid=grid, cmpₛ=cmpₛ, cmpₑ=cmpₑ, cmpₘ=cmpₘ)
 end
