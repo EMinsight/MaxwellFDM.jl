@@ -82,7 +82,7 @@ end
 Base.length(mdl::Model, ft::FieldType) = prod(size(mdl, ft))
 
 # Basic setters
-set_ωpml!(mdl::Model{K}, ωpml::Number) where {K} = (mdl.ωpml = ωpml; nothing)
+set_ωpml!(mdl::Model, ωpml::Number) = (mdl.ωpml = ωpml; nothing)
 set_boundft!(mdl::Model{K}, boundft::AbsVec{FieldType}) where {K} = (mdl.boundft = SVec{K}(boundft); nothing)
 set_Npml!(mdl::Model{K}, Npml::Tuple2{AbsVecInteger}) where {K} = (mdl.Npml = SVec{K}.(Npml); nothing)
 set_kbloch!(mdl::Model{K}, kbloch::AbsVecReal) where {K} = (mdl.kbloch = SVec{K}(kbloch); nothing)
@@ -90,7 +90,7 @@ set_kbloch!(mdl::Model{K}, kbloch::AbsVecReal) where {K} = (mdl.kbloch = SVec{K}
 create_e⁻ⁱᵏᴸ(mdl::Model) = exp.(-im .* mdl.kbloch .* mdl.grid.L)
 
 # Main functions
-function clear_objs!(mdl::Model{K,Kₑ,Kₘ}) where {K,Kₑ,Kₘ}
+function clear_objs!(mdl::Model)
     mdl.εarr .= 0
     mdl.μarr .= 0
 
