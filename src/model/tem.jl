@@ -27,8 +27,8 @@ function calc_matparams!(mdl::ModelTEM)
     ∆τ = grid.ghosted.∆τ
 
     boundft = mdl.boundft
-    ge = ft2gt.(EE,boundft)
-    gh = ft2gt.(HH,boundft)
+    gₑ = ft2gt.(EE,boundft)
+    gₘ = ft2gt.(HH,boundft)
 
     εarr = mdl.εarr
     µarr = mdl.μarr
@@ -44,12 +44,12 @@ function calc_matparams!(mdl::ModelTEM)
     μyy_oind1d = create_oind_array(N)
 
     # Assign the material parameters.
-    assign_param!(εarr, tuple(μyy_oind1d), oind2shp, oind2εind, εind2ε, ge, τl, isbloch)  # ε tensors (rand-0, so scalars)
-    assign_param!(μarr, tuple(εxx_oind1d), oind2shp, oind2μind, μind2μ, gh, τl, isbloch)  # μ tensors (rand-0, so scalars)
+    assign_param!(εarr, tuple(μyy_oind1d), oind2shp, oind2εind, εind2ε, gₑ, τl, isbloch)  # ε tensors (rand-0, so scalars)
+    assign_param!(μarr, tuple(εxx_oind1d), oind2shp, oind2μind, μind2μ, gₘ, τl, isbloch)  # μ tensors (rand-0, so scalars)
 
     # Smooth the material parameters.
-    smooth_param!(εarr, tuple(εxx_oind1d), oind2shp, oind2εind, εind2ε, ge, l, lg, σ, ∆τ, mdl.ise˔shp)  # ε tensors (rand-0, so scalars)
-    smooth_param!(μarr, tuple(μyy_oind1d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ, mdl.ish˔shp)  # μ tensors (rand-0, so scalars)
+    smooth_param!(εarr, tuple(εxx_oind1d), oind2shp, oind2εind, εind2ε, gₑ, l, lg, σ, ∆τ, mdl.ise˔shp)  # ε tensors (rand-0, so scalars)
+    smooth_param!(μarr, tuple(μyy_oind1d), oind2shp, oind2μind, μind2μ, gₘ, l, lg, σ, ∆τ, mdl.ish˔shp)  # μ tensors (rand-0, so scalars)
 
     return nothing
 end

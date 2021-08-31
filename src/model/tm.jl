@@ -27,8 +27,8 @@ function calc_matparams!(mdl::ModelTM)
     ∆τ = grid.ghosted.∆τ
 
     boundft = mdl.boundft
-    ge = ft2gt.(EE,boundft)
-    gh = ft2gt.(HH,boundft)
+    gₑ = ft2gt.(EE,boundft)
+    gₘ = ft2gt.(HH,boundft)
 
     εarr = mdl.εarr
     µarr = mdl.μarr
@@ -47,14 +47,14 @@ function calc_matparams!(mdl::ModelTM)
     εzz_oind2d = create_oind_array(N)
 
     # Assign the material parameters.
-    assign_param!(μarr, (μyy_oind2d,μxx_oind2d), oind2shp, oind2μind, μind2μ, gh, τl, isbloch)  # diagonal entries of μ tensors
-    assign_param!(μarr, tuple(εzz_oind2d), oind2shp, oind2μind, μind2μ, gh, τl, isbloch)  # off-diagonal entries of μ tensors
-    assign_param!(εarr, tuple(μoo_oind2d), oind2shp, oind2εind, εind2ε, ge, τl, isbloch)  # ε tensors (rank-0, so scalars)
+    assign_param!(μarr, (μyy_oind2d,μxx_oind2d), oind2shp, oind2μind, μind2μ, gₘ, τl, isbloch)  # diagonal entries of μ tensors
+    assign_param!(μarr, tuple(εzz_oind2d), oind2shp, oind2μind, μind2μ, gₘ, τl, isbloch)  # off-diagonal entries of μ tensors
+    assign_param!(εarr, tuple(μoo_oind2d), oind2shp, oind2εind, εind2ε, gₑ, τl, isbloch)  # ε tensors (rank-0, so scalars)
 
     # Smooth the material parameters.
-    smooth_param!(μarr, (μxx_oind2d,μyy_oind2d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ, mdl.ish˔shp)  # diagonal entries of μ tensors
-    smooth_param!(μarr, tuple(μoo_oind2d), oind2shp, oind2μind, μind2μ, gh, l, lg, σ, ∆τ, mdl.ish˔shp)  # off-diagonal entries of μ tensors
-    smooth_param!(εarr, tuple(εzz_oind2d), oind2shp, oind2εind, εind2ε, ge, l, lg, σ, ∆τ, mdl.ise˔shp)  # ε tensors (rank-0, so scalars)
+    smooth_param!(μarr, (μxx_oind2d,μyy_oind2d), oind2shp, oind2μind, μind2μ, gₘ, l, lg, σ, ∆τ, mdl.ish˔shp)  # diagonal entries of μ tensors
+    smooth_param!(μarr, tuple(μoo_oind2d), oind2shp, oind2μind, μind2μ, gₘ, l, lg, σ, ∆τ, mdl.ish˔shp)  # off-diagonal entries of μ tensors
+    smooth_param!(εarr, tuple(εzz_oind2d), oind2shp, oind2εind, εind2ε, gₑ, l, lg, σ, ∆τ, mdl.ise˔shp)  # ε tensors (rank-0, so scalars)
 
     return nothing
 end
