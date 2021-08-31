@@ -1,7 +1,7 @@
-# Alias of Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²} for 2D TE Maxwell's equations.
+# Alias of Model{K,Kₑ,Kₘ, K²,Kₑ²,Kₘ², K₊₁,K₊₂, AK₊₁,AK₊₂} for 2D TE Maxwell's equations.
 # The type parameters AK₊₁ and AK₊₂ specify device-specific arrays types (e.g., CuArray) and
 # are user-defined in the constructor.
-const ModelTE{AK₊₁,AK₊₂} = Model{2,2,1, 3,4, AK₊₁,AK₊₂, 4,4,1}
+const ModelTE{AK₊₁,AK₊₂} = Model{2,2,1, 4,4,1, 3,4, AK₊₁,AK₊₂}
 
 # Convenience constructor
 function ModelTE(grid::Grid; Atype::Type=Array)
