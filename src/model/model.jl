@@ -55,11 +55,11 @@ Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,
     jₘarr::AK₊₁ = create_field_array(grid.N, ncmp=Kₘ)  # filled with zeros
 
     # Temporary storages for assignment and smoothing of material parameters
-    oind2shp::Vector{Shape{K,K²}} = Shape{K,K^2}[]
+    oind2shp::Vector{Shape{K,K²}} = Shape{K,K²}[]
     oind2εind::Vector{ParamInd} = ParamInd[]
     oind2μind::Vector{ParamInd} = ParamInd[]
-    εind2ε::Vector{S²ComplexF{Kₑ,Kₑ²}} = S²ComplexF{Kₑ,Kₑ^2}[]
-    μind2μ::Vector{S²ComplexF{Kₘ,Kₘ²}} = S²ComplexF{Kₘ,Kₘ^2}[]
+    εind2ε::Vector{S²ComplexF{Kₑ,Kₑ²}} = S²ComplexF{Kₑ,Kₑ²}[]
+    μind2μ::Vector{S²ComplexF{Kₘ,Kₘ²}} = S²ComplexF{Kₘ,Kₘ²}[]
 
     # Boolean flags indicating if the E- and H-field dimensions are orthogonal to the shape
     # dimensions.  Used for material parameter smoothing in calc_matparams!().  The default
