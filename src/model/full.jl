@@ -9,7 +9,7 @@ function ModelFull(grid::Grid; Atype::Type=Array)
     cmpₑ = SInt(1,2,3)  # E-field with x-, y-, and y-components
     cmpₘ = SInt(1,2,3)  # H-field with x-, y-, and y-components
 
-    return ModelFull{Atype{ComplexF,4},Atype{ComplexF,5}}(grid=grid, cmpₛ=cmpₛ, cmpₑ=cmpₑ, cmpₘ=cmpₘ)
+    return ModelFull{Atype{ComplexF,4},Atype{ComplexF,5}}(;grid, cmpₛ, cmpₑ, cmpₘ)
 end
 
 # Assign the material parameters on the grid and smooth them.

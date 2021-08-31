@@ -9,7 +9,7 @@ function ModelTM(grid::Grid; Atype::Type=Array)
     cmpₑ = SInt(3)  # E-field with z-component
     cmpₘ = SInt(1,2)  # H-field with x- and y-components
 
-    return ModelTM{Atype{ComplexF,3},Atype{ComplexF,4}}(grid=grid, cmpₛ=cmpₛ, cmpₑ=cmpₑ, cmpₘ=cmpₘ)
+    return ModelTM{Atype{ComplexF,3},Atype{ComplexF,4}}(;grid, cmpₛ, cmpₑ, cmpₘ)
 end
 
 # Assign the material parameters on the grid and smooth them.
