@@ -1,4 +1,6 @@
-# Alias of Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²} for full 3D Maxwell's equations
+# Alias of Model{K,Kₑ,Kₘ,K₊₁,K₊₂,AK₊₁,AK₊₂,K²,Kₑ²,Kₘ²} for full 3D Maxwell's equations.
+# The type parameters AK₊₁ and AK₊₂ specify device-specific arrays types (e.g., CuArray) and
+# are user-defined in the constructor.
 const ModelFull{AK₊₁,AK₊₂} = Model{3,3,3, 4,5, AK₊₁,AK₊₂, 9,9,9}
 
 # Convenience constructor
