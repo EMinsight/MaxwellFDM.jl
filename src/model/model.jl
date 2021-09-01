@@ -30,7 +30,7 @@ export create_Mcs
 # Do not export Model; quality it with the package name MaxwellFDFD, because I would have
 # similar types in other packages such as MaxwellSALT and MaxwellGuide.
 Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,
-                                 K²,Kₑ²,Kₘ²,
+                                 K²,
                                  K₊₁,K₊₂,
                                  AK₊₁<:AbsArrComplexF{K₊₁},AK₊₂<:AbsArrComplexF{K₊₂}}
     # Frequency
@@ -59,8 +59,8 @@ Base.@kwdef mutable struct Model{K,Kₑ,Kₘ,
     oind2shp::Vector{Shape{K,K²}} = Shape{K,K²}[]
     oind2εind::Vector{ParamInd} = ParamInd[]
     oind2μind::Vector{ParamInd} = ParamInd[]
-    εind2ε::Vector{S²ComplexF{Kₑ,Kₑ²}} = S²ComplexF{Kₑ,Kₑ²}[]
-    μind2μ::Vector{S²ComplexF{Kₘ,Kₘ²}} = S²ComplexF{Kₘ,Kₘ²}[]
+    εind2ε::Vector{S²ComplexF3} = S²ComplexF3[]
+    μind2μ::Vector{S²ComplexF3} = S²ComplexF3[]
 
     # Boolean flags indicating if the E- and H-field dimensions are orthogonal to the shape
     # dimensions.  Used for material parameter smoothing in calc_matparams!().  The default
@@ -108,9 +108,9 @@ MaxwellBase.add_obj!(mdl::Model{K}, matname::String, shapes::AbsVec{<:Shape{K}};
                      ε::MatParam=1.0, μ::MatParam=1.0) where {K} =
     add_obj!(mdl, matname, ε=ε, μ=μ, tuple(shapes...))
 
-function MaxwellBase.add_obj!(mdl::Model{K,Kₑ,Kₘ}, matname::String, shapes::Shape{K}...;
-                              ε::MatParam=1.0, μ::MatParam=1.0) where {K,Kₑ,Kₘ}
-    mat = Material{Kₑ,Kₘ}(matname, ε=ε, μ=μ)
+function MaxwellBase.add_obj!(mdl::Model{K}, matname::String, shapes::Shape{K}...;
+                              ε::MatParam=1.0, μ::MatParam=1.0) where {K}
+    mat = Material(matname, ε=ε, μ=μ)
     for shp = shapes  # shapes is tuple
         obj = Object(shp, mat)
         add_obj!(mdl.oind2shp, (mdl.oind2εind,mdl.oind2μind), (mdl.εind2ε,mdl.μind2μ), obj)

@@ -1,7 +1,7 @@
-# Alias of Model{K,Kₑ,Kₘ, K²,Kₑ²,Kₘ², K₊₁,K₊₂, AK₊₁,AK₊₂} for 2D TE Maxwell's equations.
+# Alias of Model{K,Kₑ,Kₘ, K², K₊₁,K₊₂, AK₊₁,AK₊₂} for 2D TE Maxwell's equations.
 # The type parameters AK₊₁ and AK₊₂ specify device-specific arrays types (e.g., CuArray) and
 # are user-defined in the constructor.
-const ModelTE{AK₊₁,AK₊₂} = Model{2,2,1, 4,4,1, 3,4, AK₊₁,AK₊₂}
+const ModelTE{AK₊₁,AK₊₂} = Model{2,2,1, 4, 3,4, AK₊₁,AK₊₂}
 
 # Convenience constructor
 function ModelTE(grid::Grid; Atype::Type=Array)
@@ -36,8 +36,12 @@ function calc_matparams!(mdl::ModelTE)
     oind2shp = mdl.oind2shp
     oind2εind = mdl.oind2εind
     oind2μind = mdl.oind2μind
-    εind2ε = mdl.εind2ε
-    μind2μ = mdl.μind2μ
+
+    cmpₑ = mdl.cmpₑ
+    cmpₘ = mdl.cmpₘ
+
+    εind2ε = sub_pind2matprm(mdl.εind2ε, cmpₑ)
+    μind2μ = sub_pind2matprm(mdl.μind2μ, cmpₘ)
 
     # Create temporary storages.
     εxx_oind2d = create_oind_array(N)
