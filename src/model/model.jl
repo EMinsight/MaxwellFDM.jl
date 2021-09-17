@@ -233,10 +233,10 @@ function create_A(ft::FieldType,
     #     mul!(A, Cₘ, Y)
     # This still uses two allocations, so it is no better than A = Cₘ * (Pμ \ Cₑ)
     if ft == EE  # A = Cₘ (Pμ⁻¹ Cₑ) - ω² Pε
-        A = Cₘ * (Pμ \ Cₑ)
+        A = Cₘ * (Pμ \ Cₑ)  # division unsupported when Pμ is not diagonal; see https://discourse.julialang.org/t/sparse-arrays/30606
         iszero(ω) || (A -= ω^2 * Pε)
     elseif ft == HH  # A = Cₑ (Pε⁻¹ Cₘ) - ω² Pμ
-        A = Cₑ * (Pε \ Cₘ)
+        A = Cₑ * (Pε \ Cₘ)  # division unsupported when Pε is not diagonal; see https://discourse.julialang.org/t/sparse-arrays/30606
         iszero(ω) || (A -= ω^2 * Pμ)
     else
         @error "ft = $ft is unsupported."
